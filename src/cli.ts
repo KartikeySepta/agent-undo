@@ -1,14 +1,18 @@
+#!/usr/bin/env node
 import { program } from 'commander';
 import { takeSnapshot, revertSnapshot } from './snapshot';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
+import crypto from 'crypto';
 
 program
   .name('agent-undo')
   .description('The Time Machine for AI Coding Agents')
   .version('1.0.0');
 
-const SNAPSHOT_BASE = path.join(process.cwd(), '.agent-undo', 'snapshots');
+const projectHash = crypto.createHash('md5').update(process.cwd()).digest('hex');
+const SNAPSHOT_BASE = path.join(os.homedir(), '.agent-undo', 'snapshots', projectHash);
 
 program
   .command('snapshot')

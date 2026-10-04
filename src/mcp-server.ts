@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -7,6 +8,8 @@ import {
 import { takeSnapshot, revertSnapshot } from "./snapshot";
 import path from "path";
 import fs from "fs";
+import os from "os";
+import crypto from "crypto";
 
 const server = new Server(
   {
@@ -20,7 +23,8 @@ const server = new Server(
   }
 );
 
-const SNAPSHOT_BASE = path.join(process.cwd(), '.agent-undo', 'snapshots');
+const projectHash = crypto.createHash('md5').update(process.cwd()).digest('hex');
+const SNAPSHOT_BASE = path.join(os.homedir(), '.agent-undo', 'snapshots', projectHash);
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
