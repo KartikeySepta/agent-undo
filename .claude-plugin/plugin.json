@@ -1,0 +1,19 @@
+{
+  "name": "agent-undo",
+  "version": "1.2.0",
+  "description": "Time machine for AI coding agents: instant copy-on-write snapshots of the whole project (untracked files, node_modules) and safe, undoable rollback.",
+  "author": {
+    "name": "TODO_AUTHOR",
+    "url": "https://github.com/TODO_OWNER"
+  },
+  "homepage": "https://github.com/TODO_OWNER/agent-undo#readme",
+  "repository": "https://github.com/TODO_OWNER/agent-undo",
+  "license": "MIT",
+  "keywords": ["undo", "rollback", "snapshot", "checkpoint", "copy-on-write", "safety", "mcp"],
+  "mcpServers": {
+    "agent-undo": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/bin/agent-undo-mcp.cjs"]
+    }
+  }
+}

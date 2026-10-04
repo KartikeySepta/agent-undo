@@ -6,7 +6,12 @@ const entries = {
   'agent-undo': 'src/cli.ts',
   'agent-undo-mcp': 'src/mcp-server.ts',
   'hook-pretooluse': 'src/hooks/pretooluse.ts',
+  'hook-session-start': 'src/hooks/session-start.ts',
+  'hook-prompt': 'src/hooks/prompt.ts',
+  'hook-subagent-start': 'src/hooks/subagent-start.ts',
+  statusline: 'src/statusline.ts',
   core: 'src/snapshot.ts',
+  'core-rules': 'src/instructions.ts',
 };
 
 await build({

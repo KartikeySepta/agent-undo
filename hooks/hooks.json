@@ -1,8 +1,17 @@
 {
-  "description": "agent-undo: auto-snapshot before risky shell commands",
+  "description": "agent-undo: rules injection, baseline + auto snapshots, level switching",
   "hooks": {
+    "SessionStart": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/hook-session-start.cjs\"", "timeout": 5, "statusMessage": "Loading agent-undo..." }] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/hook-prompt.cjs\"", "timeout": 30 }] }
+    ],
     "PreToolUse": [
-      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "node ${CLAUDE_PLUGIN_ROOT}/bin/hook-pretooluse.cjs", "timeout": 30 }] }
+      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/hook-pretooluse.cjs\"", "timeout": 60, "statusMessage": "agent-undo: snapshot before risky command..." }] }
+    ],
+    "SubagentStart": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/hook-subagent-start.cjs\"", "timeout": 5 }] }
     ]
   }
 }

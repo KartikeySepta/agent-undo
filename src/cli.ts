@@ -4,6 +4,8 @@ import {
   takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot, pruneSnapshots,
 } from './snapshot';
 import { VERSION } from './version';
+import { LEVELS, isLevel, readLevel, writeLevel } from './config';
+import { doctor, status, protectedBytes } from './status';
 
 const cwd = process.cwd();
 const MODE_LABEL = { clonefile: 'clonefile', cow: 'copy-on-write', copy: 'full copy: no CoW on this filesystem', moved: 'moved' } as const;
@@ -70,5 +72,43 @@ program
   .description('Delete old unnamed snapshots, keeping the newest N')
   .option('-k, --keep <n>', 'how many to keep', '10')
   .action((o: { keep: string }) => console.log(`Pruned ${pruneSnapshots(cwd, Number(o.keep))} snapshot(s).`));
+
+program
+  .command('mode [level]')
+  .description(`Show or set the level: ${LEVELS.join('|')}`)
+  .action((level?: string) => {
+    if (!level) return console.log(readLevel());
+    if (!isLevel(level)) fail(new Error(`Unknown level "${level}". Use one of: ${LEVELS.join(', ')}`));
+    writeLevel(level as (typeof LEVELS)[number]);
+    console.log(`agent-undo level: ${level}`);
+  });
+
+program
+  .command('stats')
+  .description('Snapshots taken, reverts, and data protected (the /undo-gain scoreboard)')
+  .option('--json', 'machine-readable output')
+  .action((o: { json?: boolean }) => {
+    const st = status(cwd);
+    const bytes = protectedBytes(cwd);
+    if (o.json) return console.log(JSON.stringify({ ...st, protectedBytes: bytes }, null, 2));
+    const s = st.stats;
+    const avg = s.snapshots ? Math.round(s.snapshotMsTotal / s.snapshots) : 0;
+    const triggers = Object.entries(s.byTrigger).map(([k, v]) => `${k} ${v}`).join(', ') || 'none';
+    console.log(`⏪ agent-undo ${st.version}  level ${st.level}`);
+    console.log(`snapshots taken   ${s.snapshots}  (${triggers}), avg ${avg}ms`);
+    console.log(`reverts           ${s.reverts}  (${s.partialReverts} partial, ${s.pathsRestored} paths restored)`);
+    console.log(`this project      ${st.snapshots} snapshot(s), ${(bytes / 1e6).toFixed(1)} MB protected`);
+    console.log(`since             ${s.since.slice(0, 10)}`);
+  });
+
+program
+  .command('doctor')
+  .description('Check the clone engine, store volume, and project setup')
+  .action(() => {
+    const icon = { true: '✅', false: '❌', warn: '⚠️ ' } as const;
+    const checks = doctor(cwd);
+    for (const c of checks) console.log(`${icon[String(c.ok) as keyof typeof icon]} ${c.label.padEnd(13)} ${c.detail}`);
+    if (checks.some((c) => c.ok === false)) process.exit(1);
+  });
 
 program.parse();

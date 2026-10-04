@@ -22,11 +22,12 @@ test('snapshots before risky commands only', (t) => {
   assert.match(snaps[0].reason, /^auto: npm install left-pad/);
 });
 
-test('throttles to one auto-snapshot per minute', (t) => {
+test('absorbs bursts of risky commands, but older non-hook snapshots do not suppress it', (t) => {
   const s = sandbox(); t.after(s.cleanup); s.write('f', 'x');
+  core.takeSnapshot(s.project, { trigger: 'session' });
   bash(s, 'rm -rf build');
   bash(s, 'git reset --hard');
-  assert.strictEqual(core.listSnapshots(s.project).length, 1);
+  assert.deepStrictEqual(core.listSnapshots(s.project).map((m) => m.trigger), ['session', 'hook']);
 });
 
 test('matches the risky patterns it claims to', () => {
@@ -42,6 +43,26 @@ test('matches the risky patterns it claims to', () => {
     x.cleanup();
   }
   s.cleanup();
+});
+
+test('respects the level and only fires in project directories', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  for (const level of ['lite', 'off']) {
+    spawnSync(process.execPath, [BIN('hook-pretooluse.cjs')], {
+      input: JSON.stringify({ tool_name: 'Bash', cwd: s.project, tool_input: { command: 'rm -rf build' } }),
+      env: { ...s.env, AGENT_UNDO_LEVEL: level },
+    });
+  }
+  assert.strictEqual(core.listSnapshots(s.project).length, 0, 'lite/off never auto-snapshot');
+
+  const fs = require('node:fs');
+  const loose = require('node:path').join(s.tmp, 'not-a-project');
+  fs.mkdirSync(loose); fs.writeFileSync(require('node:path').join(loose, 'notes.txt'), 'x');
+  fire(s, { tool_name: 'Bash', cwd: loose, tool_input: { command: 'rm -rf old' } });
+  assert.strictEqual(core.listSnapshots(loose).length, 0, 'no project marker → no auto-snapshot');
+
+  bash(s, 'rm -rf build');
+  assert.strictEqual(core.listSnapshots(s.project)[0].trigger, 'hook');
 });
 
 test('never blocks: bad JSON, other tools, unsafe dirs all exit 0', (t) => {

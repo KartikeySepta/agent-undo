@@ -12,10 +12,6 @@ var __commonJS = (cb, mod) => function __require() {
     throw mod = 0, e;
   }
 };
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
-};
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
     for (let key of __getOwnPropNames(from))
@@ -32,7 +28,6 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
   mod
 ));
-var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
 // node_modules/ignore/index.js
 var require_ignore = __commonJS({
@@ -876,12 +871,8 @@ var require_ignore = __commonJS({
   }
 });
 
-// src/hooks/pretooluse.ts
-var pretooluse_exports = {};
-__export(pretooluse_exports, {
-  RISKY: () => RISKY
-});
-module.exports = __toCommonJS(pretooluse_exports);
+// src/hooks/session-start.ts
+var import_child_process3 = require("child_process");
 
 // src/snapshot.ts
 var import_fs4 = __toESM(require("fs"));
@@ -1175,6 +1166,31 @@ function pruneSnapshots(sourceDir, keep = KEEP_DEFAULT) {
   return drop.length;
 }
 
+// src/instructions.ts
+var CORE_RULES = [
+  "Snapshot before danger: before dependency installs/removals, migrations, bulk deletes, codegen or large refactors, call `take_snapshot` with a descriptive `name`.",
+  "Diff before revert: a revert discards everything changed since the snapshot, including legitimate work and edits the user made meanwhile. Call `diff_snapshot` first.",
+  "Prefer a partial revert: if only some files are broken, pass `paths` to `revert_environment` and keep the rest.",
+  "Ask before reverting changes that are not yours: if the diff shows files you did not touch this session, stop and ask the user.",
+  "Revert instead of thrashing: if an attempt broke the build and two fixes have not worked, revert to the last good snapshot and try a different approach.",
+  "Reverts are undoable: each revert saves a `pre-revert` snapshot; its id is in the tool result.",
+  "Report plainly: after reverting, say what was undone and what you will try next."
+];
+var LEVEL_NOTES = {
+  lite: "Level LITE: no automatic snapshots. Snapshot only when the user asks or right before an operation you cannot undo with git.",
+  full: "Level FULL (default): a baseline snapshot is taken at session start and risky shell commands are auto-snapshotted. You still snapshot before risky file edits and refactors.",
+  paranoid: "Level PARANOID: a checkpoint is taken on every user turn. Never revert anything, even your own changes, without the user confirming the diff first."
+};
+function getInstructions(level) {
+  if (level === "off") return "AGENT-UNDO OFF. Do not take snapshots or revert unless the user explicitly asks.";
+  return [
+    `AGENT-UNDO ACTIVE (${level}). You can snapshot and roll back this project, including untracked files and node_modules, with the agent-undo MCP tools: take_snapshot, list_snapshots, diff_snapshot, revert_environment, undo_status.`,
+    LEVEL_NOTES[level],
+    ...CORE_RULES.map((r, i) => `${i + 1}. ${r}`),
+    "The top-level .git and paths in .agentundoignore are never snapshotted or touched. Switch level: /agent-undo lite|full|paranoid|off."
+  ].join("\n");
+}
+
 // src/hooks/common.ts
 function readInput() {
   return new Promise((resolve) => {
@@ -1190,38 +1206,36 @@ function readInput() {
     });
   });
 }
+function emitContext(event, context) {
+  process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: event, additionalContext: context } }));
+}
 function runHook(body) {
   readInput().then(body).catch(() => {
   }).finally(() => process.exit(0));
 }
 var lastSnapshotAgeMs = (snaps) => snaps.length ? Date.now() - Date.parse(snaps[snaps.length - 1].createdAt) : Infinity;
 
-// src/hooks/pretooluse.ts
-var RISKY = new RegExp(
-  [
-    String.raw`\brm\s+-\w*[rf]`,
-    String.raw`\b(npm|pnpm|yarn|bun)\s+(install|i|add|remove|uninstall|ci|update|upgrade)\b`,
-    String.raw`\bpip3?\s+(install|uninstall)\b`,
-    String.raw`\bgit\s+(reset\s+--hard|clean\b|checkout\s+(--\s+)?\.|restore\b|stash\b)`,
-    String.raw`\b(prisma|drizzle-kit|knex|sequelize|alembic|rails)\b.*\b(migrate|push|reset|drop)\b`,
-    String.raw`\bdrop\s+(table|database|schema)\b`,
-    String.raw`\btruncate\b`,
-    String.raw`\bfind\b.*\s-delete\b`,
-    String.raw`\b(sed|perl)\s+-i\b`
-  ].join("|"),
-  "i"
-);
-var BURST_MS = 1e4;
-runHook((input) => {
-  const command = input.tool_input?.command ?? "";
-  if (input.tool_name !== "Bash" || !RISKY.test(command)) return;
-  const level = readLevel();
-  if (level !== "full" && level !== "paranoid") return;
-  const cwd = input.cwd || process.cwd();
-  if (!isProjectDir(cwd) || lastSnapshotAgeMs(listSnapshots(cwd).filter((s) => s.trigger === "hook")) < BURST_MS) return;
-  takeSnapshot(cwd, { reason: `auto: ${command.slice(0, 80)}`, trigger: "hook" });
-});
-// Annotate the CommonJS export names for ESM import in node:
-0 && (module.exports = {
-  RISKY
-});
+// src/hooks/session-start.ts
+var BASELINE_THROTTLE_MS = 5 * 6e4;
+if (process.argv[2] === "--baseline") {
+  try {
+    takeSnapshot(process.argv[3], { reason: "session start baseline", trigger: "session" });
+  } catch {
+  }
+} else {
+  runHook((input) => {
+    const level = readLevel();
+    if (level === "off") return;
+    const cwd = input.cwd || process.cwd();
+    const project = isProjectDir(cwd);
+    const snaps = project ? listSnapshots(cwd) : [];
+    const fresh = !input.source || input.source === "startup" || input.source === "clear";
+    let note = project ? `${snaps.length} snapshot(s) exist for this project.` : "Not a project directory: automatic snapshots are disabled here.";
+    if (project && level !== "lite" && fresh && lastSnapshotAgeMs(snaps) > BASELINE_THROTTLE_MS) {
+      (0, import_child_process3.spawn)(process.execPath, [__filename, "--baseline", cwd], { detached: true, stdio: "ignore" }).unref();
+      note += " A baseline snapshot of the session start is being taken now.";
+    }
+    emitContext("SessionStart", `${getInstructions(level)}
+${note}`);
+  });
+}

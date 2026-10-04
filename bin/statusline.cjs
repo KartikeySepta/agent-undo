@@ -527,26 +527,26 @@ var require_ignore = __commonJS({
       const index = body.indexOf(SLASH);
       return index < 0 || index === body.length - 1;
     };
-    var basenameOf = (path5) => {
-      const end = path5.length - 1;
-      const index = path5.lastIndexOf(
+    var basenameOf = (path3) => {
+      const end = path3.length - 1;
+      const index = path3.lastIndexOf(
         SLASH,
-        path5[end] === SLASH ? end - 1 : end
+        path3[end] === SLASH ? end - 1 : end
       );
-      return index < 0 ? path5 : path5.slice(index + 1);
+      return index < 0 ? path3 : path3.slice(index + 1);
     };
-    var parentOf = (path5) => {
-      if (path5.charCodeAt(0) === SLASH_CODE || path5.indexOf(DOUBLE_SLASH) >= 0) {
-        const slices = path5.split(SLASH).filter(Boolean);
+    var parentOf = (path3) => {
+      if (path3.charCodeAt(0) === SLASH_CODE || path3.indexOf(DOUBLE_SLASH) >= 0) {
+        const slices = path3.split(SLASH).filter(Boolean);
         slices.pop();
         return slices.length ? slices.join(SLASH) + SLASH : EMPTY;
       }
-      const end = path5.length - 1;
-      const cut = path5.lastIndexOf(
+      const end = path3.length - 1;
+      const cut = path3.lastIndexOf(
         SLASH,
-        path5.charCodeAt(end) === SLASH_CODE ? end - 1 : end
+        path3.charCodeAt(end) === SLASH_CODE ? end - 1 : end
       );
-      return cut < 0 ? EMPTY : path5.slice(0, cut + 1);
+      return cut < 0 ? EMPTY : path3.slice(0, cut + 1);
     };
     var isString = (subject) => typeof subject === "string";
     var checkPattern = (pattern) => pattern && isString(pattern) && !REGEX_INVALID_TRAILING_BACKSLASH.test(pattern);
@@ -681,7 +681,7 @@ var require_ignore = __commonJS({
       // Match the literal 'abc/' for `checkIgnore`, last rule wins. Only a rule
       //   ending in a wildcard can match it (see `checkSourceOf`), so the rest
       //   are left out once, rather than tested or compiled for every path.
-      testLiteral(path5) {
+      testLiteral(path3) {
         const rules = this._literalRules || (this._literalRules = this._rules.filter(
           ({ body }) => body[body.length - (body[body.length - 1] === SLASH ? 2 : 1)] === "*"
         ));
@@ -690,7 +690,7 @@ var require_ignore = __commonJS({
         let matchedRule;
         for (let index = rules.length - 1; index >= 0; index--) {
           const rule = rules[index];
-          if (rule.checkRegex.test(path5)) {
+          if (rule.checkRegex.test(path3)) {
             ignored = !rule.negative;
             unignored = rule.negative;
             matchedRule = rule.negative ? UNDEFINED : rule;
@@ -713,20 +713,20 @@ var require_ignore = __commonJS({
       //   path matching.
       // - check `string` either `MODE_IGNORE` or `MODE_CHECK_IGNORE`
       // @returns {TestResult} true if a file is ignored
-      test(path5, checkUnignored, mode) {
+      test(path3, checkUnignored, mode) {
         let ignored = false;
         let unignored = false;
         let matchedRule;
         const rules = this._rules;
         const { length } = rules;
         const shortcut = this._basenameCount * 2 >= length;
-        const basename = shortcut ? basenameOf(path5) : path5;
+        const basename = shortcut ? basenameOf(path3) : path3;
         for (let index = 0; index < length; index++) {
           const rule = rules[index];
           const { negative } = rule;
           const skip = unignored === negative && ignored !== unignored || negative && !ignored && !unignored && !checkUnignored;
           if (!skip && rule[mode].test(
-            shortcut && rule._basenameOnly ? basename : path5
+            shortcut && rule._basenameOnly ? basename : path3
           )) {
             ignored = !negative;
             unignored = negative;
@@ -746,17 +746,17 @@ var require_ignore = __commonJS({
     var throwError = (message, Ctor) => {
       throw new Ctor(message);
     };
-    var checkPath = (path5, originalPath, doThrow) => {
-      if (!isString(path5)) {
+    var checkPath = (path3, originalPath, doThrow) => {
+      if (!isString(path3)) {
         return doThrow(
           `path must be a string, but got \`${originalPath}\``,
           TypeError
         );
       }
-      if (!path5) {
+      if (!path3) {
         return doThrow(`path must not be empty`, TypeError);
       }
-      if (checkPath.isNotRelative(path5)) {
+      if (checkPath.isNotRelative(path3)) {
         const r = "`path.relative()`d";
         return doThrow(
           `path should be a ${r} string, but got "${originalPath}"`,
@@ -765,25 +765,25 @@ var require_ignore = __commonJS({
       }
       return true;
     };
-    var isNotRelative = (path5) => {
-      const first = path5.charCodeAt(0);
+    var isNotRelative = (path3) => {
+      const first = path3.charCodeAt(0);
       if (first === SLASH_CODE) {
         return true;
       }
       if (first !== DOT_CODE) {
         return false;
       }
-      if (path5.length === 1) {
+      if (path3.length === 1) {
         return true;
       }
-      const second = path5.charCodeAt(1);
+      const second = path3.charCodeAt(1);
       if (second === SLASH_CODE) {
         return true;
       }
       if (second !== DOT_CODE) {
         return false;
       }
-      return path5.length === 2 || path5.charCodeAt(2) === SLASH_CODE;
+      return path3.length === 2 || path3.charCodeAt(2) === SLASH_CODE;
     };
     checkPath.isNotRelative = isNotRelative;
     checkPath.convert = (p) => p;
@@ -814,54 +814,54 @@ var require_ignore = __commonJS({
       }
       // @returns {TestResult}
       _test(originalPath, cache, checkUnignored) {
-        const path5 = originalPath && checkPath.convert(originalPath);
+        const path3 = originalPath && checkPath.convert(originalPath);
         checkPath(
-          path5,
+          path3,
           originalPath,
           this._strictPathCheck ? throwError : RETURN_FALSE
         );
-        return this._t(path5, cache, checkUnignored);
+        return this._t(path3, cache, checkUnignored);
       }
-      checkIgnore(path5) {
-        if (path5.charCodeAt(path5.length - 1) !== SLASH_CODE) {
-          return this.test(path5);
+      checkIgnore(path3) {
+        if (path3.charCodeAt(path3.length - 1) !== SLASH_CODE) {
+          return this.test(path3);
         }
-        const dir = this._t(path5, this._testCache, true);
+        const dir = this._t(path3, this._testCache, true);
         if (dir.ignored) {
           return dir;
         }
-        const literal = this._rules.testLiteral(path5);
+        const literal = this._rules.testLiteral(path3);
         return literal.ignored || literal.unignored ? literal : dir;
       }
-      _t(path5, cache, checkUnignored) {
-        if (path5 in cache) {
-          return cache[path5];
+      _t(path3, cache, checkUnignored) {
+        if (path3 in cache) {
+          return cache[path3];
         }
-        const parentPath = parentOf(path5);
+        const parentPath = parentOf(path3);
         const parent = parentPath ? this._t(parentPath, cache, checkUnignored) : UNDEFINED;
-        return cache[path5] = parent && parent.ignored ? parent : this._rules.test(path5, checkUnignored, MODE_IGNORE);
+        return cache[path3] = parent && parent.ignored ? parent : this._rules.test(path3, checkUnignored, MODE_IGNORE);
       }
-      ignores(path5) {
-        return this._test(path5, this._ignoreCache, false).ignored;
+      ignores(path3) {
+        return this._test(path3, this._ignoreCache, false).ignored;
       }
       createFilter() {
-        return (path5) => !this.ignores(path5);
+        return (path3) => !this.ignores(path3);
       }
       filter(paths) {
         return makeArray(paths).filter(this.createFilter());
       }
       // @returns {TestResult}
-      test(path5) {
-        return this._test(path5, this._testCache, true);
+      test(path3) {
+        return this._test(path3, this._testCache, true);
       }
     };
     var factory = (options) => new Ignore2(options);
-    var isPathValid = (path5) => checkPath(path5 && checkPath.convert(path5), path5, RETURN_FALSE);
+    var isPathValid = (path3) => checkPath(path3 && checkPath.convert(path3), path3, RETURN_FALSE);
     var setupWindows = () => {
       const makePosix = (str) => /^\\\\\?\\/.test(str) || /["<>|\u0000-\u001F]+/u.test(str) ? str : str.replace(/\\/g, "/");
       checkPath.convert = makePosix;
       const REGEX_TEST_WINDOWS_PATH_ABSOLUTE = /^[a-z]:\//i;
-      checkPath.isNotRelative = (path5) => REGEX_TEST_WINDOWS_PATH_ABSOLUTE.test(path5) || isNotRelative(path5);
+      checkPath.isNotRelative = (path3) => REGEX_TEST_WINDOWS_PATH_ABSOLUTE.test(path3) || isNotRelative(path3);
     };
     if (
       // Detect `process` so that it can run in browsers.
@@ -876,303 +876,64 @@ var require_ignore = __commonJS({
   }
 });
 
-// src/hooks/pretooluse.ts
-var pretooluse_exports = {};
-__export(pretooluse_exports, {
-  RISKY: () => RISKY
+// src/statusline.ts
+var statusline_exports = {};
+__export(statusline_exports, {
+  ago: () => ago
 });
-module.exports = __toCommonJS(pretooluse_exports);
+module.exports = __toCommonJS(statusline_exports);
 
 // src/snapshot.ts
-var import_fs4 = __toESM(require("fs"));
-var import_path4 = __toESM(require("path"));
-var import_os2 = __toESM(require("os"));
+var import_fs2 = __toESM(require("fs"));
+var import_path2 = __toESM(require("path"));
 var import_crypto = __toESM(require("crypto"));
-var import_child_process2 = require("child_process");
 var import_ignore = __toESM(require_ignore());
 
-// src/clone.ts
-var import_fs = __toESM(require("fs"));
-var import_path = __toESM(require("path"));
-var import_child_process = require("child_process");
-var RANK = { clonefile: 0, cow: 1, copy: 2 };
-var CLONE_NOFOLLOW = 1;
-var clonefileFn;
-function nativeClonefile() {
-  if (clonefileFn !== void 0) return clonefileFn;
-  clonefileFn = null;
-  if (process.platform !== "darwin" || process.env.AGENT_UNDO_NO_FFI) return null;
-  try {
-    const koffi = require("koffi");
-    clonefileFn = koffi.load("/usr/lib/libSystem.B.dylib").func("int clonefile(const char *src, const char *dst, uint32_t flags)");
-  } catch {
-  }
-  return clonefileFn;
-}
-function copyTree(src, dst) {
-  if (process.platform === "win32") {
-    import_fs.default.cpSync(src, dst, { recursive: true, verbatimSymlinks: true, preserveTimestamps: true });
-  } else {
-    (0, import_child_process.execFileSync)("cp", ["-Rp", src, dst], { stdio: "pipe" });
-  }
-}
-function sizeOf(p) {
-  const st = import_fs.default.lstatSync(p);
-  if (!st.isDirectory()) return st.size;
-  let total = 0;
-  for (const e of import_fs.default.readdirSync(p)) total += sizeOf(import_path.default.join(p, e));
-  return total;
-}
-function cloneEntries(from, to, entries, opts = {}) {
-  import_fs.default.mkdirSync(to, { recursive: true });
-  const native = nativeClonefile();
-  const cowFlag = process.platform === "darwin" ? "-c" : "--reflink=always";
-  let worst = "clonefile";
-  let copiedBytes = 0;
-  for (const name of entries) {
-    const src = import_path.default.join(from, name);
-    const dst = import_path.default.join(to, name);
-    let mode;
-    if (native && native(src, dst, CLONE_NOFOLLOW) === 0) {
-      mode = "clonefile";
-    } else {
-      import_fs.default.rmSync(dst, { recursive: true, force: true });
-      try {
-        if (process.platform === "win32") throw new Error("no cp");
-        (0, import_child_process.execFileSync)("cp", ["-R", cowFlag, src, dst], { stdio: "pipe" });
-        mode = "cow";
-      } catch {
-        import_fs.default.rmSync(dst, { recursive: true, force: true });
-        if (opts.maxCopyBytes !== void 0) {
-          copiedBytes += sizeOf(src);
-          if (copiedBytes > opts.maxCopyBytes) {
-            throw new Error(
-              `[Agent-Undo] No copy-on-write on this filesystem and the snapshot would copy over ${Math.round(opts.maxCopyBytes / 1e6)} MB. Add large dirs to .agentundoignore, or raise AGENT_UNDO_MAX_COPY_MB.`
-            );
-          }
-        }
-        copyTree(src, dst);
-        mode = "copy";
-      }
-    }
-    if (RANK[mode] > RANK[worst]) worst = mode;
-  }
-  return worst;
-}
-
 // src/config.ts
-var import_fs2 = __toESM(require("fs"));
+var import_fs = __toESM(require("fs"));
 var import_os = __toESM(require("os"));
-var import_path2 = __toESM(require("path"));
+var import_path = __toESM(require("path"));
 var LEVELS = ["off", "lite", "full", "paranoid"];
 var DEFAULT_LEVEL = "full";
-var storeHome = () => process.env.AGENT_UNDO_HOME ?? import_path2.default.join(import_os.default.homedir(), ".agent-undo");
-var levelFile = () => import_path2.default.join(storeHome(), "level");
+var storeHome = () => process.env.AGENT_UNDO_HOME ?? import_path.default.join(import_os.default.homedir(), ".agent-undo");
+var levelFile = () => import_path.default.join(storeHome(), "level");
 var isLevel = (v) => LEVELS.includes(v);
 function readLevel() {
   const env = process.env.AGENT_UNDO_LEVEL;
   if (isLevel(env)) return env;
   try {
-    const saved = import_fs2.default.readFileSync(levelFile(), "utf8").trim();
+    const saved = import_fs.default.readFileSync(levelFile(), "utf8").trim();
     if (isLevel(saved)) return saved;
   } catch {
   }
   return DEFAULT_LEVEL;
 }
-var PROJECT_MARKERS = [".git", ".agentundoignore", "package.json", "pyproject.toml", "requirements.txt", "Cargo.toml", "go.mod", "Gemfile", "pom.xml", "build.gradle", "composer.json", "deno.json"];
-var isProjectDir = (dir) => PROJECT_MARKERS.some((m) => import_fs2.default.existsSync(import_path2.default.join(dir, m)));
-
-// src/stats.ts
-var import_fs3 = __toESM(require("fs"));
-var import_path3 = __toESM(require("path"));
-var file = () => import_path3.default.join(storeHome(), "stats.json");
-var empty = () => ({ snapshots: 0, byTrigger: {}, snapshotMsTotal: 0, reverts: 0, partialReverts: 0, pathsRestored: 0, since: (/* @__PURE__ */ new Date()).toISOString() });
-function readStats() {
-  try {
-    return { ...empty(), ...JSON.parse(import_fs3.default.readFileSync(file(), "utf8")) };
-  } catch {
-    return empty();
-  }
-}
-function recordStats(update) {
-  try {
-    const s = readStats();
-    update(s);
-    import_fs3.default.mkdirSync(storeHome(), { recursive: true });
-    const tmp = `${file()}.${process.pid}`;
-    import_fs3.default.writeFileSync(tmp, JSON.stringify(s, null, 2));
-    import_fs3.default.renameSync(tmp, file());
-  } catch {
-  }
-}
 
 // src/snapshot.ts
-var IGNORE_FILE = ".agentundoignore";
-var KEEP_DEFAULT = 10;
 var LOCK_STALE_MS = 10 * 6e4;
-var maxCopyBytes = () => Number(process.env.AGENT_UNDO_MAX_COPY_MB ?? 1024) * 1e6;
 function realDir(dir) {
-  const resolved = import_path4.default.resolve(dir);
+  const resolved = import_path2.default.resolve(dir);
   try {
-    return import_fs4.default.realpathSync(resolved);
+    return import_fs2.default.realpathSync(resolved);
   } catch {
     return resolved;
   }
 }
 function snapshotBase(projectDir = process.cwd()) {
   const hash = import_crypto.default.createHash("md5").update(realDir(projectDir)).digest("hex");
-  return import_path4.default.join(storeHome(), "snapshots", hash);
+  return import_path2.default.join(storeHome(), "snapshots", hash);
 }
-var dataDir = (base, id) => import_path4.default.join(base, id, "data");
-var metaFile = (base, id) => import_path4.default.join(base, id, "meta.json");
-function assertSafeTarget(dir) {
-  const resolved = realDir(dir);
-  const forbidden = [import_path4.default.parse(resolved).root, realDir(import_os2.default.homedir())];
-  if (forbidden.includes(resolved)) {
-    throw new Error(`[Agent-Undo] Refusing to operate on ${resolved}: run it inside a project directory.`);
-  }
-}
-var BusyError = class extends Error {
-};
-function withLock(sourceDir, fn) {
-  const base = snapshotBase(sourceDir);
-  import_fs4.default.mkdirSync(base, { recursive: true });
-  const lock = import_path4.default.join(base, ".lock");
-  for (let attempt = 0; ; attempt++) {
-    try {
-      import_fs4.default.writeFileSync(lock, JSON.stringify({ pid: process.pid, at: Date.now() }), { flag: "wx" });
-      break;
-    } catch (e) {
-      if (e.code !== "EEXIST" || attempt > 0) throw new BusyError("[Agent-Undo] Another snapshot or revert is running for this directory.");
-      let stale = true;
-      try {
-        const { pid, at } = JSON.parse(import_fs4.default.readFileSync(lock, "utf8"));
-        process.kill(pid, 0);
-        stale = Date.now() - at > LOCK_STALE_MS;
-      } catch {
-      }
-      if (!stale) throw new BusyError("[Agent-Undo] Another snapshot or revert is running for this directory.");
-      import_fs4.default.rmSync(lock, { force: true });
-    }
-  }
-  try {
-    return fn();
-  } finally {
-    import_fs4.default.rmSync(lock, { force: true });
-  }
-}
-function loadIgnore(sourceDir) {
-  try {
-    return (0, import_ignore.default)().add(import_fs4.default.readFileSync(import_path4.default.join(sourceDir, IGNORE_FILE), "utf8"));
-  } catch {
-    return null;
-  }
-}
-var posix = (p) => p.split(import_path4.default.sep).join("/");
-function findIgnored(root, ig, rel = "") {
-  if (!ig) return [];
-  const out = [];
-  for (const e of import_fs4.default.readdirSync(import_path4.default.join(root, rel), { withFileTypes: true })) {
-    const r = import_path4.default.join(rel, e.name);
-    if (r === ".git") continue;
-    if (ig.ignores(posix(r) + (e.isDirectory() ? "/" : ""))) out.push(r);
-    else if (e.isDirectory()) out.push(...findIgnored(root, ig, r));
-  }
-  return out;
-}
-function discard(base, ids) {
-  if (ids.length === 0) return;
-  for (const id of ids) {
-    try {
-      import_fs4.default.renameSync(import_path4.default.join(base, id), import_path4.default.join(base, `.trash-${id}`));
-    } catch {
-    }
-  }
-  const trash = import_fs4.default.readdirSync(base).filter((f) => f.startsWith(".trash-")).map((f) => import_path4.default.join(base, f));
-  const removeNow = () => {
-    for (const t of trash) import_fs4.default.rmSync(t, { recursive: true, force: true });
-  };
-  if (process.env.AGENT_UNDO_SYNC_DELETE) return removeNow();
-  try {
-    (0, import_child_process2.spawn)(process.execPath, ["-e", 'for (const p of process.argv.slice(1)) require("fs").rmSync(p, { recursive: true, force: true })', ...trash], {
-      detached: true,
-      stdio: "ignore"
-    }).unref();
-  } catch {
-    removeNow();
-  }
-}
-function claimId(base, name) {
-  const createdAt = (/* @__PURE__ */ new Date()).toISOString();
-  const slug = name ? "-" + name.replace(/[^\w-]+/g, "_") : "";
-  const stamp = createdAt.replace(/[:.]/g, "-");
-  let id = stamp + slug;
-  for (let n = 1; ; n++) {
-    try {
-      import_fs4.default.mkdirSync(import_path4.default.join(base, id));
-      return { id, createdAt };
-    } catch (e) {
-      if (e.code !== "EEXIST") throw e;
-      id = `${stamp}.${n}${slug}`;
-    }
-  }
-}
-function snapshotUnlocked(sourceDir, opts) {
-  const base = snapshotBase(sourceDir);
-  const { id, createdAt } = claimId(base, opts.name);
-  const data = dataDir(base, id);
-  const start = Date.now();
-  const ignored = findIgnored(sourceDir, loadIgnore(sourceDir));
-  const topIgnored = new Set(ignored.filter((r) => !r.includes(import_path4.default.sep)));
-  const entries = import_fs4.default.readdirSync(sourceDir).filter((e) => e !== ".git" && !topIgnored.has(e));
-  let mode;
-  try {
-    mode = cloneEntries(sourceDir, data, entries, { maxCopyBytes: maxCopyBytes() });
-  } catch (e) {
-    import_fs4.default.rmSync(import_path4.default.join(base, id), { recursive: true, force: true });
-    throw e;
-  }
-  for (const r of ignored) if (!topIgnored.has(r)) import_fs4.default.rmSync(import_path4.default.join(data, r), { recursive: true, force: true });
-  const meta = {
-    id,
-    name: opts.name,
-    createdAt,
-    source: realDir(sourceDir),
-    mode,
-    elapsedMs: Date.now() - start,
-    reason: opts.reason,
-    trigger: opts.trigger ?? "manual"
-  };
-  import_fs4.default.writeFileSync(metaFile(base, id), JSON.stringify(meta, null, 2));
-  recordStats((st) => {
-    st.snapshots++;
-    st.byTrigger[meta.trigger] = (st.byTrigger[meta.trigger] ?? 0) + 1;
-    st.snapshotMsTotal += meta.elapsedMs;
-  });
-  pruneSnapshots(sourceDir, opts.keep ?? KEEP_DEFAULT);
-  return meta;
-}
-function takeSnapshot(sourceDir, opts = {}) {
-  assertSafeTarget(sourceDir);
-  return withLock(sourceDir, () => snapshotUnlocked(sourceDir, opts));
-}
+var metaFile = (base, id) => import_path2.default.join(base, id, "meta.json");
 function listSnapshots(sourceDir) {
   const base = snapshotBase(sourceDir);
-  if (!import_fs4.default.existsSync(base)) return [];
-  return import_fs4.default.readdirSync(base).filter((id) => !id.startsWith(".")).sort().flatMap((id) => {
+  if (!import_fs2.default.existsSync(base)) return [];
+  return import_fs2.default.readdirSync(base).filter((id) => !id.startsWith(".")).sort().flatMap((id) => {
     try {
-      return [JSON.parse(import_fs4.default.readFileSync(metaFile(base, id), "utf8"))];
+      return [JSON.parse(import_fs2.default.readFileSync(metaFile(base, id), "utf8"))];
     } catch {
       return [];
     }
   });
-}
-function pruneSnapshots(sourceDir, keep = KEEP_DEFAULT) {
-  const base = snapshotBase(sourceDir);
-  const prunable = listSnapshots(sourceDir).filter((s) => !s.name);
-  const drop = prunable.slice(0, Math.max(0, prunable.length - keep));
-  discard(base, drop.map((s) => s.id));
-  return drop.length;
 }
 
 // src/hooks/common.ts
@@ -1190,38 +951,30 @@ function readInput() {
     });
   });
 }
-function runHook(body) {
-  readInput().then(body).catch(() => {
-  }).finally(() => process.exit(0));
-}
-var lastSnapshotAgeMs = (snaps) => snaps.length ? Date.now() - Date.parse(snaps[snaps.length - 1].createdAt) : Infinity;
 
-// src/hooks/pretooluse.ts
-var RISKY = new RegExp(
-  [
-    String.raw`\brm\s+-\w*[rf]`,
-    String.raw`\b(npm|pnpm|yarn|bun)\s+(install|i|add|remove|uninstall|ci|update|upgrade)\b`,
-    String.raw`\bpip3?\s+(install|uninstall)\b`,
-    String.raw`\bgit\s+(reset\s+--hard|clean\b|checkout\s+(--\s+)?\.|restore\b|stash\b)`,
-    String.raw`\b(prisma|drizzle-kit|knex|sequelize|alembic|rails)\b.*\b(migrate|push|reset|drop)\b`,
-    String.raw`\bdrop\s+(table|database|schema)\b`,
-    String.raw`\btruncate\b`,
-    String.raw`\bfind\b.*\s-delete\b`,
-    String.raw`\b(sed|perl)\s+-i\b`
-  ].join("|"),
-  "i"
-);
-var BURST_MS = 1e4;
-runHook((input) => {
-  const command = input.tool_input?.command ?? "";
-  if (input.tool_name !== "Bash" || !RISKY.test(command)) return;
+// src/statusline.ts
+function ago(ms) {
+  const s = Math.round(ms / 1e3);
+  if (s < 60) return `${s}s`;
+  if (s < 3600) return `${Math.round(s / 60)}m`;
+  if (s < 86400) return `${Math.round(s / 3600)}h`;
+  return `${Math.round(s / 86400)}d`;
+}
+readInput().then((input) => {
   const level = readLevel();
-  if (level !== "full" && level !== "paranoid") return;
-  const cwd = input.cwd || process.cwd();
-  if (!isProjectDir(cwd) || lastSnapshotAgeMs(listSnapshots(cwd).filter((s) => s.trigger === "hook")) < BURST_MS) return;
-  takeSnapshot(cwd, { reason: `auto: ${command.slice(0, 80)}`, trigger: "hook" });
-});
+  if (level === "off") return;
+  const cwd = input.workspace?.current_dir || input.cwd || process.cwd();
+  let snaps = [];
+  try {
+    snaps = listSnapshots(cwd);
+  } catch {
+  }
+  const tag = level === "full" ? "undo" : `undo:${level}`;
+  const color = level === "paranoid" ? 173 : 108;
+  const detail = snaps.length ? ` \xB7 ${snaps.length} snap${snaps.length === 1 ? "" : "s"} \xB7 ${ago(Date.now() - Date.parse(snaps[snaps.length - 1].createdAt))}` : " \xB7 no snaps";
+  process.stdout.write(`\x1B[38;5;${color}m\u23EA ${tag}${detail}\x1B[0m`);
+}).finally(() => process.exit(0));
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
-  RISKY
+  ago
 });

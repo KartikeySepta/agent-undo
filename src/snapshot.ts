@@ -5,6 +5,8 @@ import crypto from 'crypto';
 import { spawn } from 'child_process';
 import ignore, { Ignore } from 'ignore';
 import { cloneEntries, copyTree, CloneMode } from './clone';
+import { storeHome } from './config';
+import { recordStats } from './stats';
 
 export type { CloneMode } from './clone';
 
@@ -17,6 +19,17 @@ export interface SnapshotMeta {
     mode: CloneMode | 'moved';
     elapsedMs: number;
     reason?: string;
+    /** What took it: a person/agent (manual), the PreToolUse hook, session start, or a paranoid turn checkpoint. */
+    trigger?: Trigger;
+}
+
+export type Trigger = 'manual' | 'hook' | 'session' | 'turn' | 'pre-revert';
+
+export interface SnapshotOptions {
+    name?: string;
+    reason?: string;
+    keep?: number;
+    trigger?: Trigger;
 }
 
 export interface DiffResult {
@@ -39,7 +52,7 @@ function realDir(dir: string): string {
 
 export function snapshotBase(projectDir: string = process.cwd()): string {
     const hash = crypto.createHash('md5').update(realDir(projectDir)).digest('hex');
-    return path.join(process.env.AGENT_UNDO_HOME ?? path.join(os.homedir(), '.agent-undo'), 'snapshots', hash);
+    return path.join(storeHome(), 'snapshots', hash);
 }
 
 const dataDir = (base: string, id: string) => path.join(base, id, 'data');
@@ -139,7 +152,7 @@ function claimId(base: string, name?: string): { id: string; createdAt: string }
     }
 }
 
-function snapshotUnlocked(sourceDir: string, opts: { name?: string; reason?: string; keep?: number }): SnapshotMeta {
+function snapshotUnlocked(sourceDir: string, opts: SnapshotOptions): SnapshotMeta {
     const base = snapshotBase(sourceDir);
     const { id, createdAt } = claimId(base, opts.name);
     const data = dataDir(base, id);
@@ -161,16 +174,21 @@ function snapshotUnlocked(sourceDir: string, opts: { name?: string; reason?: str
 
     const meta: SnapshotMeta = {
         id, name: opts.name, createdAt, source: realDir(sourceDir),
-        mode, elapsedMs: Date.now() - start, reason: opts.reason,
+        mode, elapsedMs: Date.now() - start, reason: opts.reason, trigger: opts.trigger ?? 'manual',
     };
     fs.writeFileSync(metaFile(base, id), JSON.stringify(meta, null, 2));
+    recordStats((st) => {
+        st.snapshots++;
+        st.byTrigger[meta.trigger!] = (st.byTrigger[meta.trigger!] ?? 0) + 1;
+        st.snapshotMsTotal += meta.elapsedMs;
+    });
     pruneSnapshots(sourceDir, opts.keep ?? KEEP_DEFAULT);
     return meta;
 }
 
 export function takeSnapshot(
     sourceDir: string,
-    opts: { name?: string; reason?: string; keep?: number } = {},
+    opts: SnapshotOptions = {},
 ): SnapshotMeta {
     assertSafeTarget(sourceDir);
     return withLock(sourceDir, () => snapshotUnlocked(sourceDir, opts));
@@ -281,7 +299,7 @@ function moveTreeToBackup(sourceDir: string, reason: string): SnapshotMeta | nul
         throw e;
     }
     const meta: SnapshotMeta = {
-        id, name: 'pre-revert', createdAt, source: realDir(sourceDir), mode: 'moved', elapsedMs: Date.now() - start, reason,
+        id, name: 'pre-revert', createdAt, source: realDir(sourceDir), mode: 'moved', elapsedMs: Date.now() - start, reason, trigger: 'pre-revert',
     };
     fs.writeFileSync(metaFile(base, id), JSON.stringify(meta, null, 2));
     return meta;
@@ -312,7 +330,7 @@ export function revertSnapshot(
         let backup: SnapshotMeta;
 
         if (only) {
-            backup = snapshotUnlocked(sourceDir, { name: 'pre-revert', reason });
+            backup = snapshotUnlocked(sourceDir, { name: 'pre-revert', reason, trigger: 'pre-revert' });
             for (const rel of only) {
                 fs.rmSync(path.join(sourceDir, rel), { recursive: true, force: true });
                 // Absent from the snapshot means it was created afterwards: removing it is the revert.
@@ -329,7 +347,7 @@ export function revertSnapshot(
                 // Moving the live tree into the backup is both the backup and the wipe, in O(entries).
                 // Cross-volume store: clone a backup, then delete.
                 backup = moveTreeToBackup(sourceDir, reason) ?? (() => {
-                    const b = snapshotUnlocked(sourceDir, { name: 'pre-revert', reason });
+                    const b = snapshotUnlocked(sourceDir, { name: 'pre-revert', reason, trigger: 'pre-revert' });
                     for (const item of fs.readdirSync(sourceDir)) {
                         if (item !== '.git') fs.rmSync(path.join(sourceDir, item), { recursive: true, force: true });
                     }
@@ -364,6 +382,10 @@ export function revertSnapshot(
         discard(base, listSnapshots(sourceDir)
             .filter((old) => old.name === 'pre-revert' && old.id !== backup.id && old.id !== snap.id)
             .map((old) => old.id));
+        recordStats((st) => {
+            st.reverts++;
+            if (only) { st.partialReverts++; st.pathsRestored += only.length; }
+        });
         return { restored: snap, backup };
     });
 }

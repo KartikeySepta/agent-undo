@@ -98,3 +98,6 @@ export function cloneEntries(from: string, to: string, entries: string[], opts: 
     }
     return worst;
 }
+
+/** For `agent-undo doctor`: is the directory-level clonefile fast path available? */
+export const hasNativeClonefile = () => nativeClonefile() !== null;

@@ -34,3 +34,28 @@ test('--version matches package.json', () => {
   assert.strictEqual(cli(s, '--version').trim(), require('../package.json').version);
   s.cleanup();
 });
+
+test('mode, stats and doctor', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  assert.strictEqual(cli(s, 'mode').trim(), 'full');
+  cli(s, 'mode', 'lite');
+  assert.strictEqual(cli(s, 'mode').trim(), 'lite');
+  assert.throws(() => cli(s, 'mode', 'banana'));
+
+  s.write('a.txt', 'one');
+  cli(s, 'snapshot', 'base');
+  s.write('a.txt', 'two');
+  cli(s, 'revert', '--only', 'a.txt');
+  const stats = JSON.parse(cli(s, 'stats', '--json'));
+  assert.strictEqual(stats.stats.reverts, 1);
+  assert.strictEqual(stats.stats.partialReverts, 1);
+  assert.strictEqual(stats.stats.byTrigger.manual, 1);
+  assert.strictEqual(stats.stats.byTrigger['pre-revert'], 1);
+  assert.ok(stats.protectedBytes > 0);
+  assert.match(cli(s, 'stats'), /reverts\s+1\s+\(1 partial, 1 paths restored\)/);
+
+  const doc = cli(s, 'doctor');
+  assert.match(doc, /node/);
+  assert.match(doc, /same volume/);
+  if (process.platform === 'darwin') assert.match(doc, /✅ clone engine\s+clonefile/);
+});
