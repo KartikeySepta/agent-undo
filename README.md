@@ -75,12 +75,14 @@ Automatic snapshots only happen in project directories (`.git`, `package.json`, 
 
 ### MCP tools
 
-`take_snapshot(name?)` · `list_snapshots` · `diff_snapshot(snapshot?)` · `revert_environment(snapshot?, paths?)` · `undo_status`. Every tool takes an optional `project_dir`.
+`take_snapshot(name?)` · `list_snapshots` · `diff_snapshot(snapshot?)` · `revert_environment(snapshot?, paths?, confirm?)` · `undo_status`. Every tool takes an optional `project_dir`.
+
+Reverts through MCP are two-step: without `confirm`, `revert_environment` changes nothing and returns the list of paths it would undo plus a `confirm_token`; the agent calls again with that token to revert. If the tree changes in between, the token is rejected and a fresh preview comes back.
 
 Other MCP clients (Cursor, Windsurf, …):
 
 ```json
-{ "mcpServers": { "agent-undo": { "command": "npx", "args": ["-y", "agent-undo-mcp"] } } }
+{ "mcpServers": { "agent-undo": { "command": "npx", "args": ["-y", "-p", "@atpes/agent-undo", "agent-undo-mcp"] } } }
 ```
 
 ### Statusline
@@ -94,7 +96,7 @@ Renders `⏪ undo · 3 snaps · 2m`.
 ## CLI
 
 ```bash
-npm install -g agent-undo
+npm install -g @atpes/agent-undo   # commands: agent-undo, agent-undo-mcp
 
 agent-undo snapshot before-refactor     # name is optional
 agent-undo list                         # with trigger: manual / hook / session / turn / pre-revert

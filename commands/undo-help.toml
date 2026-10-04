@@ -4,7 +4,7 @@ Show the agent-undo quick reference. One shot: do not take snapshots, revert, or
 
 Commands: /undo-checkpoint [name] (named snapshot now), /undo-diff [snapshot] (what changed since a snapshot, grouped yours / not yours / deps), /undo-revert [snapshot] [paths] (guided rollback: diff, classify, confirm, revert, verify), /undo-help (this card).
 
-MCP tools: take_snapshot(name?), list_snapshots, diff_snapshot(snapshot?), revert_environment(snapshot?, paths?), undo_status. All take project_dir. Every revert first saves a pre-revert snapshot, so a revert is itself undoable.
+MCP tools: take_snapshot(name?), list_snapshots, diff_snapshot(snapshot?), revert_environment(snapshot?, paths?, confirm?) (two-step: preview returns a confirm_token, then confirm), undo_status. All take project_dir. Every revert first saves a pre-revert snapshot, so a revert is itself undoable.
 
 CLI (terminal): agent-undo snapshot [name], agent-undo list, agent-undo diff [snap], agent-undo revert [snap] [--yes] [--only <paths...>], agent-undo mode [lite|full|paranoid|off], agent-undo stats, agent-undo doctor, agent-undo prune --keep 10.
 

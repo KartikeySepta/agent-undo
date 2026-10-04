@@ -1,6 +1,16 @@
 # Changelog
 
-## Unreleased
+## 1.3.0 (2026-10-04)
+
+First npm release, as `@atpes/agent-undo` (the unscoped name belongs to another project). Commands are still `agent-undo` and `agent-undo-mcp`.
+
+### Safety
+- Two-step revert over MCP: `revert_environment` without `confirm` changes nothing and returns the paths it would undo plus a `confirm_token` (bound to the snapshot, scope and current diff); a stale token re-previews.
+- PreToolUse asks before irreversible commands outside the project (force-push, terraform apply/destroy, kubectl delete/apply, prod deploys, destructive SQL against non-local DBs) at levels full and paranoid.
+- Rules: revert is two-step, "roll it back" is not consent to discard unmentioned work, and a new rule 8 states the snapshot boundary.
+
+### Evals
+- `evals/`: 7 behavioral scenarios with deterministic scoring (`npm run eval`). Haiku, n=1 per scenario: prompt-only rules 2/7 (same as no plugin); with the tool-level guards 7/7. See `evals/results/2026-10-04-haiku.md`.
 
 ### Other agents
 - Codex plugin (`.codex-plugin/`), Cursor hooks installer (`scripts/cursor-hooks.js`) and rule, Gemini CLI extension with `/undo-*` commands, OpenCode plugin. See INSTALL.md.

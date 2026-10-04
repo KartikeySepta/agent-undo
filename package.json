@@ -1,5 +1,5 @@
 {
-  "name": "agent-undo",
+  "name": "@atpes/agent-undo",
   "version": "1.2.0",
   "description": "Ultra-fast, instantaneous filesystem snapshots for AI coding agents. The Time Machine for AI.",
   "main": "bin/core.cjs",
@@ -62,5 +62,8 @@
   },
   "bugs": {
     "url": "https://github.com/KartikeySepta/agent-undo/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

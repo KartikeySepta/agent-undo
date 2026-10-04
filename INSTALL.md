@@ -167,20 +167,21 @@ Windsurf, Cline, Zed, Claude Desktop and anything else that speaks MCP over stdi
 ```
 
 Tools: `take_snapshot(name?)`, `list_snapshots`, `diff_snapshot(snapshot?)`,
-`revert_environment(snapshot?, paths?)`, `undo_status`; each takes `project_dir`. For the rules,
+`revert_environment(snapshot?, paths?, confirm?)` (two-step: preview, then `confirm`), `undo_status`; each takes `project_dir`. For the rules,
 copy [`AGENTS.md`](AGENTS.md) into the project; agents that read it (Codex, Amp, Jules, OpenCode,
 Copilot, Junie when pointed at it) then know when to snapshot and how to revert safely.
 
 ## CLI
 
 ```bash
-git clone https://github.com/KartikeySepta/agent-undo
-cd agent-undo && npm install && npm install -g .
+npm install -g @atpes/agent-undo
 agent-undo doctor
 ```
 
-`npm install -g .` links the clone, so `git pull` updates the CLI. (The `agent-undo` name on the
-npm registry belongs to an unrelated project; install from the repository.) Commands:
+The package is scoped (`@atpes/agent-undo`) because the unscoped `agent-undo` name on npm belongs
+to an unrelated project; the commands are still `agent-undo` and `agent-undo-mcp`. Any MCP client
+can also run the server with `npx -y -p @atpes/agent-undo agent-undo-mcp`. To hack on it, clone
+the repository and `npm install -g .` instead. Commands:
 `snapshot [name]`, `list`, `diff [snap]`, `revert [snap] [--yes] [--only <paths...>]`,
 `mode [level]`, `stats`, `doctor`, `prune --keep <n>`.
 
@@ -193,6 +194,6 @@ npm registry belongs to an unrelated project; install from the repository.) Comm
 | Cursor | `node agent-undo/scripts/cursor-hooks.js uninstall [--project]`, then remove the MCP entry |
 | Gemini CLI | `gemini extensions uninstall agent-undo` |
 | OpenCode | remove the `plugin`/`plugins` and `mcp` entries |
-| CLI | `npm uninstall -g agent-undo` |
+| CLI | `npm uninstall -g @atpes/agent-undo` |
 
 Snapshots live in `~/.agent-undo` (or `AGENT_UNDO_HOME`); delete it to reclaim the space.
