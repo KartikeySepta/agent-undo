@@ -26,7 +26,23 @@ jobs:
       - run: npm ci
       - name: Committed bundles match source
         run: node scripts/check-bundles.js
-      - run: npm test
+      - name: Test
+        run: |
+          npm run build
+          node --test --test-reporter=spec --test-reporter-destination=stdout \
+               --test-reporter=tap --test-reporter-destination=tap.txt tests/*.test.js
+      - name: Annotate failures
+        if: failure()
+        # Surface each failing test as a GitHub annotation (visible on the PR/commit without opening logs).
+        run: |
+          node -e '
+            const t = require("fs").readFileSync("tap.txt", "utf8").split("\n");
+            t.forEach((l, i) => {
+              const m = l.match(/^\s*not ok \d+ - (.*)/);
+              if (!m) return;
+              const body = t.slice(i + 1, i + 25).join("\n").replace(/%/g, "%25").replace(/\r?\n/g, "%0A");
+              console.log(`::error title=${m[1]}::${body}`);
+            });'
       - name: Doctor
         run: node bin/agent-undo.cjs doctor || true
 
