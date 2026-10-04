@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Other agents
+- Codex plugin (`.codex-plugin/`), Cursor hooks installer (`scripts/cursor-hooks.js`) and rule, Gemini CLI extension with `/undo-*` commands, OpenCode plugin. See INSTALL.md.
+- `AGENTS.md`, generated from `src/instructions.ts`; `scripts/check-rule-copies.js` and `scripts/check-versions.js` guard drift.
+- Hooks emit each host's output shape (`--platform codex|cursor|gemini`); Claude Code output unchanged. Claude hooks moved to `hooks/claude-hooks.json` because Gemini CLI auto-loads `hooks/hooks.json`.
+- The MCP server refuses to default to its own install directory and asks for `project_dir`.
+- `$agent-undo <level>` switches levels too (Codex skill syntax).
+
 ## 1.2.0 (2026-10-04)
 
 ### Engine
