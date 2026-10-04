@@ -44,6 +44,25 @@ export function copyTree(src: string, dst: string): void {
     }
 }
 
+/**
+ * rmSync that also removes trees containing unreadable dirs (e.g. a partial `cp -p` copy of a
+ * 000 dir). Node 24's rmSync fails on those (ENOTEMPTY/EACCES) where Node 22 succeeded.
+ */
+export function forceRemove(p: string): void {
+    try {
+        fs.rmSync(p, { recursive: true, force: true });
+        return;
+    } catch { /* fall through: make dirs writable/readable, retry once */ }
+    const unlock = (dir: string) => {
+        try { fs.chmodSync(dir, 0o700); } catch { return; }
+        for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+            if (e.isDirectory()) unlock(path.join(dir, e.name));
+        }
+    };
+    if (fs.lstatSync(p).isDirectory()) unlock(p);
+    fs.rmSync(p, { recursive: true, force: true });
+}
+
 export function sizeOf(p: string): number {
     const st = fs.lstatSync(p);
     if (!st.isDirectory()) return st.size;
@@ -74,13 +93,13 @@ export function cloneEntries(from: string, to: string, entries: string[], opts: 
             mode = 'clonefile';
         } else {
             // dst did not exist before this entry, so removing a partial result is always safe.
-            fs.rmSync(dst, { recursive: true, force: true });
+            forceRemove(dst);
             try {
                 if (process.platform === 'win32') throw new Error('no cp');
                 execFileSync('cp', ['-R', cowFlag, src, dst], { stdio: 'pipe' });
                 mode = 'cow';
             } catch {
-                fs.rmSync(dst, { recursive: true, force: true });
+                forceRemove(dst);
                 if (opts.maxCopyBytes !== undefined) {
                     copiedBytes += sizeOf(src);
                     if (copiedBytes > opts.maxCopyBytes) {

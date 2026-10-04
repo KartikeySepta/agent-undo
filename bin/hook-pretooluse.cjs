@@ -916,6 +916,25 @@ function copyTree(src, dst) {
     (0, import_child_process.execFileSync)("cp", ["-Rp", src, dst], { stdio: "pipe" });
   }
 }
+function forceRemove(p) {
+  try {
+    import_fs.default.rmSync(p, { recursive: true, force: true });
+    return;
+  } catch {
+  }
+  const unlock = (dir) => {
+    try {
+      import_fs.default.chmodSync(dir, 448);
+    } catch {
+      return;
+    }
+    for (const e of import_fs.default.readdirSync(dir, { withFileTypes: true })) {
+      if (e.isDirectory()) unlock(import_path.default.join(dir, e.name));
+    }
+  };
+  if (import_fs.default.lstatSync(p).isDirectory()) unlock(p);
+  import_fs.default.rmSync(p, { recursive: true, force: true });
+}
 function sizeOf(p) {
   const st = import_fs.default.lstatSync(p);
   if (!st.isDirectory()) return st.size;
@@ -936,13 +955,13 @@ function cloneEntries(from, to, entries, opts = {}) {
     if (native && native(src, dst, CLONE_NOFOLLOW) === 0) {
       mode = "clonefile";
     } else {
-      import_fs.default.rmSync(dst, { recursive: true, force: true });
+      forceRemove(dst);
       try {
         if (process.platform === "win32") throw new Error("no cp");
         (0, import_child_process.execFileSync)("cp", ["-R", cowFlag, src, dst], { stdio: "pipe" });
         mode = "cow";
       } catch {
-        import_fs.default.rmSync(dst, { recursive: true, force: true });
+        forceRemove(dst);
         if (opts.maxCopyBytes !== void 0) {
           copiedBytes += sizeOf(src);
           if (copiedBytes > opts.maxCopyBytes) {
@@ -1129,7 +1148,7 @@ function snapshotUnlocked(sourceDir, opts) {
   try {
     mode = cloneEntries(sourceDir, data, entries, { maxCopyBytes: maxCopyBytes() });
   } catch (e) {
-    import_fs4.default.rmSync(import_path4.default.join(base, id), { recursive: true, force: true });
+    forceRemove(import_path4.default.join(base, id));
     throw e;
   }
   for (const r of ignored) if (!topIgnored.has(r)) import_fs4.default.rmSync(import_path4.default.join(data, r), { recursive: true, force: true });

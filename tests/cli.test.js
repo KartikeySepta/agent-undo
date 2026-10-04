@@ -57,5 +57,5 @@ test('mode, stats and doctor', (t) => {
   const doc = cli(s, 'doctor');
   assert.match(doc, /node/);
   assert.match(doc, /same volume/);
-  if (process.platform === 'darwin') assert.match(doc, /✅ clone engine\s+clonefile/);
+  if (process.platform === 'darwin' && !process.env.AGENT_UNDO_NO_FFI) assert.match(doc, /✅ clone engine\s+clonefile/);
 });

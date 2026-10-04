@@ -45,7 +45,7 @@ test('top-level .git is excluded from snapshots', (t) => {
   assert.ok(!fs.existsSync(path.join(core.snapshotBase(s.project), snap.id, 'data', '.git')));
 });
 
-test('uses directory-level clonefile on macOS', { skip: process.platform !== 'darwin' }, (t) => {
+test('uses directory-level clonefile on macOS', { skip: process.platform !== 'darwin' || !!process.env.AGENT_UNDO_NO_FFI }, (t) => {
   const s = sandbox(); t.after(s.cleanup); seed(s);
   assert.strictEqual(core.takeSnapshot(s.project).mode, 'clonefile');
 });

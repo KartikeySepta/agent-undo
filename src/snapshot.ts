@@ -4,7 +4,7 @@ import os from 'os';
 import crypto from 'crypto';
 import { spawn } from 'child_process';
 import ignore, { Ignore } from 'ignore';
-import { cloneEntries, copyTree, CloneMode } from './clone';
+import { cloneEntries, copyTree, forceRemove, CloneMode } from './clone';
 import { storeHome } from './config';
 import { recordStats } from './stats';
 
@@ -167,7 +167,7 @@ function snapshotUnlocked(sourceDir: string, opts: SnapshotOptions): SnapshotMet
     try {
         mode = cloneEntries(sourceDir, data, entries, { maxCopyBytes: maxCopyBytes() });
     } catch (e) {
-        fs.rmSync(path.join(base, id), { recursive: true, force: true });
+        forceRemove(path.join(base, id));
         throw e;
     }
     for (const r of ignored) if (!topIgnored.has(r)) fs.rmSync(path.join(data, r), { recursive: true, force: true });
@@ -359,7 +359,7 @@ export function revertSnapshot(
                     // Restore failed halfway: put the pre-revert state back so the project is never left empty.
                     const backupData = dataDir(base, backup.id);
                     for (const item of fs.readdirSync(sourceDir)) {
-                        if (item !== '.git') fs.rmSync(path.join(sourceDir, item), { recursive: true, force: true });
+                        if (item !== '.git') forceRemove(path.join(sourceDir, item));
                     }
                     if (backup.mode === 'moved') {
                         for (const item of fs.readdirSync(backupData)) moveSync(path.join(backupData, item), path.join(sourceDir, item));
