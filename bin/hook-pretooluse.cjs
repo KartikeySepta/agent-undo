@@ -1038,8 +1038,8 @@ function realDir(dir) {
     return resolved;
   }
 }
-function snapshotBase(projectDir = process.cwd()) {
-  const hash = import_crypto.default.createHash("md5").update(realDir(projectDir)).digest("hex");
+function snapshotBase(projectDir2 = process.cwd()) {
+  const hash = import_crypto.default.createHash("md5").update(realDir(projectDir2)).digest("hex");
   return import_path4.default.join(storeHome(), "snapshots", hash);
 }
 var dataDir = (base, id) => import_path4.default.join(base, id, "data");
@@ -1195,6 +1195,33 @@ function pruneSnapshots(sourceDir, keep = KEEP_DEFAULT) {
 }
 
 // src/hooks/common.ts
+var PLATFORMS = ["claude", "codex", "cursor", "gemini"];
+function detectPlatform(argv = process.argv, env = process.env) {
+  const i = argv.indexOf("--platform");
+  const named = i >= 0 ? argv[i + 1] : void 0;
+  if (PLATFORMS.includes(named)) return named;
+  if (env.PLUGIN_DATA) return "codex";
+  if (env.CURSOR_VERSION) return "cursor";
+  return "claude";
+}
+var platform = detectPlatform();
+function formatOutput(p, event, context = "") {
+  if (p === "cursor") {
+    if (context) return JSON.stringify({ additional_context: context, ...event === "UserPromptSubmit" && { continue: true } });
+    return event === "PreToolUse" ? JSON.stringify({ agent_message: "" }) : "";
+  }
+  if (context) return JSON.stringify({ hookSpecificOutput: { hookEventName: event, additionalContext: context } });
+  if (p === "codex") return JSON.stringify(event === "PreToolUse" ? { hookSpecificOutput: { hookEventName: event } } : {});
+  return "";
+}
+var emitted = false;
+var projectDir = (input) => input.cwd || input.workspace_roots?.[0] || process.env.CURSOR_PROJECT_DIR || process.env.GEMINI_PROJECT_DIR || process.cwd();
+var SHELL_TOOLS = /* @__PURE__ */ new Set(["Bash", "Shell", "shell", "bash", "local_shell", "shell_command", "exec_command", "container.exec", "run_shell_command"]);
+function shellCommand(input) {
+  if (!SHELL_TOOLS.has(input.tool_name ?? "")) return null;
+  const c = input.tool_input?.command ?? input.tool_input?.cmd;
+  return Array.isArray(c) ? c.join(" ") : typeof c === "string" ? c : "";
+}
 function readInput() {
   return new Promise((resolve) => {
     let raw = "";
@@ -1209,9 +1236,12 @@ function readInput() {
     });
   });
 }
-function runHook(body) {
+function runHook(event, body) {
   readInput().then(body).catch(() => {
-  }).finally(() => process.exit(0));
+  }).finally(() => {
+    if (!emitted) process.stdout.write(formatOutput(platform, event));
+    process.exit(0);
+  });
 }
 var lastSnapshotAgeMs = (snaps) => snaps.length ? Date.now() - Date.parse(snaps[snaps.length - 1].createdAt) : Infinity;
 
@@ -1231,12 +1261,12 @@ var RISKY = new RegExp(
   "i"
 );
 var BURST_MS = 1e4;
-runHook((input) => {
-  const command = input.tool_input?.command ?? "";
-  if (input.tool_name !== "Bash" || !RISKY.test(command)) return;
+runHook("PreToolUse", (input) => {
+  const command = shellCommand(input);
+  if (!command || !RISKY.test(command)) return;
   const level = readLevel();
   if (level !== "full" && level !== "paranoid") return;
-  const cwd = input.cwd || process.cwd();
+  const cwd = projectDir(input);
   if (!isProjectDir(cwd) || lastSnapshotAgeMs(listSnapshots(cwd).filter((s) => s.trigger === "hook")) < BURST_MS) return;
   takeSnapshot(cwd, { reason: `auto: ${command.slice(0, 80)}`, trigger: "hook" });
 });

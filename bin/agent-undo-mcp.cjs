@@ -3263,8 +3263,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path5) {
-      let input = path5;
+    function removeDotSegments(path6) {
+      let input = path6;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3673,8 +3673,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path5 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path5 && path5 !== "/" ? path5 : void 0;
+        const path6 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path6 && path6 !== "/" ? path6 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -7187,12 +7187,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs6, exportName) {
+    function addFormats(ajv, list, fs7, exportName) {
       var _a3;
       var _b;
       (_a3 = (_b = ajv.opts.code).formats) !== null && _a3 !== void 0 ? _a3 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs6[f]);
+        ajv.addFormat(f, fs7[f]);
     }
     module2.exports = exports2 = formatsPlugin;
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -7693,26 +7693,26 @@ var require_ignore = __commonJS({
       const index = body.indexOf(SLASH);
       return index < 0 || index === body.length - 1;
     };
-    var basenameOf = (path5) => {
-      const end = path5.length - 1;
-      const index = path5.lastIndexOf(
+    var basenameOf = (path6) => {
+      const end = path6.length - 1;
+      const index = path6.lastIndexOf(
         SLASH,
-        path5[end] === SLASH ? end - 1 : end
+        path6[end] === SLASH ? end - 1 : end
       );
-      return index < 0 ? path5 : path5.slice(index + 1);
+      return index < 0 ? path6 : path6.slice(index + 1);
     };
-    var parentOf = (path5) => {
-      if (path5.charCodeAt(0) === SLASH_CODE || path5.indexOf(DOUBLE_SLASH) >= 0) {
-        const slices = path5.split(SLASH).filter(Boolean);
+    var parentOf = (path6) => {
+      if (path6.charCodeAt(0) === SLASH_CODE || path6.indexOf(DOUBLE_SLASH) >= 0) {
+        const slices = path6.split(SLASH).filter(Boolean);
         slices.pop();
         return slices.length ? slices.join(SLASH) + SLASH : EMPTY;
       }
-      const end = path5.length - 1;
-      const cut = path5.lastIndexOf(
+      const end = path6.length - 1;
+      const cut = path6.lastIndexOf(
         SLASH,
-        path5.charCodeAt(end) === SLASH_CODE ? end - 1 : end
+        path6.charCodeAt(end) === SLASH_CODE ? end - 1 : end
       );
-      return cut < 0 ? EMPTY : path5.slice(0, cut + 1);
+      return cut < 0 ? EMPTY : path6.slice(0, cut + 1);
     };
     var isString = (subject) => typeof subject === "string";
     var checkPattern = (pattern) => pattern && isString(pattern) && !REGEX_INVALID_TRAILING_BACKSLASH.test(pattern);
@@ -7847,7 +7847,7 @@ var require_ignore = __commonJS({
       // Match the literal 'abc/' for `checkIgnore`, last rule wins. Only a rule
       //   ending in a wildcard can match it (see `checkSourceOf`), so the rest
       //   are left out once, rather than tested or compiled for every path.
-      testLiteral(path5) {
+      testLiteral(path6) {
         const rules = this._literalRules || (this._literalRules = this._rules.filter(
           ({ body }) => body[body.length - (body[body.length - 1] === SLASH ? 2 : 1)] === "*"
         ));
@@ -7856,7 +7856,7 @@ var require_ignore = __commonJS({
         let matchedRule;
         for (let index = rules.length - 1; index >= 0; index--) {
           const rule = rules[index];
-          if (rule.checkRegex.test(path5)) {
+          if (rule.checkRegex.test(path6)) {
             ignored = !rule.negative;
             unignored = rule.negative;
             matchedRule = rule.negative ? UNDEFINED : rule;
@@ -7879,20 +7879,20 @@ var require_ignore = __commonJS({
       //   path matching.
       // - check `string` either `MODE_IGNORE` or `MODE_CHECK_IGNORE`
       // @returns {TestResult} true if a file is ignored
-      test(path5, checkUnignored, mode) {
+      test(path6, checkUnignored, mode) {
         let ignored = false;
         let unignored = false;
         let matchedRule;
         const rules = this._rules;
         const { length } = rules;
         const shortcut = this._basenameCount * 2 >= length;
-        const basename = shortcut ? basenameOf(path5) : path5;
+        const basename = shortcut ? basenameOf(path6) : path6;
         for (let index = 0; index < length; index++) {
           const rule = rules[index];
           const { negative } = rule;
           const skip = unignored === negative && ignored !== unignored || negative && !ignored && !unignored && !checkUnignored;
           if (!skip && rule[mode].test(
-            shortcut && rule._basenameOnly ? basename : path5
+            shortcut && rule._basenameOnly ? basename : path6
           )) {
             ignored = !negative;
             unignored = negative;
@@ -7912,17 +7912,17 @@ var require_ignore = __commonJS({
     var throwError = (message, Ctor) => {
       throw new Ctor(message);
     };
-    var checkPath = (path5, originalPath, doThrow) => {
-      if (!isString(path5)) {
+    var checkPath = (path6, originalPath, doThrow) => {
+      if (!isString(path6)) {
         return doThrow(
           `path must be a string, but got \`${originalPath}\``,
           TypeError
         );
       }
-      if (!path5) {
+      if (!path6) {
         return doThrow(`path must not be empty`, TypeError);
       }
-      if (checkPath.isNotRelative(path5)) {
+      if (checkPath.isNotRelative(path6)) {
         const r = "`path.relative()`d";
         return doThrow(
           `path should be a ${r} string, but got "${originalPath}"`,
@@ -7931,25 +7931,25 @@ var require_ignore = __commonJS({
       }
       return true;
     };
-    var isNotRelative = (path5) => {
-      const first = path5.charCodeAt(0);
+    var isNotRelative = (path6) => {
+      const first = path6.charCodeAt(0);
       if (first === SLASH_CODE) {
         return true;
       }
       if (first !== DOT_CODE) {
         return false;
       }
-      if (path5.length === 1) {
+      if (path6.length === 1) {
         return true;
       }
-      const second = path5.charCodeAt(1);
+      const second = path6.charCodeAt(1);
       if (second === SLASH_CODE) {
         return true;
       }
       if (second !== DOT_CODE) {
         return false;
       }
-      return path5.length === 2 || path5.charCodeAt(2) === SLASH_CODE;
+      return path6.length === 2 || path6.charCodeAt(2) === SLASH_CODE;
     };
     checkPath.isNotRelative = isNotRelative;
     checkPath.convert = (p) => p;
@@ -7980,54 +7980,54 @@ var require_ignore = __commonJS({
       }
       // @returns {TestResult}
       _test(originalPath, cache, checkUnignored) {
-        const path5 = originalPath && checkPath.convert(originalPath);
+        const path6 = originalPath && checkPath.convert(originalPath);
         checkPath(
-          path5,
+          path6,
           originalPath,
           this._strictPathCheck ? throwError : RETURN_FALSE
         );
-        return this._t(path5, cache, checkUnignored);
+        return this._t(path6, cache, checkUnignored);
       }
-      checkIgnore(path5) {
-        if (path5.charCodeAt(path5.length - 1) !== SLASH_CODE) {
-          return this.test(path5);
+      checkIgnore(path6) {
+        if (path6.charCodeAt(path6.length - 1) !== SLASH_CODE) {
+          return this.test(path6);
         }
-        const dir = this._t(path5, this._testCache, true);
+        const dir = this._t(path6, this._testCache, true);
         if (dir.ignored) {
           return dir;
         }
-        const literal2 = this._rules.testLiteral(path5);
+        const literal2 = this._rules.testLiteral(path6);
         return literal2.ignored || literal2.unignored ? literal2 : dir;
       }
-      _t(path5, cache, checkUnignored) {
-        if (path5 in cache) {
-          return cache[path5];
+      _t(path6, cache, checkUnignored) {
+        if (path6 in cache) {
+          return cache[path6];
         }
-        const parentPath = parentOf(path5);
+        const parentPath = parentOf(path6);
         const parent = parentPath ? this._t(parentPath, cache, checkUnignored) : UNDEFINED;
-        return cache[path5] = parent && parent.ignored ? parent : this._rules.test(path5, checkUnignored, MODE_IGNORE);
+        return cache[path6] = parent && parent.ignored ? parent : this._rules.test(path6, checkUnignored, MODE_IGNORE);
       }
-      ignores(path5) {
-        return this._test(path5, this._ignoreCache, false).ignored;
+      ignores(path6) {
+        return this._test(path6, this._ignoreCache, false).ignored;
       }
       createFilter() {
-        return (path5) => !this.ignores(path5);
+        return (path6) => !this.ignores(path6);
       }
       filter(paths) {
         return makeArray(paths).filter(this.createFilter());
       }
       // @returns {TestResult}
-      test(path5) {
-        return this._test(path5, this._testCache, true);
+      test(path6) {
+        return this._test(path6, this._testCache, true);
       }
     };
     var factory = (options) => new Ignore2(options);
-    var isPathValid = (path5) => checkPath(path5 && checkPath.convert(path5), path5, RETURN_FALSE);
+    var isPathValid = (path6) => checkPath(path6 && checkPath.convert(path6), path6, RETURN_FALSE);
     var setupWindows = () => {
       const makePosix = (str) => /^\\\\\?\\/.test(str) || /["<>|\u0000-\u001F]+/u.test(str) ? str : str.replace(/\\/g, "/");
       checkPath.convert = makePosix;
       const REGEX_TEST_WINDOWS_PATH_ABSOLUTE = /^[a-z]:\//i;
-      checkPath.isNotRelative = (path5) => REGEX_TEST_WINDOWS_PATH_ABSOLUTE.test(path5) || isNotRelative(path5);
+      checkPath.isNotRelative = (path6) => REGEX_TEST_WINDOWS_PATH_ABSOLUTE.test(path6) || isNotRelative(path6);
     };
     if (
       // Detect `process` so that it can run in browsers.
@@ -8278,10 +8278,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path5) {
-  if (!path5)
+function getElementAtPath(obj, path6) {
+  if (!path6)
     return obj;
-  return path5.reduce((acc, key) => acc?.[key], obj);
+  return path6.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -8621,11 +8621,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path5, issues) {
+function prefixIssues(path6, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path5);
+    iss.path.unshift(path6);
     return iss;
   });
 }
@@ -9071,16 +9071,16 @@ function flattenError(error2, mapper = (issue2) => issue2.message) {
 }
 function formatError(error2, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error3, path5 = []) => {
+  const processError = (error3, path6 = []) => {
     for (const issue2 of error3.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path5, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path6, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path5, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path6, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path5, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path6, ...issue2.path]);
       } else {
-        const fullpath = [...path5, ...issue2.path];
+        const fullpath = [...path6, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -18293,6 +18293,15 @@ function status(projectDir) {
 }
 
 // src/mcp-server.ts
+var import_fs6 = __toESM(require("fs"));
+var import_path5 = __toESM(require("path"));
+var realPath = (p) => {
+  try {
+    return import_fs6.default.realpathSync(p);
+  } catch {
+    return import_path5.default.resolve(p);
+  }
+};
 var server = new Server(
   { name: "agent-undo-mcp", version: VERSION },
   { capabilities: { tools: {} } }
@@ -18339,6 +18348,9 @@ var text = (t, isError = false) => ({ content: [{ type: "text", text: t }], ...i
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const args = request.params.arguments ?? {};
   const cwd = args.project_dir || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  if (!args.project_dir && !process.env.CLAUDE_PROJECT_DIR && realPath(cwd) === realPath(import_path5.default.join(__dirname, ".."))) {
+    return text(`agent-undo: the MCP server is running in its own install directory (${cwd}), not your project. Call the tool again with project_dir set to the project's absolute path.`, true);
+  }
   try {
     switch (request.params.name) {
       case "take_snapshot": {

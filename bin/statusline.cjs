@@ -937,6 +937,16 @@ function listSnapshots(sourceDir) {
 }
 
 // src/hooks/common.ts
+var PLATFORMS = ["claude", "codex", "cursor", "gemini"];
+function detectPlatform(argv = process.argv, env = process.env) {
+  const i = argv.indexOf("--platform");
+  const named = i >= 0 ? argv[i + 1] : void 0;
+  if (PLATFORMS.includes(named)) return named;
+  if (env.PLUGIN_DATA) return "codex";
+  if (env.CURSOR_VERSION) return "cursor";
+  return "claude";
+}
+var platform = detectPlatform();
 function readInput() {
   return new Promise((resolve) => {
     let raw = "";

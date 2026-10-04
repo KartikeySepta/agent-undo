@@ -3,7 +3,7 @@ import { readLevel } from '../config';
 import { getInstructions } from '../instructions';
 import { runHook, emitContext } from './common';
 
-runHook(() => {
+runHook('SubagentStart', () => {
     const level = readLevel();
     if (level !== 'off') emitContext('SubagentStart', getInstructions(level));
 });

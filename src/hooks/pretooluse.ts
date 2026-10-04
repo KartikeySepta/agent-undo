@@ -1,8 +1,8 @@
-// PreToolUse(Bash): auto-snapshot before destructive shell commands (levels full and paranoid),
+// PreToolUse(shell): auto-snapshot before destructive shell commands (levels full and paranoid),
 // so safety does not depend on the model remembering to call take_snapshot.
 import { takeSnapshot, listSnapshots } from '../snapshot';
 import { readLevel, isProjectDir } from '../config';
-import { runHook, lastSnapshotAgeMs } from './common';
+import { runHook, lastSnapshotAgeMs, shellCommand, projectDir } from './common';
 
 export const RISKY = new RegExp(
     [
@@ -22,12 +22,12 @@ export const RISKY = new RegExp(
 // suppress protection for work done since.
 const BURST_MS = 10_000;
 
-runHook((input) => {
-    const command = input.tool_input?.command ?? '';
-    if (input.tool_name !== 'Bash' || !RISKY.test(command)) return;
+runHook('PreToolUse', (input) => {
+    const command = shellCommand(input);
+    if (!command || !RISKY.test(command)) return;
     const level = readLevel();
     if (level !== 'full' && level !== 'paranoid') return;
-    const cwd = input.cwd || process.cwd();
+    const cwd = projectDir(input);
     if (!isProjectDir(cwd) || lastSnapshotAgeMs(listSnapshots(cwd).filter((s) => s.trigger === 'hook')) < BURST_MS) return;
     takeSnapshot(cwd, { reason: `auto: ${command.slice(0, 80)}`, trigger: 'hook' });
 });

@@ -66,8 +66,47 @@ function getInstructions(level) {
     "The top-level .git and paths in .agentundoignore are never snapshotted or touched. Switch level: /agent-undo lite|full|paranoid|off."
   ].join("\n");
 }
+var STATIC_BODY = [
+  "# agent-undo",
+  "",
+  "You can snapshot and roll back this project with agent-undo: copy-on-write clones of the whole directory, including untracked files, `node_modules`, build output and local databases. Snapshots take milliseconds and cost almost no disk, so take them freely.",
+  "",
+  "Use the agent-undo MCP tools: `take_snapshot(name?)`, `list_snapshots`, `diff_snapshot(snapshot?)`, `revert_environment(snapshot?, paths?)`, `undo_status`. Every tool takes an optional `project_dir`; pass the project's absolute path. Without the MCP server, the same operations are a CLI: `agent-undo snapshot <name>`, `agent-undo list`, `agent-undo diff [snap]`, `agent-undo revert [snap] --yes [--only <paths...>]`.",
+  "",
+  "## Rules",
+  "",
+  ...CORE_RULES.map((r, i) => `${i + 1}. ${r}`),
+  "",
+  "## Limits",
+  "",
+  "Snapshots cover the project directory only. They cannot undo pushes, deploys, remote or Docker-hosted databases, sent messages, global installs or files outside the project: say so and ask before any of those. The top-level `.git` and paths in `.agentundoignore` are never snapshotted or touched, so a revert never rewrites git history."
+].join("\n");
 
 // src/hooks/common.ts
+var PLATFORMS = ["claude", "codex", "cursor", "gemini"];
+function detectPlatform(argv = process.argv, env = process.env) {
+  const i = argv.indexOf("--platform");
+  const named = i >= 0 ? argv[i + 1] : void 0;
+  if (PLATFORMS.includes(named)) return named;
+  if (env.PLUGIN_DATA) return "codex";
+  if (env.CURSOR_VERSION) return "cursor";
+  return "claude";
+}
+var platform = detectPlatform();
+function formatOutput(p, event, context = "") {
+  if (p === "cursor") {
+    if (context) return JSON.stringify({ additional_context: context, ...event === "UserPromptSubmit" && { continue: true } });
+    return event === "PreToolUse" ? JSON.stringify({ agent_message: "" }) : "";
+  }
+  if (context) return JSON.stringify({ hookSpecificOutput: { hookEventName: event, additionalContext: context } });
+  if (p === "codex") return JSON.stringify(event === "PreToolUse" ? { hookSpecificOutput: { hookEventName: event } } : {});
+  return "";
+}
+var emitted = false;
+function emitContext(event, context) {
+  emitted = true;
+  process.stdout.write(formatOutput(platform, event, context));
+}
 function readInput() {
   return new Promise((resolve) => {
     let raw = "";
@@ -82,16 +121,16 @@ function readInput() {
     });
   });
 }
-function emitContext(event, context) {
-  process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: event, additionalContext: context } }));
-}
-function runHook(body) {
+function runHook(event, body) {
   readInput().then(body).catch(() => {
-  }).finally(() => process.exit(0));
+  }).finally(() => {
+    if (!emitted) process.stdout.write(formatOutput(platform, event));
+    process.exit(0);
+  });
 }
 
 // src/hooks/subagent-start.ts
-runHook(() => {
+runHook("SubagentStart", () => {
   const level = readLevel();
   if (level !== "off") emitContext("SubagentStart", getInstructions(level));
 });

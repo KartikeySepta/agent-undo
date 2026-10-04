@@ -3,19 +3,19 @@
 import { takeSnapshot, listSnapshots } from '../snapshot';
 import { readLevel, writeLevel, isLevel, isProjectDir, Level } from '../config';
 import { getInstructions } from '../instructions';
-import { runHook, emitContext, lastSnapshotAgeMs } from './common';
+import { runHook, emitContext, lastSnapshotAgeMs, projectDir } from './common';
 
 const TURN_THROTTLE_MS = 15_000;
 
 export function parseLevelCommand(prompt: string): Level | null {
     const p = prompt.trim().toLowerCase();
-    const m = p.match(/^\/(?:agent-undo:)?agent-undo\s+(\w+)/);
+    const m = p.match(/^[/$](?:agent-undo:)?agent-undo\s+(\w+)/);
     if (m && isLevel(m[1])) return m[1];
-    if (/^(stop|disable) (agent-)?undo\b|^\/(?:agent-undo:)?agent-undo\s+stop\b/.test(p)) return 'off';
+    if (/^(stop|disable) (agent-)?undo\b|^[/$](?:agent-undo:)?agent-undo\s+stop\b/.test(p)) return 'off';
     return null;
 }
 
-runHook((input) => {
+runHook('UserPromptSubmit', (input) => {
     const prompt = input.prompt ?? '';
     const switched = parseLevelCommand(prompt);
     if (switched) {
@@ -24,7 +24,7 @@ runHook((input) => {
         return;
     }
     if (readLevel() !== 'paranoid') return;
-    const cwd = input.cwd || process.cwd();
+    const cwd = projectDir(input);
     if (!isProjectDir(cwd) || lastSnapshotAgeMs(listSnapshots(cwd)) < TURN_THROTTLE_MS) return;
     takeSnapshot(cwd, { reason: `turn: ${prompt.replace(/\s+/g, ' ').slice(0, 60)}`, trigger: 'turn', keep: 20 });
 });

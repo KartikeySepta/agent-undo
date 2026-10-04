@@ -4,7 +4,7 @@ import { spawn } from 'child_process';
 import { takeSnapshot, listSnapshots } from '../snapshot';
 import { readLevel, isProjectDir } from '../config';
 import { getInstructions } from '../instructions';
-import { runHook, emitContext, lastSnapshotAgeMs } from './common';
+import { runHook, emitContext, lastSnapshotAgeMs, projectDir, platform } from './common';
 
 const BASELINE_THROTTLE_MS = 5 * 60_000;
 
@@ -12,10 +12,10 @@ if (process.argv[2] === '--baseline') {
     // Detached child: the actual baseline snapshot.
     try { takeSnapshot(process.argv[3], { reason: 'session start baseline', trigger: 'session' }); } catch { /* busy/unsafe: skip */ }
 } else {
-    runHook((input) => {
+    runHook('SessionStart', (input) => {
         const level = readLevel();
         if (level === 'off') return;
-        const cwd = input.cwd || process.cwd();
+        const cwd = projectDir(input);
         const project = isProjectDir(cwd);
         const snaps = project ? listSnapshots(cwd) : [];
 
@@ -26,6 +26,8 @@ if (process.argv[2] === '--baseline') {
             spawn(process.execPath, [__filename, '--baseline', cwd], { detached: true, stdio: 'ignore' }).unref();
             note += ' A baseline snapshot of the session start is being taken now.';
         }
+        // Outside Claude Code the MCP server may not run in the project, so name it for the tools.
+        if (platform !== 'claude') note += ` Project directory: ${cwd} (pass it as project_dir to the agent-undo tools).`;
         emitContext('SessionStart', `${getInstructions(level)}\n${note}`);
     });
 }

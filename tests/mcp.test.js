@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { BIN, sandbox } = require('./helpers');
+const { BIN, ROOT, sandbox } = require('./helpers');
+const core = require('../bin/core.cjs');
 
 async function connect(s) {
   const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
@@ -29,6 +30,22 @@ test('MCP server exposes the four tools and they work end to end', async (t) => 
   assert.match(await call('list_snapshots'), /-base \[manual, /);
   assert.match(await call('undo_status'), /"snapshots": 2[\s\S]*same volume/);
   assert.match(await call('revert_environment', { snapshot: 'nope' }), /No snapshot matches/);
+});
+
+test('refuses to default to its own install directory (Codex/Gemini start it there)', async (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
+  const { StdioClientTransport } = await import('@modelcontextprotocol/sdk/client/stdio.js');
+  const client = new Client({ name: 'test', version: '0' });
+  await client.connect(new StdioClientTransport({ command: process.execPath, args: [BIN('agent-undo-mcp.cjs')], cwd: ROOT, env: s.env, stderr: 'ignore' }));
+  t.after(() => client.close());
+  const r = await client.callTool({ name: 'take_snapshot', arguments: {} });
+  assert.strictEqual(r.isError, true);
+  assert.match(r.content[0].text, /own install directory[\s\S]*project_dir/);
+  assert.strictEqual(core.listSnapshots(ROOT).length, 0, 'nothing snapshotted');
+  s.write('y.txt', 'v');
+  const ok = await client.callTool({ name: 'take_snapshot', arguments: { project_dir: s.project } });
+  assert.match(ok.content[0].text, /Snapshot .* taken/);
 });
 
 test('project_dir targets a project other than the server cwd', async (t) => {

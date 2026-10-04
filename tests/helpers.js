@@ -4,6 +4,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const BIN = (name) => path.join(ROOT, 'bin', name);
+const HOST_VARS = ['CLAUDE_PROJECT_DIR', 'PLUGIN_DATA', 'CURSOR_VERSION', 'CURSOR_PROJECT_DIR', 'GEMINI_PROJECT_DIR', 'AGENT_UNDO_LEVEL'];
 
 /** Fresh project dir + isolated snapshot store. Sets AGENT_UNDO_HOME for this process. */
 function sandbox() {
@@ -21,7 +22,10 @@ function sandbox() {
   const exists = (rel) => fs.existsSync(p(rel));
   const cleanup = () => fs.rmSync(tmp, { recursive: true, force: true });
   write('package.json', '{}'); // project marker: hooks only auto-snapshot real projects
-  return { tmp, project, home, p, write, read, exists, cleanup, env: { ...process.env, AGENT_UNDO_HOME: home } };
+  // Host env vars change hook output shape and the MCP default dir; tests set them explicitly.
+  const env = { ...process.env, AGENT_UNDO_HOME: home };
+  for (const k of HOST_VARS) delete env[k];
+  return { tmp, project, home, p, write, read, exists, cleanup, env };
 }
 
 module.exports = { ROOT, BIN, sandbox };

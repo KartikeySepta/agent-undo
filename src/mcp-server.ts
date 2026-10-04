@@ -5,6 +5,10 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprot
 import { takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot } from "./snapshot";
 import { VERSION } from "./version";
 import { status, doctor } from "./status";
+import fs from "fs";
+import path from "path";
+
+const realPath = (p: string) => { try { return fs.realpathSync(p); } catch { return path.resolve(p); } };
 
 const server = new Server(
   { name: "agent-undo-mcp", version: VERSION },
@@ -56,6 +60,11 @@ const text = (t: string, isError = false) => ({ content: [{ type: "text", text: 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const args = (request.params.arguments ?? {}) as { name?: string; snapshot?: string; paths?: string[]; project_dir?: string };
   const cwd = args.project_dir || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  // Some hosts (Codex plugins, Gemini extensions) start the server inside the plugin's own
+  // directory. Never silently snapshot or revert agent-undo itself: ask for project_dir instead.
+  if (!args.project_dir && !process.env.CLAUDE_PROJECT_DIR && realPath(cwd) === realPath(path.join(__dirname, ".."))) {
+    return text(`agent-undo: the MCP server is running in its own install directory (${cwd}), not your project. Call the tool again with project_dir set to the project's absolute path.`, true);
+  }
   try {
     switch (request.params.name) {
       case "take_snapshot": {
