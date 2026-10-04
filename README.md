@@ -38,14 +38,14 @@ On macOS, agent-undo calls `clonefile(2)` on whole directories through [koffi](h
 ## Install (Claude Code plugin)
 
 ```text
-/plugin marketplace add TODO_OWNER/agent-undo
+/plugin marketplace add KartikeySepta/agent-undo
 /plugin install agent-undo@agent-undo
 ```
 
 To try it from a local clone without installing:
 
 ```bash
-git clone https://github.com/TODO_OWNER/agent-undo && cd agent-undo && npm install
+git clone https://github.com/KartikeySepta/agent-undo && cd agent-undo && npm install
 claude --plugin-dir /path/to/agent-undo
 ```
 

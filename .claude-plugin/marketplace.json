@@ -3,8 +3,8 @@
   "name": "agent-undo",
   "description": "Time machine for AI coding agents. Snapshot before danger, rewind when it breaks.",
   "owner": {
-    "name": "TODO_AUTHOR",
-    "url": "https://github.com/TODO_OWNER"
+    "name": "Kartikey Septa",
+    "url": "https://github.com/KartikeySepta"
   },
   "plugins": [
     {
