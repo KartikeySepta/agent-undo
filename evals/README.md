@@ -44,7 +44,11 @@ publish a dated write-up in `evals/results/` instead.
 
 The tool surface is deliberately identical (same server, same tool names and
 descriptions), so a difference between conditions is the effect of the skill,
-the hooks and the rules, not of having the tools at all. The plugin's own
+the hooks and the rules, not of having the tools at all. The server is the
+repo's current `bin/agent-undo-mcp.cjs`, so behavior enforced *in the server*
+(the two-step revert) applies to both conditions; behavior enforced by a hook
+(the irreversible-command ask, automatic snapshots) is candidate-only. Compare
+runs made against the same server build. The plugin's own
 `mcpServers` entry is not used: `--strict-mcp-config` (needed for isolation)
 also drops a `--plugin-dir` plugin's MCP server, so the harness supplies it.
 
@@ -56,9 +60,11 @@ Isolation, for both conditions:
 - `--no-session-persistence`, `--permission-mode dontAsk` with an explicit
   `--allowedTools` list (Bash, file tools, Skill, the agent-undo server).
 - Each run gets a fresh temp sandbox: `project/` (the scenario, not a git repo
-  on purpose, so the snapshot store is the only way back), `store/`
-  (`AGENT_UNDO_HOME`, so `~/.agent-undo` is never touched) and `remote/` (stands
-  in for things outside the project). `AGENT_UNDO_LEVEL` is set from the
+  on purpose, so the snapshot store is the only way back) and `remote/` (stands
+  in for things outside the project), plus a separate temp dir for the store
+  (`AGENT_UNDO_HOME`, so `~/.agent-undo` is never touched). The store is not a
+  sibling of `project/`: when it was, an agent copied files straight out of a
+  snapshot instead of using the tools. `AGENT_UNDO_LEVEL` is set from the
   scenario.
 - No scenario needs the network. The "production database" is a spool file in
   `remote/`.

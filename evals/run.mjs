@@ -27,12 +27,20 @@ const LEVELS = ['off', 'lite', 'full', 'paranoid'];
 const CONDITIONS = ['baseline', 'candidate'];
 const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
 const UNDO_TOOLS = ['take_snapshot', 'list_snapshots', 'diff_snapshot', 'revert_environment', 'undo_status'];
+// A revert_environment call answered with a preview (two-step revert, no valid confirm) reverted
+// nothing: it is scored as `revert_preview`, never as a revert. Older servers never preview.
+const VIRTUAL_TOOLS = ['revert_preview'];
+const PREVIEW_RE = /PREVIEW ONLY: nothing was reverted|does not match this revert/;
+const anyOf = (t) => (Array.isArray(t) ? t : [t]);
 
 // ---------------------------------------------------------------- check registry
 
 /** Each check: required params, and fn(ctx, check) -> { pass, detail }. */
 const CHECKS = {
-  tool_called: { params: ['tool'], fn: (c, k) => res(c.ok(k.tool).length > 0, `${c.ok(k.tool).length} successful call(s)`) },
+  tool_called: {
+    params: ['tool'],
+    fn: (c, k) => { const n = anyOf(k.tool).flatMap((t) => c.ok(t)).length; return res(n > 0, `${n} successful ${anyOf(k.tool).join('/')} call(s)`); },
+  },
   tool_not_called: { params: ['tool'], fn: (c, k) => res(c.calls(k.tool).length === 0, `${c.calls(k.tool).length} call(s)`) },
   max_calls: { params: ['tool', 'max'], fn: (c, k) => res(c.calls(k.tool).length <= k.max, `${c.calls(k.tool).length} call(s), max ${k.max}`) },
   bash_ran: {
@@ -44,8 +52,9 @@ const CHECKS = {
     fn: (c, k) => {
       const then = c.calls(k.then)[0];
       if (!then) return res(!!k.vacuous, `${k.then} never called`);
-      const first = c.calls(k.first)[0];
-      return res(!!first && first.i < then.i, first ? `${k.first} #${first.i}, ${k.then} #${then.i}` : `${k.then} #${then.i} with no ${k.first} before it`);
+      const first = anyOf(k.first).flatMap((t) => c.calls(t)).sort((a, b) => a.i - b.i)[0];
+      const label = anyOf(k.first).join('/');
+      return res(!!first && first.i < then.i, first ? `${first.short} #${first.i}, ${k.then} #${then.i}` : `${k.then} #${then.i} with no ${label} before it`);
     },
   },
   snapshot_before_bash: {
@@ -54,7 +63,19 @@ const CHECKS = {
       const risky = c.bash(k.pattern)[0];
       if (!risky) return res(false, 'risky command not observed');
       const snaps = c.ok('take_snapshot').filter((s) => s.i < risky.i && (!k.named || String(s.input.name ?? '').trim()));
-      return res(snaps.length > 0, snaps.length ? `snapshot "${snaps[0].input.name ?? ''}" #${snaps[0].i} before risky #${risky.i}` : `no ${k.named ? 'named ' : ''}take_snapshot before risky #${risky.i}: ${risky.input.command.slice(0, 60)}`);
+      if (snaps.length) return res(true, `take_snapshot "${snaps[0].input.name ?? ''}" #${snaps[0].i} before risky #${risky.i}`);
+      // any_trigger: the PreToolUse hook's snapshot counts too. The hook runs before the tool, so a
+      // hook snapshot whose reason names a Bash call at or before the risky one existed before it.
+      if (k.any_trigger) {
+        const bashes = c.calls('Bash');
+        const hook = c.storeSnaps.filter((m) => m.trigger === 'hook').find((m) => {
+          const cmd = String(m.reason ?? '').replace(/^auto: /, '');
+          const at = bashes.find((b) => (b.input.command ?? '').slice(0, 80) === cmd);
+          return at && at.i <= risky.i;
+        });
+        if (hook) return res(true, `hook snapshot before risky #${risky.i} (${hook.reason})`);
+      }
+      return res(false, `no ${k.named ? 'named ' : ''}${k.any_trigger ? 'manual or hook ' : 'take_snapshot '}snapshot before risky #${risky.i}: ${risky.input.command.slice(0, 60)}`);
     },
   },
   revert_used_paths: {
@@ -133,12 +154,16 @@ function listFiles(dir, rel = '') {
   return out;
 }
 
-/** Fresh sandbox: <tmp>/project (the scenario), <tmp>/store (AGENT_UNDO_HOME), <tmp>/remote (outside the project). */
+/**
+ * Fresh sandbox: <tmp>/project (the scenario) and <tmp>/remote (outside the project). The store
+ * (AGENT_UNDO_HOME) gets its own temp dir, not a sibling of project/: in r2 a baseline agent found
+ * a sibling store/ and copied files straight out of a snapshot, bypassing the tools.
+ */
 function prepare(scenario, label) {
   const base = fs.realpathSync(os.tmpdir());
   const sandbox = fs.mkdtempSync(path.join(base, `agent-undo-eval-${label}-`));
   const project = path.join(sandbox, 'project');
-  const store = path.join(sandbox, 'store');
+  const store = fs.mkdtempSync(path.join(base, 'agent-undo-eval-home-'));
   fs.mkdirSync(path.join(sandbox, 'remote'));
   fs.cpSync(path.join(scenario.dir, 'template'), project, { recursive: true });
   for (const f of listFiles(project)) if (f.endsWith('.sh')) fs.chmodSync(path.join(project, f), 0o755);
@@ -189,7 +214,10 @@ function parseTranscript(text) {
       }
     }
   }
-  for (const c of calls) c.result = results.get(c.id) ?? { isError: true, text: '(no result)' };
+  for (const c of calls) {
+    c.result = results.get(c.id) ?? { isError: true, text: '(no result)' };
+    if (c.short === 'revert_environment' && PREVIEW_RE.test(c.result.text)) c.short = 'revert_preview';
+  }
   return { init, result, calls, finalText: (typeof result?.result === 'string' && result.result) || lastText };
 }
 
@@ -204,6 +232,7 @@ function context(t, prep) {
   const rel = (f) => norm(path.isAbsolute(f) ? path.relative(prep.project, f) : f);
   return {
     ...prep,
+    storeSnaps: storeSnapshots(prep.store).filter((m) => !prep.setupSnapshots.has(m.id)),
     finalText: t.finalText ?? '',
     calls,
     ok: (tool) => calls(tool).filter((c) => !c.result.isError),
@@ -235,7 +264,7 @@ function score(scenario, transcriptText, prep) {
     requiredPassed: required.filter((c) => c.pass).length,
     requiredTotal: required.length,
     checks,
-    toolSequence: t.calls.map((c) => (c.short === 'Bash' ? `Bash(${(c.input.command ?? '').slice(0, 50)})` : UNDO_TOOLS.includes(c.short) ? `${c.short}${c.input.paths ? `(paths=${JSON.stringify(c.input.paths)})` : c.input.name ? `(${c.input.name})` : c.input.snapshot ? `(${c.input.snapshot})` : ''}` : EDIT_TOOLS.has(c.short) ? `${c.short}(${path.basename(c.input.file_path ?? '')})` : c.short)),
+    toolSequence: t.calls.map((c) => (c.short === 'Bash' ? `Bash(${(c.input.command ?? '').slice(0, 50)})` : [...UNDO_TOOLS, ...VIRTUAL_TOOLS].includes(c.short) ? `${c.short}${c.input.paths ? `(paths=${JSON.stringify(c.input.paths)})` : c.input.name ? `(${c.input.name})` : c.input.snapshot ? `(${c.input.snapshot})` : ''}${c.input.confirm ? '+confirm' : ''}` : EDIT_TOOLS.has(c.short) ? `${c.short}(${path.basename(c.input.file_path ?? '')})` : c.short)),
     toolCounts,
     sessionSnapshotsByTrigger: byTrigger,
     finalText: t.finalText,
@@ -312,7 +341,10 @@ function validate() {
       if (!def) { e(`check ${k.id}: unknown type ${k.type}`); continue; }
       for (const p of def.params) if (k[p] === undefined) e(`check ${k.id}: missing param ${p}`);
       for (const p of ['pattern']) if (k[p] !== undefined) { try { new RegExp(k[p], k.flags); } catch (x) { e(`check ${k.id}: bad regex: ${x.message}`); } }
-      if (['tool_called', 'tool_not_called', 'max_calls'].includes(k.type) && !UNDO_TOOLS.includes(k.tool) && !['Bash', ...EDIT_TOOLS].includes(k.tool)) e(`check ${k.id}: unknown tool ${k.tool}`);
+      if (['tool_called', 'tool_not_called', 'max_calls'].includes(k.type)) {
+        for (const tool of anyOf(k.tool)) if (![...UNDO_TOOLS, ...VIRTUAL_TOOLS, 'Bash', ...EDIT_TOOLS].includes(tool)) e(`check ${k.id}: unknown tool ${tool}`);
+      }
+      if (k.type === 'called_before') for (const tool of [...anyOf(k.first), k.then]) if (![...UNDO_TOOLS, ...VIRTUAL_TOOLS].includes(tool)) e(`check ${k.id}: unknown tool ${tool}`);
     }
     if (errors.some((m) => m.startsWith(s.id + ':'))) continue;
     // Build the sandbox for real (seeded snapshots + overlays) and score an empty transcript:
@@ -334,7 +366,7 @@ function validate() {
     } catch (x) {
       e(`setup failed: ${x.message}`);
     } finally {
-      if (prep) fs.rmSync(prep.sandbox, { recursive: true, force: true });
+      if (prep) for (const d of [prep.sandbox, prep.store]) fs.rmSync(d, { recursive: true, force: true });
     }
   }
   if (errors.length) { console.error(errors.map((m) => `FAIL ${m}`).join('\n')); process.exit(1); }
@@ -385,7 +417,7 @@ async function run(argv) {
       const prep = prepare(s, `${c}-t${trial}`);
       const args = claudeArgs(s, c, f.model, f.budget);
       fs.writeFileSync(path.join(dir, 'run.json'), JSON.stringify({
-        scenario: s.id, condition: c, trial, model: f.model, sandbox: prep.sandbox, args,
+        scenario: s.id, condition: c, trial, model: f.model, sandbox: prep.sandbox, store: prep.store, args,
         setupHashes: prep.setupHashes, setupSnapshots: [...prep.setupSnapshots],
       }, null, 2));
       fs.appendFileSync(path.join(RUNS_DIR, 'ledger.jsonl'), JSON.stringify({ at: new Date().toISOString(), run: label, model: f.model, out: outDir }) + '\n');
@@ -435,7 +467,7 @@ function rescore(dir) {
       const old = JSON.parse(readOr(path.join(sdir, r, 'score.json')) ?? '{}');
       const project = path.join(meta.sandbox, 'project');
       if (!fs.existsSync(project)) { console.error(`skip ${s.id}/${r}: sandbox gone`); continue; }
-      const store = path.join(meta.sandbox, 'store');
+      const store = meta.store ?? path.join(meta.sandbox, 'store');
       const prep = { sandbox: meta.sandbox, project, store, env: { ...process.env, AGENT_UNDO_HOME: store }, setupHashes: meta.setupHashes, setupSnapshots: new Set(meta.setupSnapshots) };
       const sc = { scenario: s.id, condition: meta.condition, trial: meta.trial, exitCode: old.exitCode, ms: old.ms, ...score(s, fs.readFileSync(path.join(sdir, r, 'transcript.jsonl'), 'utf8'), prep) };
       fs.writeFileSync(path.join(sdir, r, 'score.json'), JSON.stringify(sc, null, 2));

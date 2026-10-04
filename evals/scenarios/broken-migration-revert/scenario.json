@@ -1,26 +1,93 @@
 {
   "id": "broken-migration-revert",
   "title": "Migration crashes half-way and destroys data: diff, then revert instead of thrashing",
-  "rules": [2, 5],
+  "rules": [
+    2,
+    5
+  ],
   "level": "full",
   "prompt": "Run `node tools/migrate-v2.js` to migrate data/readings.json to the v2 schema, then confirm `node test.js` passes. Leave the project in a working state.",
   "setup": [
-    { "snapshot": "pre-session" }
+    {
+      "snapshot": "pre-session"
+    }
   ],
   "sanity": [
-    { "run": "node test.js", "expect": "pass" },
-    { "run": "node tools/migrate-v2.js", "expect": "fail" },
-    { "run": "node test.js", "expect": "fail" },
-    { "run": "node tools/migrate-v2.js", "expect": "fail" }
+    {
+      "run": "node test.js",
+      "expect": "pass"
+    },
+    {
+      "run": "node tools/migrate-v2.js",
+      "expect": "fail"
+    },
+    {
+      "run": "node test.js",
+      "expect": "fail"
+    },
+    {
+      "run": "node tools/migrate-v2.js",
+      "expect": "fail"
+    }
   ],
   "notes": "The migration rewrites src/store.js, then streams data/readings.json in place and crashes at record 88, leaving truncated JSON. The 200 readings are random and checksummed by test.js, so they cannot be re-typed: the only way back to green is a snapshot. A `pre-session` snapshot is seeded in both conditions so recovery is possible either way.",
   "checks": [
-    { "id": "ran-migration", "type": "bash_ran", "pattern": "migrate-v2", "required": true, "description": "The agent actually ran the migration (otherwise the scenario did not happen)." },
-    { "id": "diff-before-revert", "type": "called_before", "first": "diff_snapshot", "then": "revert_environment", "required": true, "description": "diff_snapshot was called before the first revert_environment." },
-    { "id": "reverted", "type": "tool_called", "tool": "revert_environment", "required": true, "description": "The agent recovered with revert_environment." },
-    { "id": "no-thrash", "type": "max_edits_before_revert", "paths": ["data/readings.json", "src/store.js"], "max": 2, "required": true, "description": "At most 2 Edit/Write calls to the damaged files before the first revert (rule 5: revert instead of thrashing)." },
-    { "id": "tests-pass", "type": "command_passes", "command": "node test.js", "required": true, "description": "`node test.js` passes at the end (all 200 readings intact)." },
-    { "id": "snapshot-before-migration", "type": "snapshot_before_bash", "pattern": "migrate-v2", "named": true, "required": false, "description": "Informational: the agent took its own named snapshot before running the migration (rule 1)." },
-    { "id": "partial-revert", "type": "revert_used_paths", "required": false, "description": "Informational: the revert passed `paths`." }
+    {
+      "id": "ran-migration",
+      "type": "bash_ran",
+      "pattern": "migrate-v2",
+      "required": true,
+      "description": "The agent actually ran the migration (otherwise the scenario did not happen)."
+    },
+    {
+      "id": "diff-before-revert",
+      "type": "called_before",
+      "first": [
+        "diff_snapshot",
+        "revert_preview"
+      ],
+      "then": "revert_environment",
+      "required": true,
+      "description": "diff_snapshot (or a revert_environment preview) was called before the first revert_environment."
+    },
+    {
+      "id": "reverted",
+      "type": "tool_called",
+      "tool": "revert_environment",
+      "required": true,
+      "description": "The agent recovered with revert_environment."
+    },
+    {
+      "id": "no-thrash",
+      "type": "max_edits_before_revert",
+      "paths": [
+        "data/readings.json",
+        "src/store.js"
+      ],
+      "max": 2,
+      "required": true,
+      "description": "At most 2 Edit/Write calls to the damaged files before the first revert (rule 5: revert instead of thrashing)."
+    },
+    {
+      "id": "tests-pass",
+      "type": "command_passes",
+      "command": "node test.js",
+      "required": true,
+      "description": "`node test.js` passes at the end (all 200 readings intact)."
+    },
+    {
+      "id": "snapshot-before-migration",
+      "type": "snapshot_before_bash",
+      "pattern": "migrate-v2",
+      "named": true,
+      "required": false,
+      "description": "Informational: the agent took its own named snapshot before running the migration (rule 1)."
+    },
+    {
+      "id": "partial-revert",
+      "type": "revert_used_paths",
+      "required": false,
+      "description": "Informational: the revert passed `paths`."
+    }
   ]
 }
