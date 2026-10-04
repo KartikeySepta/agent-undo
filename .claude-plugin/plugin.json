@@ -10,6 +10,7 @@
   "repository": "https://github.com/KartikeySepta/agent-undo",
   "license": "MIT",
   "keywords": ["undo", "rollback", "snapshot", "checkpoint", "copy-on-write", "safety", "mcp"],
+  "hooks": "./hooks/claude-hooks.json",
   "mcpServers": {
     "agent-undo": {
       "command": "node",

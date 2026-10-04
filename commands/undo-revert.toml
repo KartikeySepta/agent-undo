@@ -1,0 +1,13 @@
+description = "Guided, safe agent-undo rollback: diff, classify, confirm, revert, verify"
+prompt = """
+A revert throws work away. Run this flow every time, in order. Arguments: "{{args}}". Pass project_dir (the project's absolute path) to every agent-undo tool.
+
+1. Target. An argument that names a snapshot: use it. Arguments that are paths: partial revert of those paths against the latest snapshot. Otherwise call list_snapshots and pick the newest snapshot from before the breakage: prefer a named one (before-..., good-...), then a hook snapshot taken right before the command that broke things. Never pick a snapshot taken after the damage.
+2. Diff and classify. Call diff_snapshot for that snapshot and sort every change into broken (what you are undoing), good (work that should survive) and not yours (changes you did not make this session).
+3. Scope. Only some files broken and good work exists: partial, with paths = the broken files or dirs. Environment poisoned (dependency tree, lockfile, codegen, migrations): full. Any not-yours change in a full revert: stop, show those paths, and offer a partial revert instead.
+4. Revert. Call revert_environment with snapshot (and paths for a partial revert). Keep the pre-revert id from the result: it undoes this revert.
+5. Verify. Run the cheapest check that proves the environment is healthy again: the build, the failing test, or the command that broke. If dependencies were reverted, node_modules is back too; do not reinstall unless the check fails.
+6. Report: what was reverted (snapshot, file count, main paths), what was kept, the check result, how to undo the revert (revert_environment with the pre-revert id), and the next approach.
+
+Never revert to "make the error go away" without saying what it undid.
+"""

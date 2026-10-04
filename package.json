@@ -11,7 +11,7 @@
     "build": "tsc --noEmit && node scripts/build.mjs",
     "test": "npm run build && node --test tests/*.test.js",
     "prepack": "npm run build",
-    "version": "node scripts/sync-version.js && npm run build && git add .claude-plugin/plugin.json src/version.ts bin",
+    "version": "node scripts/sync-version.js && npm run build && git add .claude-plugin/plugin.json .codex-plugin/plugin.json gemini-extension.json src/version.ts bin",
     "bench": "node benchmarks/clone.mjs"
   },
   "dependencies": {
@@ -41,6 +41,10 @@
     "bin",
     "hooks",
     "skills",
+    "scripts/cursor-hooks.js",
+    ".opencode/plugins",
+    "AGENTS.md",
+    "INSTALL.md",
     "README.md",
     "LICENSE"
   ],

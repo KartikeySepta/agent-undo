@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"${PLUGIN_ROOT}/bin/hook-session-start.cjs\" --platform codex", "timeout": 5 }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"${PLUGIN_ROOT}/bin/hook-prompt.cjs\" --platform codex", "timeout": 30 }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "local_shell|shell|shell_command|exec_command|Bash|Shell",
+        "hooks": [
+          { "type": "command", "command": "node \"${PLUGIN_ROOT}/bin/hook-pretooluse.cjs\" --platform codex", "timeout": 60 }
+        ]
+      }
+    ]
+  }
+}

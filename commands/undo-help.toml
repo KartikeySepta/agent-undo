@@ -1,0 +1,16 @@
+description = "Quick reference for agent-undo commands, tools, CLI and config"
+prompt = """
+Show the agent-undo quick reference. One shot: do not take snapshots, revert, or change any setting.
+
+Commands: /undo-checkpoint [name] (named snapshot now), /undo-diff [snapshot] (what changed since a snapshot, grouped yours / not yours / deps), /undo-revert [snapshot] [paths] (guided rollback: diff, classify, confirm, revert, verify), /undo-help (this card).
+
+MCP tools: take_snapshot(name?), list_snapshots, diff_snapshot(snapshot?), revert_environment(snapshot?, paths?), undo_status. All take project_dir. Every revert first saves a pre-revert snapshot, so a revert is itself undoable.
+
+CLI (terminal): agent-undo snapshot [name], agent-undo list, agent-undo diff [snap], agent-undo revert [snap] [--yes] [--only <paths...>], agent-undo mode [lite|full|paranoid|off], agent-undo stats, agent-undo doctor, agent-undo prune --keep 10.
+
+Levels (set with agent-undo mode <level> or AGENT_UNDO_LEVEL): lite (no automatic snapshots), full (default: baseline at session start and auto-snapshot before risky shell commands, where the host runs agent-undo's hooks), paranoid (checkpoint every turn, never revert without the user's OK), off.
+
+Config: .agentundoignore in the project (gitignore syntax) for paths never snapshotted or touched; AGENT_UNDO_HOME for the snapshot store (default ~/.agent-undo; keep it on the project's volume for copy-on-write); AGENT_UNDO_MAX_COPY_MB for the full-copy size cap (default 1024).
+
+Snapshots never include the top-level .git, and cannot undo pushes, deploys, remote databases or anything outside the project.
+"""

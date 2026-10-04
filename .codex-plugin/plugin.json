@@ -1,0 +1,30 @@
+{
+  "name": "agent-undo",
+  "version": "1.2.0",
+  "description": "Time machine for AI coding agents: instant copy-on-write snapshots of the whole project (untracked files, node_modules) and safe, undoable rollback.",
+  "author": {
+    "name": "Kartikey Septa",
+    "url": "https://github.com/KartikeySepta"
+  },
+  "homepage": "https://github.com/KartikeySepta/agent-undo#readme",
+  "repository": "https://github.com/KartikeySepta/agent-undo",
+  "license": "MIT",
+  "keywords": ["undo", "rollback", "snapshot", "checkpoint", "copy-on-write", "safety", "mcp"],
+  "skills": "./skills/",
+  "hooks": "./.codex-plugin/hooks.json",
+  "mcpServers": "./.codex-plugin/mcp.json",
+  "interface": {
+    "displayName": "agent-undo",
+    "shortDescription": "Snapshot before danger, rewind when it breaks",
+    "longDescription": "Copy-on-write snapshots of the whole project, including untracked files and node_modules, taken automatically before risky shell commands. Diff and roll back everything or only the broken paths; every revert is itself undoable.",
+    "developerName": "Kartikey Septa",
+    "category": "Productivity",
+    "capabilities": ["Instructions", "Lifecycle hooks"],
+    "websiteURL": "https://github.com/KartikeySepta/agent-undo",
+    "defaultPrompt": [
+      "Take a checkpoint before this refactor.",
+      "What changed since the last snapshot?",
+      "Roll back only the files that broke the build."
+    ]
+  }
+}

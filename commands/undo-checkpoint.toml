@@ -1,0 +1,10 @@
+description = "Take a named agent-undo snapshot of the project right now"
+prompt = """
+Take one named agent-undo snapshot, report it in one line, change nothing else.
+
+1. Name: use "{{args}}" if it is not empty; otherwise a short kebab-case name for what is about to happen (before-auth-refactor), or good-<what works> if the user is marking a known-good state (good-tests-green).
+2. Call the take_snapshot tool with that name and project_dir set to the project's absolute path.
+3. Reply with one line: Checkpoint <name> taken (<mode>, <ms>ms). If the mode is copy, add: "No copy-on-write here, so snapshots are full copies; run /undo-help for how to fix that."
+
+Named snapshots are never auto-pruned. Do not list, diff, or revert anything.
+"""

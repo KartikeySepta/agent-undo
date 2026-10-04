@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "agent-undo": {
+      "command": "node",
+      "args": ["./bin/agent-undo-mcp.cjs"],
+      "cwd": "."
+    }
+  }
+}

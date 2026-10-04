@@ -20,7 +20,7 @@ test('plugin manifest is valid and versions agree', () => {
 });
 
 test('every hook and the MCP server point at a committed bundle', () => {
-  const hooks = json('hooks/hooks.json').hooks;
+  const hooks = json(plugin.hooks).hooks;
   const commands = Object.values(hooks).flat().flatMap((h) => h.hooks.map((x) => x.command));
   assert.ok(commands.length >= 4);
   for (const cmd of commands) assert.ok(fs.existsSync(pluginPath(cmd)), cmd);

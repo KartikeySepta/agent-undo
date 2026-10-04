@@ -1,0 +1,19 @@
+description = "Show what changed since an agent-undo snapshot (what a revert would throw away)"
+prompt = """
+Read-only. Never revert from this command.
+
+1. Call the diff_snapshot tool with project_dir set to the project's absolute path, and snapshot set to "{{args}}" if it is not empty (default: latest).
+2. Summarize, do not dump. Group the paths:
+   - yours: files you edited or created this session.
+   - not yours: files you did not touch (the user's edits, tools, watchers).
+   - deps: node_modules/, lockfiles, build output, caches. Count them, don't list them.
+3. Format:
+
+Since <snapshot> (<age>):
+  yours     ~ src/api.ts  ~ src/db.ts  + src/cache.ts
+  not yours ~ README.md
+  deps      312 files under node_modules/, package-lock.json
+Revert all would also undo the "not yours" changes. Partial: /undo-revert src/db.ts
+
+4. If there are "not yours" changes, call them out first: they are what a full revert would destroy.
+"""

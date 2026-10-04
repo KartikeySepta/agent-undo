@@ -1,0 +1,12 @@
+{
+  "name": "agent-undo",
+  "version": "1.2.0",
+  "description": "Time machine for AI coding agents: instant copy-on-write snapshots of the whole project (untracked files, node_modules) and safe, undoable rollback.",
+  "contextFileName": "AGENTS.md",
+  "mcpServers": {
+    "agent-undo": {
+      "command": "node",
+      "args": ["${extensionPath}${/}bin${/}agent-undo-mcp.cjs"]
+    }
+  }
+}
