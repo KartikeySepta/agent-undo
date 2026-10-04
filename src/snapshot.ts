@@ -2,16 +2,19 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
-import { execFileSync } from 'child_process';
+import { spawn } from 'child_process';
+import ignore, { Ignore } from 'ignore';
+import { cloneEntries, copyTree, CloneMode } from './clone';
 
-export type CloneMode = 'cow' | 'copy';
+export type { CloneMode } from './clone';
 
 export interface SnapshotMeta {
     id: string;
     name?: string;
     createdAt: string;
     source: string;
-    mode: CloneMode;
+    /** 'moved': a pre-revert backup made by renaming the live tree aside (instant, no copy). */
+    mode: CloneMode | 'moved';
     elapsedMs: number;
     reason?: string;
 }
@@ -22,67 +25,142 @@ export interface DiffResult {
     deleted: string[];
 }
 
+export const IGNORE_FILE = '.agentundoignore';
 const KEEP_DEFAULT = 10;
+const LOCK_STALE_MS = 10 * 60_000;
+const maxCopyBytes = () => Number(process.env.AGENT_UNDO_MAX_COPY_MB ?? 1024) * 1e6;
 
-export function snapshotBase(projectDir: string = process.cwd()): string {
-    const hash = crypto.createHash('md5').update(path.resolve(projectDir)).digest('hex');
-    return path.join(os.homedir(), '.agent-undo', 'snapshots', hash);
+// ---------- locations ----------
+
+function realDir(dir: string): string {
+    const resolved = path.resolve(dir);
+    try { return fs.realpathSync(resolved); } catch { return resolved; }
 }
 
-function dataDir(base: string, id: string) { return path.join(base, id, 'data'); }
-function metaFile(base: string, id: string) { return path.join(base, id, 'meta.json'); }
+export function snapshotBase(projectDir: string = process.cwd()): string {
+    const hash = crypto.createHash('md5').update(realDir(projectDir)).digest('hex');
+    return path.join(process.env.AGENT_UNDO_HOME ?? path.join(os.homedir(), '.agent-undo'), 'snapshots', hash);
+}
+
+const dataDir = (base: string, id: string) => path.join(base, id, 'data');
+const metaFile = (base: string, id: string) => path.join(base, id, 'meta.json');
 
 /** Refuse directories where a snapshot+wipe would be catastrophic. */
 export function assertSafeTarget(dir: string): void {
-    const resolved = path.resolve(dir);
-    const forbidden = [path.parse(resolved).root, os.homedir()];
+    const resolved = realDir(dir);
+    const forbidden = [path.parse(resolved).root, realDir(os.homedir())];
     if (forbidden.includes(resolved)) {
         throw new Error(`[Agent-Undo] Refusing to operate on ${resolved}: run it inside a project directory.`);
     }
 }
 
-// Node's own FICLONE flags are unreliable (copyFileSync FICLONE_FORCE returns ENOSYS on
-// APFS), so shell out to the OS: `cp -c` (clonefile) on macOS, `cp --reflink=auto` on Linux.
-// Only the top-level .git is excluded (and never touched on revert); nested .git dirs are kept.
-function cloneTree(from: string, to: string, cleanOnFallback = false): CloneMode {
-    const entries = fs.readdirSync(from).filter((e) => e !== '.git');
-    fs.mkdirSync(to, { recursive: true });
-    const cowFlags = process.platform === 'darwin' ? ['-c'] : ['--reflink=always'];
-    const run = (flags: string[]) => {
-        for (const e of entries) {
-            execFileSync('cp', ['-R', ...flags, path.join(from, e), to + path.sep], { stdio: 'pipe' });
+// ---------- lock: a hook snapshot and a manual revert must never interleave ----------
+
+export class BusyError extends Error {}
+
+function withLock<T>(sourceDir: string, fn: () => T): T {
+    const base = snapshotBase(sourceDir);
+    fs.mkdirSync(base, { recursive: true });
+    const lock = path.join(base, '.lock');
+    for (let attempt = 0; ; attempt++) {
+        try {
+            fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, at: Date.now() }), { flag: 'wx' });
+            break;
+        } catch (e: any) {
+            if (e.code !== 'EEXIST' || attempt > 0) throw new BusyError('[Agent-Undo] Another snapshot or revert is running for this directory.');
+            let stale = true;
+            try {
+                const { pid, at } = JSON.parse(fs.readFileSync(lock, 'utf8'));
+                process.kill(pid, 0); // throws if the holder is gone
+                stale = Date.now() - at > LOCK_STALE_MS;
+            } catch { /* unreadable lock or dead pid: stale */ }
+            if (!stale) throw new BusyError('[Agent-Undo] Another snapshot or revert is running for this directory.');
+            fs.rmSync(lock, { force: true });
         }
-    };
+    }
+    try { return fn(); } finally { fs.rmSync(lock, { force: true }); }
+}
+
+// ---------- ignore rules ----------
+
+function loadIgnore(sourceDir: string): Ignore | null {
+    try { return ignore().add(fs.readFileSync(path.join(sourceDir, IGNORE_FILE), 'utf8')); }
+    catch { return null; }
+}
+
+const posix = (p: string) => p.split(path.sep).join('/');
+
+/** Top-most ignored paths under root (relative). Does not descend into ignored dirs. */
+function findIgnored(root: string, ig: Ignore | null, rel = ''): string[] {
+    if (!ig) return [];
+    const out: string[] = [];
+    for (const e of fs.readdirSync(path.join(root, rel), { withFileTypes: true })) {
+        const r = path.join(rel, e.name);
+        if (r === '.git') continue;
+        if (ig.ignores(posix(r) + (e.isDirectory() ? '/' : ''))) out.push(r);
+        else if (e.isDirectory()) out.push(...findIgnored(root, ig, r));
+    }
+    return out;
+}
+
+// ---------- snapshots ----------
+
+/**
+ * Delete snapshots without blocking the caller: rename into .trash-* (instant, invisible to
+ * listSnapshots), then remove in a detached process. Deleting a 50k-file clone takes ~2s.
+ */
+function discard(base: string, ids: string[]): void {
+    if (ids.length === 0) return;
+    for (const id of ids) {
+        try { fs.renameSync(path.join(base, id), path.join(base, `.trash-${id}`)); } catch { /* already gone */ }
+    }
+    // Also sweeps trash left behind by an interrupted earlier delete.
+    const trash = fs.readdirSync(base).filter((f) => f.startsWith('.trash-')).map((f) => path.join(base, f));
+    const removeNow = () => { for (const t of trash) fs.rmSync(t, { recursive: true, force: true }); };
+    if (process.env.AGENT_UNDO_SYNC_DELETE) return removeNow();
     try {
-        run(cowFlags);
-        return 'cow';
+        spawn(process.execPath, ['-e', 'for (const p of process.argv.slice(1)) require("fs").rmSync(p, { recursive: true, force: true })', ...trash], {
+            detached: true, stdio: 'ignore',
+        }).unref();
     } catch {
-        // No CoW support (or cross-volume): fall back to a real copy. Only wipe a partial clone
-        // when the destination is a snapshot dir, never when restoring into the project.
-        if (cleanOnFallback) {
-            fs.rmSync(to, { recursive: true, force: true });
-            fs.mkdirSync(to, { recursive: true });
-        }
-        run([]);
-        return 'copy';
+        removeNow();
     }
 }
 
-export function takeSnapshot(
-    sourceDir: string,
-    opts: { name?: string; reason?: string; keep?: number } = {},
-): SnapshotMeta {
-    assertSafeTarget(sourceDir);
-    const base = snapshotBase(sourceDir);
+/** Claim a snapshot id atomically; snapshots within the same millisecond get a .N suffix (sorts after). */
+function claimId(base: string, name?: string): { id: string; createdAt: string } {
     const createdAt = new Date().toISOString();
-    const slug = opts.name ? '-' + opts.name.replace(/[^\w.-]+/g, '_') : '';
-    const id = createdAt.replace(/[:.]/g, '-') + slug;
+    const slug = name ? '-' + name.replace(/[^\w-]+/g, '_') : '';
+    const stamp = createdAt.replace(/[:.]/g, '-');
+    let id = stamp + slug;
+    for (let n = 1; ; n++) {
+        try { fs.mkdirSync(path.join(base, id)); return { id, createdAt }; }
+        catch (e: any) { if (e.code !== 'EEXIST') throw e; id = `${stamp}.${n}${slug}`; }
+    }
+}
 
-    fs.mkdirSync(path.join(base, id), { recursive: true });
+function snapshotUnlocked(sourceDir: string, opts: { name?: string; reason?: string; keep?: number }): SnapshotMeta {
+    const base = snapshotBase(sourceDir);
+    const { id, createdAt } = claimId(base, opts.name);
+    const data = dataDir(base, id);
     const start = Date.now();
-    const mode = cloneTree(sourceDir, dataDir(base, id), true);
+
+    // Clone whole top-level entries (fast path), then drop nested ignored paths from the clone.
+    const ignored = findIgnored(sourceDir, loadIgnore(sourceDir));
+    const topIgnored = new Set(ignored.filter((r) => !r.includes(path.sep)));
+    const entries = fs.readdirSync(sourceDir).filter((e) => e !== '.git' && !topIgnored.has(e));
+
+    let mode: CloneMode;
+    try {
+        mode = cloneEntries(sourceDir, data, entries, { maxCopyBytes: maxCopyBytes() });
+    } catch (e) {
+        fs.rmSync(path.join(base, id), { recursive: true, force: true });
+        throw e;
+    }
+    for (const r of ignored) if (!topIgnored.has(r)) fs.rmSync(path.join(data, r), { recursive: true, force: true });
+
     const meta: SnapshotMeta = {
-        id, name: opts.name, createdAt, source: path.resolve(sourceDir),
+        id, name: opts.name, createdAt, source: realDir(sourceDir),
         mode, elapsedMs: Date.now() - start, reason: opts.reason,
     };
     fs.writeFileSync(metaFile(base, id), JSON.stringify(meta, null, 2));
@@ -90,10 +168,19 @@ export function takeSnapshot(
     return meta;
 }
 
+export function takeSnapshot(
+    sourceDir: string,
+    opts: { name?: string; reason?: string; keep?: number } = {},
+): SnapshotMeta {
+    assertSafeTarget(sourceDir);
+    return withLock(sourceDir, () => snapshotUnlocked(sourceDir, opts));
+}
+
 export function listSnapshots(sourceDir: string): SnapshotMeta[] {
     const base = snapshotBase(sourceDir);
     if (!fs.existsSync(base)) return [];
     return fs.readdirSync(base)
+        .filter((id) => !id.startsWith('.'))
         .sort()
         .flatMap((id) => {
             try { return [JSON.parse(fs.readFileSync(metaFile(base, id), 'utf8')) as SnapshotMeta]; }
@@ -101,7 +188,7 @@ export function listSnapshots(sourceDir: string): SnapshotMeta[] {
         });
 }
 
-/** Resolve "latest", an exact id, or a unique name/id fragment. */
+/** Resolve "latest", an exact id, a name, or an id fragment (newest match wins). */
 export function resolveSnapshot(sourceDir: string, ref?: string): SnapshotMeta {
     const all = listSnapshots(sourceDir);
     if (all.length === 0) throw new Error('[Agent-Undo] No snapshots found. Take one first.');
@@ -113,40 +200,39 @@ export function resolveSnapshot(sourceDir: string, ref?: string): SnapshotMeta {
 
 export function pruneSnapshots(sourceDir: string, keep: number = KEEP_DEFAULT): number {
     const base = snapshotBase(sourceDir);
-    const all = listSnapshots(sourceDir);
-    // Named snapshots are deliberate; only auto-pruned ones count against the limit.
-    const prunable = all.filter((s) => !s.name);
+    // Named snapshots are deliberate; only unnamed ones count against the limit.
+    const prunable = listSnapshots(sourceDir).filter((s) => !s.name);
     const drop = prunable.slice(0, Math.max(0, prunable.length - keep));
-    for (const s of drop) fs.rmSync(path.join(base, s.id), { recursive: true, force: true });
+    discard(base, drop.map((s) => s.id));
     return drop.length;
 }
 
-function walk(root: string, rel = ''): Map<string, number> {
-    const out = new Map<string, number>();
-    for (const entry of fs.readdirSync(path.join(root, rel), { withFileTypes: true })) {
-        const r = path.join(rel, entry.name);
+// ---------- diff ----------
+
+function walk(root: string, ig: Ignore | null, rel = '', out = new Map<string, number>()): Map<string, number> {
+    for (const e of fs.readdirSync(path.join(root, rel), { withFileTypes: true })) {
+        const r = path.join(rel, e.name);
         if (r === '.git') continue;
-        if (entry.isDirectory()) {
-            for (const [k, v] of walk(root, r)) out.set(k, v);
-        } else {
-            out.set(r, entry.isFile() ? fs.statSync(path.join(root, r)).size : -1);
-        }
+        if (ig?.ignores(posix(r) + (e.isDirectory() ? '/' : ''))) continue;
+        if (e.isDirectory()) walk(root, ig, r, out);
+        else out.set(r, e.isFile() ? fs.statSync(path.join(root, r)).size : -1);
     }
     return out;
 }
 
-/** What changed in sourceDir since the snapshot (what a revert would undo). */
+/** What changed in sourceDir since the snapshot, i.e. what a revert would undo. */
 export function diffSnapshot(sourceDir: string, ref?: string): DiffResult {
     const snap = resolveSnapshot(sourceDir, ref);
     const snapRoot = dataDir(snapshotBase(sourceDir), snap.id);
-    const before = walk(snapRoot);
-    const now = walk(sourceDir);
+    const ig = loadIgnore(sourceDir);
+    const before = walk(snapRoot, ig);
+    const now = walk(sourceDir, ig);
     const result: DiffResult = { added: [], modified: [], deleted: [] };
 
     for (const [file, size] of now) {
-        if (!before.has(file)) { result.added.push(file); continue; }
-        if (before.get(file) !== size) { result.modified.push(file); continue; }
-        if (size > 0 && !fs.readFileSync(path.join(sourceDir, file)).equals(fs.readFileSync(path.join(snapRoot, file)))) {
+        if (!before.has(file)) result.added.push(file);
+        else if (before.get(file) !== size) result.modified.push(file);
+        else if (size > 0 && !fs.readFileSync(path.join(sourceDir, file)).equals(fs.readFileSync(path.join(snapRoot, file)))) {
             result.modified.push(file);
         }
     }
@@ -154,29 +240,130 @@ export function diffSnapshot(sourceDir: string, ref?: string): DiffResult {
     return result;
 }
 
-/**
- * Restore sourceDir to a snapshot. A "pre-revert" snapshot is taken first,
- * so a revert can itself be undone.
- */
-export function revertSnapshot(sourceDir: string, ref?: string): { restored: SnapshotMeta; backup: SnapshotMeta } {
-    assertSafeTarget(sourceDir);
-    const snap = resolveSnapshot(sourceDir, ref);
-    const snapRoot = dataDir(snapshotBase(sourceDir), snap.id);
-    if (!fs.existsSync(snapRoot)) throw new Error(`[Agent-Undo] Snapshot data missing for ${snap.id}.`);
+// ---------- revert ----------
 
-    const backup = takeSnapshot(sourceDir, { name: 'pre-revert', reason: `before reverting to ${snap.id}` });
-
-    for (const item of fs.readdirSync(sourceDir)) {
-        if (item === '.git') continue;
-        fs.rmSync(path.join(sourceDir, item), { recursive: true, force: true });
+function moveSync(from: string, to: string): void {
+    fs.mkdirSync(path.dirname(to), { recursive: true });
+    try { fs.renameSync(from, to); }
+    catch (e: any) {
+        if (e.code !== 'EXDEV') throw e;
+        copyTree(from, to);
+        fs.rmSync(from, { recursive: true, force: true });
     }
-    cloneTree(snapRoot, sourceDir);
+}
 
-    // Keep only the newest pre-revert backup (never the one just restored from).
-    for (const old of listSnapshots(sourceDir)) {
-        if (old.name === 'pre-revert' && old.id !== backup.id && old.id !== snap.id) {
-            fs.rmSync(path.join(snapshotBase(sourceDir), old.id), { recursive: true, force: true });
+function safeRelative(sourceDir: string, p: string): string {
+    const rel = path.relative(realDir(sourceDir), path.resolve(realDir(sourceDir), p));
+    if (!rel || rel.startsWith('..') || path.isAbsolute(rel) || rel.split(path.sep)[0] === '.git') {
+        throw new Error(`[Agent-Undo] "${p}" is not a path inside the project.`);
+    }
+    return rel;
+}
+
+/** Rename every top-level entry (except .git) into a new pre-revert snapshot. Returns null if the store is on another volume. */
+function moveTreeToBackup(sourceDir: string, reason: string): SnapshotMeta | null {
+    const base = snapshotBase(sourceDir);
+    const { id, createdAt } = claimId(base, 'pre-revert');
+    const data = dataDir(base, id);
+    fs.mkdirSync(data);
+    const start = Date.now();
+    const moved: string[] = [];
+    try {
+        for (const item of fs.readdirSync(sourceDir)) {
+            if (item === '.git') continue;
+            fs.renameSync(path.join(sourceDir, item), path.join(data, item));
+            moved.push(item);
         }
+    } catch (e: any) {
+        for (const item of moved) fs.renameSync(path.join(data, item), path.join(sourceDir, item));
+        fs.rmSync(path.join(base, id), { recursive: true, force: true });
+        if (e.code === 'EXDEV') return null;
+        throw e;
     }
-    return { restored: snap, backup };
+    const meta: SnapshotMeta = {
+        id, name: 'pre-revert', createdAt, source: realDir(sourceDir), mode: 'moved', elapsedMs: Date.now() - start, reason,
+    };
+    fs.writeFileSync(metaFile(base, id), JSON.stringify(meta, null, 2));
+    return meta;
+}
+
+export interface RevertOptions {
+    /** Restore only these paths (relative to the project); everything else is left alone. */
+    only?: string[];
+}
+
+/**
+ * Restore sourceDir to a snapshot. A "pre-revert" snapshot is taken first so the revert can be undone.
+ * The top-level .git and paths matched by .agentundoignore are never touched.
+ */
+export function revertSnapshot(
+    sourceDir: string,
+    ref?: string,
+    opts: RevertOptions = {},
+): { restored: SnapshotMeta; backup: SnapshotMeta } {
+    assertSafeTarget(sourceDir);
+    return withLock(sourceDir, () => {
+        const base = snapshotBase(sourceDir);
+        const snap = resolveSnapshot(sourceDir, ref);
+        const snapRoot = dataDir(base, snap.id);
+        if (!fs.existsSync(snapRoot)) throw new Error(`[Agent-Undo] Snapshot data missing for ${snap.id}.`);
+        const only = opts.only?.map((p) => safeRelative(sourceDir, p));
+        const reason = `before reverting to ${snap.id}`;
+        let backup: SnapshotMeta;
+
+        if (only) {
+            backup = snapshotUnlocked(sourceDir, { name: 'pre-revert', reason });
+            for (const rel of only) {
+                fs.rmSync(path.join(sourceDir, rel), { recursive: true, force: true });
+                // Absent from the snapshot means it was created afterwards: removing it is the revert.
+                if (fs.existsSync(path.join(snapRoot, rel))) {
+                    cloneEntries(path.join(snapRoot, path.dirname(rel)), path.join(sourceDir, path.dirname(rel)), [path.basename(rel)]);
+                }
+            }
+        } else {
+            // Park ignored paths outside the tree, wipe, restore, then put them back.
+            const stash = path.join(base, `.stash-${process.pid}`);
+            const ignored = findIgnored(sourceDir, loadIgnore(sourceDir));
+            for (const r of ignored) moveSync(path.join(sourceDir, r), path.join(stash, r));
+            try {
+                // Moving the live tree into the backup is both the backup and the wipe, in O(entries).
+                // Cross-volume store: clone a backup, then delete.
+                backup = moveTreeToBackup(sourceDir, reason) ?? (() => {
+                    const b = snapshotUnlocked(sourceDir, { name: 'pre-revert', reason });
+                    for (const item of fs.readdirSync(sourceDir)) {
+                        if (item !== '.git') fs.rmSync(path.join(sourceDir, item), { recursive: true, force: true });
+                    }
+                    return b;
+                })();
+                try {
+                    cloneEntries(snapRoot, sourceDir, fs.readdirSync(snapRoot));
+                } catch (e: any) {
+                    // Restore failed halfway: put the pre-revert state back so the project is never left empty.
+                    const backupData = dataDir(base, backup.id);
+                    for (const item of fs.readdirSync(sourceDir)) {
+                        if (item !== '.git') fs.rmSync(path.join(sourceDir, item), { recursive: true, force: true });
+                    }
+                    if (backup.mode === 'moved') {
+                        for (const item of fs.readdirSync(backupData)) moveSync(path.join(backupData, item), path.join(sourceDir, item));
+                        fs.rmSync(path.join(base, backup.id), { recursive: true, force: true });
+                    } else {
+                        cloneEntries(backupData, sourceDir, fs.readdirSync(backupData));
+                    }
+                    throw new Error(`[Agent-Undo] Revert failed and was rolled back, project unchanged: ${e.message}`);
+                }
+            } finally {
+                for (const r of ignored) {
+                    fs.rmSync(path.join(sourceDir, r), { recursive: true, force: true });
+                    moveSync(path.join(stash, r), path.join(sourceDir, r));
+                }
+                fs.rmSync(stash, { recursive: true, force: true });
+            }
+        }
+
+        // Keep only the newest pre-revert backup (never the one just restored from).
+        discard(base, listSnapshots(sourceDir)
+            .filter((old) => old.name === 'pre-revert' && old.id !== backup.id && old.id !== snap.id)
+            .map((old) => old.id));
+        return { restored: snap, backup };
+    });
 }

@@ -1,16 +1,16 @@
 {
   "name": "agent-undo",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Ultra-fast, instantaneous filesystem snapshots for AI coding agents. The Time Machine for AI.",
-  "main": "dist/index.js",
+  "main": "bin/core.cjs",
   "bin": {
-    "agent-undo": "dist/cli.js",
-    "agent-undo-mcp": "dist/mcp-server.js"
+    "agent-undo": "bin/agent-undo.cjs",
+    "agent-undo-mcp": "bin/agent-undo-mcp.cjs"
   },
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/cli.js",
-    "test": "tsc && npx tsx test_snapshot.ts"
+    "build": "tsc --noEmit && node scripts/build.mjs",
+    "test": "npm run build && node --test tests/",
+    "prepack": "npm run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
@@ -33,12 +33,16 @@
   "author": "",
   "license": "MIT",
   "files": [
-    "dist",
+    "bin",
     "hooks",
     "skills",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "optionalDependencies": {
     "koffi": "^3.3.2"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }

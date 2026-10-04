@@ -2,7 +2,7 @@
   "description": "agent-undo: auto-snapshot before risky shell commands",
   "hooks": {
     "PreToolUse": [
-      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/pretooluse-snapshot.js", "timeout": 30 }] }
+      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "node ${CLAUDE_PLUGIN_ROOT}/bin/hook-pretooluse.cjs", "timeout": 30 }] }
     ]
   }
 }

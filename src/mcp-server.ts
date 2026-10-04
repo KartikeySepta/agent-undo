@@ -3,9 +3,10 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot } from "./snapshot";
+import { VERSION } from "./version";
 
 const server = new Server(
-  { name: "agent-undo-mcp", version: "1.1.0" },
+  { name: "agent-undo-mcp", version: VERSION },
   { capabilities: { tools: {} } },
 );
 
@@ -31,7 +32,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "revert_environment",
       description: "Restore the working directory to a snapshot. Destroys all changes made since, including legitimate work. Run diff_snapshot first and only revert when the changes are broken. A 'pre-revert' backup is taken automatically so the revert can be undone.",
-      inputSchema: { type: "object", properties: { snapshot: snapshotProp } },
+      inputSchema: {
+        type: "object",
+        properties: {
+          snapshot: snapshotProp,
+          paths: { type: "array", items: { type: "string" }, description: "Restore only these project-relative paths; everything else is left alone. Prefer this when only some files are broken." },
+        },
+      },
     },
   ],
 }));
@@ -40,7 +47,7 @@ const text = (t: string, isError = false) => ({ content: [{ type: "text", text: 
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const cwd = process.cwd();
-  const args = (request.params.arguments ?? {}) as { name?: string; snapshot?: string };
+  const args = (request.params.arguments ?? {}) as { name?: string; snapshot?: string; paths?: string[] };
   try {
     switch (request.params.name) {
       case "take_snapshot": {
@@ -59,8 +66,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         ].join("\n"));
       }
       case "revert_environment": {
-        const { restored, backup } = revertSnapshot(cwd, args.snapshot);
-        return text(`Reverted to ${restored.id}. To undo this revert: revert_environment with snapshot "${backup.id}".`);
+        const { restored, backup } = revertSnapshot(cwd, args.snapshot, { only: args.paths?.length ? args.paths : undefined });
+        const scope = args.paths?.length ? ` (only ${args.paths.join(", ")})` : "";
+        return text(`Reverted to ${restored.id}${scope}. To undo this revert: revert_environment with snapshot "${backup.id}".`);
       }
       default:
         return text("Tool not found", true);
