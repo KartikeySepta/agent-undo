@@ -1,0 +1,32 @@
+{
+  "name": "agent-undo",
+  "version": "1.0.0",
+  "description": "Ultra-fast, instantaneous filesystem snapshots for AI coding agents. The Time Machine for AI.",
+  "main": "dist/index.js",
+  "bin": {
+    "agent-undo": "dist/cli.js",
+    "agent-undo-mcp": "dist/mcp-server.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/cli.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "commander": "^12.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.8.0"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "mcp",
+    "undo",
+    "snapshot",
+    "rollback"
+  ],
+  "author": "",
+  "license": "MIT"
+}
