@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.1 (2026-10-04)
+
+- README: getting-started guide (30-second CLI try-out, per-agent install, verify, use), badges, eval numbers. No code changes.
+
 ## 1.3.0 (2026-10-04)
 
 First npm release, as `@atpes/agent-undo` (the unscoped name belongs to another project). Commands are still `agent-undo` and `agent-undo-mcp`.
