@@ -57,6 +57,17 @@ export function emitContext(event: string, context: string): void {
     process.stdout.write(formatOutput(platform, event, context));
 }
 
+/**
+ * PreToolUse only: ask the user before the call runs, with `reason` shown as why. Claude Code's
+ * decision shape; other hosts get nothing (their own approval flow stays in charge) and runHook
+ * prints their usual no-op payload.
+ */
+export function emitAsk(reason: string): void {
+    if (platform !== 'claude') return;
+    emitted = true;
+    process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'ask', permissionDecisionReason: reason } }));
+}
+
 /** Project root: Claude/Codex send `cwd`; Cursor sends `workspace_roots`; env vars as a last resort. */
 export const projectDir = (input: HookInput): string =>
     input.cwd || input.workspace_roots?.[0] || process.env.CURSOR_PROJECT_DIR || process.env.GEMINI_PROJECT_DIR || process.cwd();

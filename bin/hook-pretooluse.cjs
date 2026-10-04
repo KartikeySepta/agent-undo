@@ -879,7 +879,8 @@ var require_ignore = __commonJS({
 // src/hooks/pretooluse.ts
 var pretooluse_exports = {};
 __export(pretooluse_exports, {
-  RISKY: () => RISKY
+  RISKY: () => RISKY,
+  irreversibleReason: () => irreversibleReason
 });
 module.exports = __toCommonJS(pretooluse_exports);
 
@@ -1215,6 +1216,11 @@ function formatOutput(p, event, context = "") {
   return "";
 }
 var emitted = false;
+function emitAsk(reason) {
+  if (platform !== "claude") return;
+  emitted = true;
+  process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "ask", permissionDecisionReason: reason } }));
+}
 var projectDir = (input) => input.cwd || input.workspace_roots?.[0] || process.env.CURSOR_PROJECT_DIR || process.env.GEMINI_PROJECT_DIR || process.cwd();
 var SHELL_TOOLS = /* @__PURE__ */ new Set(["Bash", "Shell", "shell", "bash", "local_shell", "shell_command", "exec_command", "container.exec", "run_shell_command"]);
 function shellCommand(input) {
@@ -1260,17 +1266,43 @@ var RISKY = new RegExp(
   ].join("|"),
   "i"
 );
+var IRREVERSIBLE = [
+  [/\bgit\s+push\b[^|;&\n]*(\s(-f|--force|--force-with-lease(=\S+)?|--force-if-includes)(?=\s|$)|\s\+[\w./-]+)/i, "force-push rewrites the remote branch"],
+  [/\bterraform\s+(apply|destroy)\b/i, "terraform changes real infrastructure"],
+  [/\bkubectl\s+(delete|apply|replace|drain)\b/i, "kubectl changes a live cluster"],
+  [/\b(vercel|netlify)\b[^|;&\n]*\s--prod\b/i, "production deploy"],
+  [/\bfly(ctl)?\s+deploy\b/i, "production deploy"],
+  [/\bheroku\s+(pg:(reset|push|killall)|apps:destroy|addons:destroy|config:(set|unset)|run\b|releases:rollback|ps:(scale|restart|stop)|maintenance|container:release)/i, "heroku changes a hosted app"]
+];
+var DB_URL = /\b(postgres(?:ql)?|mysql|mariadb|mongodb(?:\+srv)?|rediss?|mssql|sqlserver|cockroachdb):\/\/(?:[^\s@/'"]*@)?([^\s:/'"?]+)/gi;
+var LOCAL_HOSTS = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "::1", "[::1]", "0.0.0.0"]);
+var DB_DESTRUCTIVE = /\b(drop\s+(database|schema|table)|truncate|reset|delete\s+from|migrate|db\s+push)\b/i;
+var PROD = /(^|[^a-z])prod(uction)?([^a-z]|$)/i;
+var PROD_ACTION = /\b(reset|drop|deploy|migrate|destroy|truncate|seed|wipe|purge)\b/i;
+function irreversibleReason(command) {
+  for (const [re, why] of IRREVERSIBLE) if (re.test(command)) return why;
+  const remoteDb = [...command.matchAll(DB_URL)].some((m) => !LOCAL_HOSTS.has(m[2].toLowerCase()));
+  if (remoteDb && DB_DESTRUCTIVE.test(command)) return "destructive statement against a remote database";
+  if (PROD.test(command) && PROD_ACTION.test(command)) return "acts on production";
+  return null;
+}
 var BURST_MS = 1e4;
 runHook("PreToolUse", (input) => {
   const command = shellCommand(input);
-  if (!command || !RISKY.test(command)) return;
+  if (!command) return;
   const level = readLevel();
   if (level !== "full" && level !== "paranoid") return;
+  const why = irreversibleReason(command);
+  if (why) {
+    emitAsk(`agent-undo cannot roll this back: it acts outside the project (${why}). Snapshots only cover the project directory. Confirm with the user before running it.`);
+  }
+  if (!RISKY.test(command)) return;
   const cwd = projectDir(input);
   if (!isProjectDir(cwd) || lastSnapshotAgeMs(listSnapshots(cwd).filter((s) => s.trigger === "hook")) < BURST_MS) return;
   takeSnapshot(cwd, { reason: `auto: ${command.slice(0, 80)}`, trigger: "hook" });
 });
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
-  RISKY
+  RISKY,
+  irreversibleReason
 });

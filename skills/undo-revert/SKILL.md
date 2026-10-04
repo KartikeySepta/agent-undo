@@ -1,7 +1,7 @@
 ---
 name: undo-revert
 description: >
-  Guided, safe rollback with agent-undo: diff, classify, confirm, then revert
+  Guided, safe rollback with agent-undo: preview, classify, confirm, then revert
   everything or only the broken paths, verify, and report. Trigger:
   /undo-revert [snapshot|paths...], "undo that", "roll it back", "revert to the
   snapshot", "go back to before you broke it", "restore the last good state".
@@ -20,9 +20,12 @@ A revert throws work away. Run this flow every time, in order.
   snapshot taken right before the command that broke things. Do not pick a
   snapshot taken after the damage.
 
-## 2. Diff and classify
+## 2. Preview and classify
 
-Call `diff_snapshot` for that snapshot. Sort every change into:
+Call `revert_environment` with `snapshot` (and `paths` for a partial revert)
+and **no** `confirm`. It reverts nothing: it lists every path the revert would
+undo and returns a `confirm_token`. (`diff_snapshot` shows the same list for the
+whole snapshot.) Sort every change into:
 - **broken**: what you are undoing.
 - **good**: work that should survive (yours or the user's).
 - **not yours**: changes you did not make this session.
@@ -31,12 +34,17 @@ Call `diff_snapshot` for that snapshot. Sort every change into:
 
 - Only some files broken and good work exists → **partial**: `paths` = the broken files/dirs.
 - Environment poisoned (dependency tree, lockfile, codegen, migrations) → **full**.
-- Any **not yours** in a full revert → stop and ask: show those paths, offer partial.
-- Level **paranoid** → always show the diff summary and get a yes first.
+- Any **not yours** in scope → do not confirm. Stop and ask: show those paths, offer a partial revert without them. A request to "roll back" is not consent to discard work nobody mentioned.
+- Level **paranoid** → always show the preview and get a yes first; end your turn with the question.
+
+If the scope changed, preview again with the new `paths`: a token only confirms
+the exact revert it previewed.
 
 ## 4. Revert
 
-Call `revert_environment` with `snapshot` (and `paths` for partial).
+Call `revert_environment` again with the same `snapshot` and `paths` plus
+`confirm: "<confirm_token>"`. If the reply says the token does not match, the
+files changed since the preview: read the fresh preview it returns and repeat.
 Keep the `pre-revert` id from the result: it undoes this revert.
 
 ## 5. Verify

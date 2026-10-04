@@ -71,3 +71,42 @@ test('never blocks: bad JSON, other tools, unsafe dirs all exit 0', (t) => {
   assert.strictEqual(fire(s, { tool_name: 'Edit', cwd: s.project, tool_input: {} }).status, 0);
   assert.strictEqual(fire(s, { tool_name: 'Bash', cwd: require('node:os').homedir(), tool_input: { command: 'rm -rf x' } }).status, 0);
 });
+
+test('asks before commands a snapshot cannot undo (Claude Code decision shape)', (t) => {
+  const s = sandbox(); t.after(s.cleanup); s.write('f', 'x');
+  const irreversible = [
+    'git push --force origin main', 'git push -f', 'git push origin +main', 'git push --force-with-lease origin feat',
+    'terraform apply -auto-approve', 'terraform destroy', 'kubectl delete ns staging', 'kubectl apply -f k8s/',
+    'vercel deploy --prod', 'netlify deploy --dir=dist --prod', 'fly deploy', 'flyctl deploy', 'heroku pg:reset DATABASE_URL',
+    'psql postgres://admin@db.prod.internal:5432/app -c "DROP DATABASE app"',
+    'DATABASE_URL=mysql://u:p@10.0.0.5/shop npx prisma migrate reset --force',
+    './scripts/prod-db.sh reset --seed', 'npm run deploy:prod', 'make deploy ENV=production', 'node migrate.js --env=prod',
+  ];
+  const safe = [
+    'git push', 'git push origin main', 'git push -u origin feature', 'git status', 'npm run deploy:staging', 'terraform plan',
+    'kubectl get pods', 'vercel deploy', 'heroku logs --tail', 'npm run build:production', 'ls products/',
+    'psql postgres://localhost:5432/app -c "DROP DATABASE app"', 'psql postgresql://127.0.0.1/app -c "TRUNCATE t"',
+    'node scripts/product-migrate.js', 'cat prod.env',
+  ];
+  for (const cmd of irreversible) {
+    const out = JSON.parse(bash(s, cmd).stdout || '{}');
+    assert.strictEqual(out.hookSpecificOutput?.permissionDecision, 'ask', cmd);
+    assert.strictEqual(out.hookSpecificOutput.hookEventName, 'PreToolUse', cmd);
+    assert.match(out.hookSpecificOutput.permissionDecisionReason, /cannot roll this back: it acts outside the project/, cmd);
+  }
+  for (const cmd of safe) assert.strictEqual(bash(s, cmd).stdout, '', cmd);
+});
+
+test('the irreversible guard keeps the risky snapshot, honours the level, and is Claude-only', (t) => {
+  const s = sandbox(); t.after(s.cleanup); s.write('f', 'x');
+  assert.match(bash(s, 'psql postgres://db.example.com/app -c "DROP DATABASE app"').stdout, /"permissionDecision":"ask"/);
+  assert.strictEqual(core.listSnapshots(s.project).length, 1, 'still snapshots the risky command');
+
+  const run = (env, args = []) => spawnSync(process.execPath, [BIN('hook-pretooluse.cjs'), ...args], {
+    input: JSON.stringify({ tool_name: 'Bash', cwd: s.project, tool_input: { command: 'terraform destroy' } }), env: { ...s.env, ...env }, encoding: 'utf8',
+  }).stdout;
+  assert.strictEqual(run({ AGENT_UNDO_LEVEL: 'lite' }), '', 'lite: no guard');
+  assert.strictEqual(run({ AGENT_UNDO_LEVEL: 'off' }), '', 'off: no guard');
+  assert.match(run({ AGENT_UNDO_LEVEL: 'paranoid' }), /"ask"/);
+  for (const p of ['codex', 'cursor', 'gemini']) assert.doesNotMatch(run({}, ['--platform', p]), /permissionDecision|"ask"/, p);
+});

@@ -133,7 +133,7 @@ test('OpenCode: config parses and the plugin injects rules and snapshots before 
 
   const output = { system: [] };
   await hooks['experimental.chat.system.transform']({ sessionID: 'a' }, output);
-  assert.match(output.system[0], /AGENT-UNDO ACTIVE \(full\)[\s\S]*Diff before revert/);
+  assert.match(output.system[0], /AGENT-UNDO ACTIVE \(full\)[\s\S]*Revert in two steps/);
   assert.match(output.system[0], /being taken now/, 'first turn of a session runs SessionStart');
   // The baseline runs detached; wait for it so it neither holds the lock nor outlives the sandbox.
   const lock = path.join(core.snapshotBase(s.project), '.lock');

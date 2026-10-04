@@ -2,7 +2,8 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import { takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot } from "./snapshot";
+import { takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot, previewRevert, RevertPreview } from "./snapshot";
+import { readLevel } from "./config";
 import { VERSION } from "./version";
 import { status, doctor } from "./status";
 import fs from "fs";
@@ -37,13 +38,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: "revert_environment",
-      description: "Restore the working directory to a snapshot. Destroys all changes made since, including legitimate work. Run diff_snapshot first and only revert when the changes are broken. A 'pre-revert' backup is taken automatically so the revert can be undone.",
+      description: "Restore the working directory to a snapshot. Two steps: called without `confirm` it reverts NOTHING and returns a preview (every path that would be undone) plus a confirm_token. Check each path is yours and broken; if any are not yours, or the level is paranoid, show the user the preview and ask first. Then call again with the same snapshot and paths plus confirm: \"<token>\". A revert destroys all changes since the snapshot in its scope, including legitimate work; a 'pre-revert' backup is taken automatically so it can be undone.",
       inputSchema: {
         type: "object",
         properties: {
           snapshot: snapshotProp,
           project_dir: projectProp,
           paths: { type: "array", items: { type: "string" }, description: "Restore only these project-relative paths; everything else is left alone. Prefer this when only some files are broken." },
+          confirm: { type: "string", description: "The confirm_token from a preview of this exact revert. Omit it to get the preview." },
         },
       },
     },
@@ -57,8 +59,31 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 
 const text = (t: string, isError = false) => ({ content: [{ type: "text", text: t }], ...(isError && { isError }) });
 
+const PREVIEW_CAP = 50;
+
+/** Step one of a revert: what it would undo, and how to confirm. Nothing on disk changes. */
+function previewText(p: RevertPreview, staleToken?: string): string {
+  const { added, modified, deleted } = p.diff;
+  const lines = [...added.map((f) => `+ ${f}`), ...modified.map((f) => `~ ${f}`), ...deleted.map((f) => `- ${f}`)];
+  const total = lines.length;
+  const scope = p.only ? `only ${p.only.join(", ")}` : "ALL files";
+  const paranoid = readLevel() === "paranoid";
+  return [
+    staleToken ? `confirm token "${staleToken}" does not match this revert (the snapshot, the paths or the files changed since the preview). Nothing was reverted. Fresh preview:` : "PREVIEW ONLY: nothing was reverted.",
+    `Reverting to ${p.snapshot.id} (${scope}) would undo ${total} change(s): ${added.length} added (deleted by the revert), ${modified.length} modified, ${deleted.length} deleted (restored by the revert).`,
+    ...lines.slice(0, PREVIEW_CAP),
+    ...(total > PREVIEW_CAP ? [`... and ${total - PREVIEW_CAP} more`] : []),
+    "",
+    paranoid
+      ? "Level is PARANOID: do not confirm yourself. Show the user this list and ask; confirm only after they say yes."
+      : "Before confirming, check every path above is yours and broken. If any are not yours (edits the user or someone else made) show the user this list and ask first; to keep good work, pass `paths` with only the broken files.",
+    `To revert, call revert_environment again with the same snapshot and paths plus confirm: "${p.token}".`,
+    `confirm_token: ${p.token}`,
+  ].join("\n");
+}
+
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const args = (request.params.arguments ?? {}) as { name?: string; snapshot?: string; paths?: string[]; project_dir?: string };
+  const args = (request.params.arguments ?? {}) as { name?: string; snapshot?: string; paths?: string[]; project_dir?: string; confirm?: string };
   const cwd = args.project_dir || process.env.CLAUDE_PROJECT_DIR || process.cwd();
   // Some hosts (Codex plugins, Gemini extensions) start the server inside the plugin's own
   // directory. Never silently snapshot or revert agent-undo itself: ask for project_dir instead.
@@ -83,7 +108,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         ].join("\n"));
       }
       case "revert_environment": {
-        const { restored, backup } = revertSnapshot(cwd, args.snapshot, { only: args.paths?.length ? args.paths : undefined });
+        const only = args.paths?.length ? args.paths : undefined;
+        const preview = previewRevert(cwd, args.snapshot, { only });
+        if (args.confirm !== preview.token) return text(previewText(preview, args.confirm));
+        const { restored, backup } = revertSnapshot(cwd, preview.snapshot.id, { only });
         const scope = args.paths?.length ? ` (only ${args.paths.join(", ")})` : "";
         return text(`Reverted to ${restored.id}${scope}. To undo this revert: revert_environment with snapshot "${backup.id}".`);
       }

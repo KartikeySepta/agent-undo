@@ -21,7 +21,7 @@ test('SessionStart injects the ruleset and takes a background baseline', async (
   const out = run(s, 'hook-session-start.cjs', { hook_event_name: 'SessionStart', source: 'startup', cwd: s.project });
   assert.strictEqual(out.hookEventName, 'SessionStart');
   assert.match(out.additionalContext, /AGENT-UNDO ACTIVE \(full\)/);
-  assert.match(out.additionalContext, /Diff before revert/);
+  assert.match(out.additionalContext, /Revert in two steps/);
   assert.match(out.additionalContext, /baseline snapshot .* being taken/);
   assert.ok(await waitFor(() => core.listSnapshots(s.project).length === 1), 'baseline appears');
   assert.strictEqual(core.listSnapshots(s.project)[0].trigger, 'session');

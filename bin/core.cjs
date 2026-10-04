@@ -884,6 +884,7 @@ __export(snapshot_exports, {
   assertSafeTarget: () => assertSafeTarget,
   diffSnapshot: () => diffSnapshot,
   listSnapshots: () => listSnapshots,
+  previewRevert: () => previewRevert,
   pruneSnapshots: () => pruneSnapshots,
   resolveSnapshot: () => resolveSnapshot,
   revertSnapshot: () => revertSnapshot,
@@ -1267,6 +1268,28 @@ function moveTreeToBackup(sourceDir, reason) {
   import_fs3.default.writeFileSync(metaFile(base, id), JSON.stringify(meta, null, 2));
   return meta;
 }
+function previewRevert(sourceDir, ref, opts = {}) {
+  const snapshot = resolveSnapshot(sourceDir, ref);
+  const only = opts.only?.length ? [...new Set(opts.only.map((p) => posix(safeRelative(sourceDir, p))))].sort() : null;
+  const inScope = (f) => !only || only.some((o) => posix(f) === o || posix(f).startsWith(o + "/"));
+  const full = diffSnapshot(sourceDir, snapshot.id);
+  const diff = { added: full.added.filter(inScope), modified: full.modified.filter(inScope), deleted: full.deleted.filter(inScope) };
+  const stamp = (f) => {
+    try {
+      const s = import_fs3.default.statSync(import_path4.default.join(sourceDir, f));
+      return `${s.size}:${s.mtimeMs}`;
+    } catch {
+      return "-";
+    }
+  };
+  const token = import_crypto.default.createHash("sha256").update(JSON.stringify([
+    snapshot.id,
+    only ?? "ALL",
+    diff,
+    [...diff.added, ...diff.modified].map(stamp)
+  ])).digest("hex").slice(0, 12);
+  return { snapshot, only, diff, token };
+}
 function revertSnapshot(sourceDir, ref, opts = {}) {
   assertSafeTarget(sourceDir);
   return withLock(sourceDir, () => {
@@ -1338,6 +1361,7 @@ function revertSnapshot(sourceDir, ref, opts = {}) {
   assertSafeTarget,
   diffSnapshot,
   listSnapshots,
+  previewRevert,
   pruneSnapshots,
   resolveSnapshot,
   revertSnapshot,

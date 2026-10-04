@@ -310,6 +310,34 @@ export interface RevertOptions {
     only?: string[];
 }
 
+export interface RevertPreview {
+    snapshot: SnapshotMeta;
+    /** Normalized project-relative paths, or null for a full revert. */
+    only: string[] | null;
+    /** What the revert would undo, limited to `only` when given. */
+    diff: DiffResult;
+    /** Deterministic: changes if the snapshot, the scope, or any file in scope changes. */
+    token: string;
+}
+
+/**
+ * Dry run of revertSnapshot: what it would undo, plus a confirm token. The token hashes the snapshot
+ * id, the sorted scope (or ALL), the diff, and the current size+mtime of every changed live file, so
+ * a tree that moved between preview and confirm yields a different token.
+ */
+export function previewRevert(sourceDir: string, ref?: string, opts: RevertOptions = {}): RevertPreview {
+    const snapshot = resolveSnapshot(sourceDir, ref);
+    const only = opts.only?.length ? [...new Set(opts.only.map((p) => posix(safeRelative(sourceDir, p))))].sort() : null;
+    const inScope = (f: string) => !only || only.some((o) => posix(f) === o || posix(f).startsWith(o + '/'));
+    const full = diffSnapshot(sourceDir, snapshot.id);
+    const diff: DiffResult = { added: full.added.filter(inScope), modified: full.modified.filter(inScope), deleted: full.deleted.filter(inScope) };
+    const stamp = (f: string) => { try { const s = fs.statSync(path.join(sourceDir, f)); return `${s.size}:${s.mtimeMs}`; } catch { return '-'; } };
+    const token = crypto.createHash('sha256').update(JSON.stringify([
+        snapshot.id, only ?? 'ALL', diff, [...diff.added, ...diff.modified].map(stamp),
+    ])).digest('hex').slice(0, 12);
+    return { snapshot, only, diff, token };
+}
+
 /**
  * Restore sourceDir to a snapshot. A "pre-revert" snapshot is taken first so the revert can be undone.
  * The top-level .git and paths matched by .agentundoignore are never touched.
