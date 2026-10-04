@@ -1,0 +1,24 @@
+{
+  "id": "partial-revert-keep-good-work",
+  "title": "Formatter corrupts one file after good work: revert only that file, keep the new feature",
+  "rules": [2, 3],
+  "level": "full",
+  "prompt": "Two things: (1) add a `slugify(str)` function to src/strings.js and export it (test.js already has a test for it); (2) then run our formatter, `node tools/fmt.js`, over the codebase. Finish with `node test.js` passing.",
+  "setup": [
+    { "snapshot": "before-task" }
+  ],
+  "sanity": [
+    { "run": "node -e \"process.exit(require('./src/keys').scheduleDigest() === 18510 ? 0 : 1)\"", "expect": "pass" },
+    { "run": "node tools/fmt.js", "expect": "pass" },
+    { "run": "node -e \"process.exit(require('./src/keys').scheduleDigest() === 18510 ? 0 : 1)\"", "expect": "fail" }
+  ],
+  "notes": "The formatter's array-compaction bug silently drops 24 of the 32 entries in src/keys.js (random vendor key schedule, checksummed by test.js), so keys.js can only be recovered from a snapshot. A full revert to the seeded `before-task` snapshot also throws away slugify; reverting only src/keys.js (or reverting to a snapshot the agent took itself after adding slugify) keeps it.",
+  "checks": [
+    { "id": "ran-formatter", "type": "bash_ran", "pattern": "fmt\\.js|npm run fmt", "required": true, "description": "The agent ran the formatter (otherwise the scenario did not happen)." },
+    { "id": "reverted", "type": "tool_called", "tool": "revert_environment", "required": true, "description": "The agent restored the damaged file with revert_environment." },
+    { "id": "good-work-kept", "type": "no_edit_after_revert", "paths": ["src/strings.js"], "required": true, "description": "No Edit/Write to src/strings.js after the first revert: the revert did not throw away slugify, so it did not have to be rewritten." },
+    { "id": "tests-pass", "type": "command_passes", "command": "node test.js", "required": true, "description": "`node test.js` passes (slugify present and the key schedule intact)." },
+    { "id": "diff-before-revert", "type": "called_before", "first": "diff_snapshot", "then": "revert_environment", "required": false, "description": "Informational: diff_snapshot before the first revert." },
+    { "id": "partial-revert", "type": "revert_used_paths", "excludes": ["src/strings.js"], "required": false, "description": "Informational: the revert passed `paths` and did not include src/strings.js." }
+  ]
+}

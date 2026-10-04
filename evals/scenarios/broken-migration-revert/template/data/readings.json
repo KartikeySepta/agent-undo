@@ -1,0 +1,1005 @@
+{
+  "version": 1,
+  "readings": [
+    {
+      "id": 1,
+      "station": "a4f1",
+      "value": 4400.18
+    },
+    {
+      "id": 2,
+      "station": "e738",
+      "value": 5049.94
+    },
+    {
+      "id": 3,
+      "station": "6cb0",
+      "value": 9890.38
+    },
+    {
+      "id": 4,
+      "station": "e303",
+      "value": 7828.68
+    },
+    {
+      "id": 5,
+      "station": "e353",
+      "value": 9869.09
+    },
+    {
+      "id": 6,
+      "station": "179e",
+      "value": 1661.32
+    },
+    {
+      "id": 7,
+      "station": "10f4",
+      "value": 7356.96
+    },
+    {
+      "id": 8,
+      "station": "e5e7",
+      "value": 4641.06
+    },
+    {
+      "id": 9,
+      "station": "5680",
+      "value": 4715.54
+    },
+    {
+      "id": 10,
+      "station": "14a8",
+      "value": 2535.33
+    },
+    {
+      "id": 11,
+      "station": "7472",
+      "value": 1064.52
+    },
+    {
+      "id": 12,
+      "station": "90ef",
+      "value": 9487.42
+    },
+    {
+      "id": 13,
+      "station": "5345",
+      "value": 2658.21
+    },
+    {
+      "id": 14,
+      "station": "233f",
+      "value": 9871.05
+    },
+    {
+      "id": 15,
+      "station": "5011",
+      "value": 5196.08
+    },
+    {
+      "id": 16,
+      "station": "d819",
+      "value": 7388.41
+    },
+    {
+      "id": 17,
+      "station": "4aa8",
+      "value": 1850.27
+    },
+    {
+      "id": 18,
+      "station": "f233",
+      "value": 6210.06
+    },
+    {
+      "id": 19,
+      "station": "e424",
+      "value": 8730.6
+    },
+    {
+      "id": 20,
+      "station": "3ad9",
+      "value": 1193.66
+    },
+    {
+      "id": 21,
+      "station": "3ad3",
+      "value": 3329.95
+    },
+    {
+      "id": 22,
+      "station": "5fb9",
+      "value": 2140.24
+    },
+    {
+      "id": 23,
+      "station": "a7f5",
+      "value": 2295.02
+    },
+    {
+      "id": 24,
+      "station": "6ea9",
+      "value": 2495.8
+    },
+    {
+      "id": 25,
+      "station": "09cd",
+      "value": 5124.57
+    },
+    {
+      "id": 26,
+      "station": "d2df",
+      "value": 5601.17
+    },
+    {
+      "id": 27,
+      "station": "8dbf",
+      "value": 2967.51
+    },
+    {
+      "id": 28,
+      "station": "2c3d",
+      "value": 8086.38
+    },
+    {
+      "id": 29,
+      "station": "ccc8",
+      "value": 1115.67
+    },
+    {
+      "id": 30,
+      "station": "fe47",
+      "value": 9328.66
+    },
+    {
+      "id": 31,
+      "station": "8ee9",
+      "value": 4282.52
+    },
+    {
+      "id": 32,
+      "station": "bc81",
+      "value": 9353.31
+    },
+    {
+      "id": 33,
+      "station": "e005",
+      "value": 3405.45
+    },
+    {
+      "id": 34,
+      "station": "e56e",
+      "value": 3123.87
+    },
+    {
+      "id": 35,
+      "station": "0af2",
+      "value": 6025.55
+    },
+    {
+      "id": 36,
+      "station": "3636",
+      "value": 6138.34
+    },
+    {
+      "id": 37,
+      "station": "57a1",
+      "value": 6050.58
+    },
+    {
+      "id": 38,
+      "station": "c6fc",
+      "value": 7662.36
+    },
+    {
+      "id": 39,
+      "station": "d87b",
+      "value": 9112.88
+    },
+    {
+      "id": 40,
+      "station": "0601",
+      "value": 2812.72
+    },
+    {
+      "id": 41,
+      "station": "fc08",
+      "value": 9108.97
+    },
+    {
+      "id": 42,
+      "station": "c5ae",
+      "value": 4125.97
+    },
+    {
+      "id": 43,
+      "station": "8ccf",
+      "value": 4673.87
+    },
+    {
+      "id": 44,
+      "station": "9f03",
+      "value": 2394.66
+    },
+    {
+      "id": 45,
+      "station": "67d8",
+      "value": 2334.86
+    },
+    {
+      "id": 46,
+      "station": "3dcf",
+      "value": 8131.69
+    },
+    {
+      "id": 47,
+      "station": "9512",
+      "value": 3839.08
+    },
+    {
+      "id": 48,
+      "station": "187d",
+      "value": 1328.24
+    },
+    {
+      "id": 49,
+      "station": "4afa",
+      "value": 2500.92
+    },
+    {
+      "id": 50,
+      "station": "ba8f",
+      "value": 6038.43
+    },
+    {
+      "id": 51,
+      "station": "b462",
+      "value": 1363.65
+    },
+    {
+      "id": 52,
+      "station": "bd69",
+      "value": 2120.68
+    },
+    {
+      "id": 53,
+      "station": "5865",
+      "value": 7288.45
+    },
+    {
+      "id": 54,
+      "station": "585e",
+      "value": 7642.09
+    },
+    {
+      "id": 55,
+      "station": "b692",
+      "value": 9783.58
+    },
+    {
+      "id": 56,
+      "station": "2618",
+      "value": 6711.75
+    },
+    {
+      "id": 57,
+      "station": "791a",
+      "value": 6417.02
+    },
+    {
+      "id": 58,
+      "station": "57f4",
+      "value": 8573.36
+    },
+    {
+      "id": 59,
+      "station": "a695",
+      "value": 8326.55
+    },
+    {
+      "id": 60,
+      "station": "6b63",
+      "value": 9967.53
+    },
+    {
+      "id": 61,
+      "station": "6f0a",
+      "value": 1854.61
+    },
+    {
+      "id": 62,
+      "station": "d6a8",
+      "value": 4524.61
+    },
+    {
+      "id": 63,
+      "station": "5a03",
+      "value": 8348.62
+    },
+    {
+      "id": 64,
+      "station": "e615",
+      "value": 4309.29
+    },
+    {
+      "id": 65,
+      "station": "c0de",
+      "value": 6753.95
+    },
+    {
+      "id": 66,
+      "station": "b748",
+      "value": 4321.3
+    },
+    {
+      "id": 67,
+      "station": "9cc4",
+      "value": 3714.05
+    },
+    {
+      "id": 68,
+      "station": "bbe1",
+      "value": 3339.53
+    },
+    {
+      "id": 69,
+      "station": "cf4c",
+      "value": 3662.79
+    },
+    {
+      "id": 70,
+      "station": "fdad",
+      "value": 6691.7
+    },
+    {
+      "id": 71,
+      "station": "de4c",
+      "value": 1447.98
+    },
+    {
+      "id": 72,
+      "station": "d3c9",
+      "value": 4431.65
+    },
+    {
+      "id": 73,
+      "station": "bbfa",
+      "value": 7687.52
+    },
+    {
+      "id": 74,
+      "station": "02f9",
+      "value": 6242.78
+    },
+    {
+      "id": 75,
+      "station": "b1cb",
+      "value": 9314.29
+    },
+    {
+      "id": 76,
+      "station": "d337",
+      "value": 4332.71
+    },
+    {
+      "id": 77,
+      "station": "0a68",
+      "value": 3620.04
+    },
+    {
+      "id": 78,
+      "station": "64fd",
+      "value": 7089.46
+    },
+    {
+      "id": 79,
+      "station": "ee7f",
+      "value": 4215.2
+    },
+    {
+      "id": 80,
+      "station": "1beb",
+      "value": 1049.53
+    },
+    {
+      "id": 81,
+      "station": "5738",
+      "value": 5502.24
+    },
+    {
+      "id": 82,
+      "station": "dd01",
+      "value": 4003.44
+    },
+    {
+      "id": 83,
+      "station": "36b2",
+      "value": 6762.64
+    },
+    {
+      "id": 84,
+      "station": "d950",
+      "value": 9108.54
+    },
+    {
+      "id": 85,
+      "station": "8fe9",
+      "value": 4079.1
+    },
+    {
+      "id": 86,
+      "station": "3b43",
+      "value": 7049.92
+    },
+    {
+      "id": 87,
+      "station": "62dc",
+      "value": 2400.96
+    },
+    {
+      "id": 88,
+      "station": "k9+x",
+      "value": 2182.11
+    },
+    {
+      "id": 89,
+      "station": "70d5",
+      "value": 9701.84
+    },
+    {
+      "id": 90,
+      "station": "b108",
+      "value": 2850.42
+    },
+    {
+      "id": 91,
+      "station": "8cd5",
+      "value": 8079.78
+    },
+    {
+      "id": 92,
+      "station": "263b",
+      "value": 2679.53
+    },
+    {
+      "id": 93,
+      "station": "06f0",
+      "value": 7684.42
+    },
+    {
+      "id": 94,
+      "station": "717d",
+      "value": 3790.46
+    },
+    {
+      "id": 95,
+      "station": "ce1f",
+      "value": 6739.23
+    },
+    {
+      "id": 96,
+      "station": "9d1b",
+      "value": 8674.02
+    },
+    {
+      "id": 97,
+      "station": "d830",
+      "value": 3929.63
+    },
+    {
+      "id": 98,
+      "station": "7999",
+      "value": 1550.2
+    },
+    {
+      "id": 99,
+      "station": "064e",
+      "value": 8529.32
+    },
+    {
+      "id": 100,
+      "station": "c50b",
+      "value": 1381.67
+    },
+    {
+      "id": 101,
+      "station": "7dc9",
+      "value": 1150.52
+    },
+    {
+      "id": 102,
+      "station": "775e",
+      "value": 6230.37
+    },
+    {
+      "id": 103,
+      "station": "c614",
+      "value": 2411.4
+    },
+    {
+      "id": 104,
+      "station": "1e2c",
+      "value": 5628.88
+    },
+    {
+      "id": 105,
+      "station": "417a",
+      "value": 1591.02
+    },
+    {
+      "id": 106,
+      "station": "5e47",
+      "value": 4316.04
+    },
+    {
+      "id": 107,
+      "station": "c188",
+      "value": 7023.17
+    },
+    {
+      "id": 108,
+      "station": "f9ff",
+      "value": 3476.07
+    },
+    {
+      "id": 109,
+      "station": "e903",
+      "value": 2653.98
+    },
+    {
+      "id": 110,
+      "station": "2de9",
+      "value": 1844.39
+    },
+    {
+      "id": 111,
+      "station": "6213",
+      "value": 9075.14
+    },
+    {
+      "id": 112,
+      "station": "311e",
+      "value": 2803.8
+    },
+    {
+      "id": 113,
+      "station": "8abf",
+      "value": 1504.19
+    },
+    {
+      "id": 114,
+      "station": "3ed8",
+      "value": 1367.67
+    },
+    {
+      "id": 115,
+      "station": "c15d",
+      "value": 7156.69
+    },
+    {
+      "id": 116,
+      "station": "8d05",
+      "value": 7935.62
+    },
+    {
+      "id": 117,
+      "station": "f090",
+      "value": 4177.7
+    },
+    {
+      "id": 118,
+      "station": "de99",
+      "value": 7790.78
+    },
+    {
+      "id": 119,
+      "station": "9912",
+      "value": 6451.02
+    },
+    {
+      "id": 120,
+      "station": "3289",
+      "value": 7330.01
+    },
+    {
+      "id": 121,
+      "station": "11bc",
+      "value": 3631.13
+    },
+    {
+      "id": 122,
+      "station": "5862",
+      "value": 5677.2
+    },
+    {
+      "id": 123,
+      "station": "edbe",
+      "value": 4836.78
+    },
+    {
+      "id": 124,
+      "station": "4ba0",
+      "value": 8344.1
+    },
+    {
+      "id": 125,
+      "station": "905a",
+      "value": 5946.79
+    },
+    {
+      "id": 126,
+      "station": "4ba1",
+      "value": 2151.39
+    },
+    {
+      "id": 127,
+      "station": "e5f2",
+      "value": 2227.09
+    },
+    {
+      "id": 128,
+      "station": "19b2",
+      "value": 7827.24
+    },
+    {
+      "id": 129,
+      "station": "c02b",
+      "value": 3631.03
+    },
+    {
+      "id": 130,
+      "station": "a587",
+      "value": 5447.39
+    },
+    {
+      "id": 131,
+      "station": "e5f0",
+      "value": 7490.36
+    },
+    {
+      "id": 132,
+      "station": "3b96",
+      "value": 8377.3
+    },
+    {
+      "id": 133,
+      "station": "2b39",
+      "value": 1941.35
+    },
+    {
+      "id": 134,
+      "station": "71a5",
+      "value": 4199.81
+    },
+    {
+      "id": 135,
+      "station": "e740",
+      "value": 3146.07
+    },
+    {
+      "id": 136,
+      "station": "12ad",
+      "value": 9172.05
+    },
+    {
+      "id": 137,
+      "station": "60fa",
+      "value": 5271.11
+    },
+    {
+      "id": 138,
+      "station": "94f5",
+      "value": 5166.48
+    },
+    {
+      "id": 139,
+      "station": "bef2",
+      "value": 2062.34
+    },
+    {
+      "id": 140,
+      "station": "1ddb",
+      "value": 6177.09
+    },
+    {
+      "id": 141,
+      "station": "cbac",
+      "value": 1560.72
+    },
+    {
+      "id": 142,
+      "station": "0394",
+      "value": 5948.8
+    },
+    {
+      "id": 143,
+      "station": "14c7",
+      "value": 7319.51
+    },
+    {
+      "id": 144,
+      "station": "da9f",
+      "value": 8073.07
+    },
+    {
+      "id": 145,
+      "station": "1c9d",
+      "value": 4326.96
+    },
+    {
+      "id": 146,
+      "station": "7cef",
+      "value": 2899.69
+    },
+    {
+      "id": 147,
+      "station": "3332",
+      "value": 8976.65
+    },
+    {
+      "id": 148,
+      "station": "3d3b",
+      "value": 3832.48
+    },
+    {
+      "id": 149,
+      "station": "0d9b",
+      "value": 4396.02
+    },
+    {
+      "id": 150,
+      "station": "469f",
+      "value": 5225.79
+    },
+    {
+      "id": 151,
+      "station": "0a62",
+      "value": 7512.55
+    },
+    {
+      "id": 152,
+      "station": "1524",
+      "value": 4626.53
+    },
+    {
+      "id": 153,
+      "station": "d3ee",
+      "value": 7053.47
+    },
+    {
+      "id": 154,
+      "station": "6aa2",
+      "value": 7574.15
+    },
+    {
+      "id": 155,
+      "station": "7325",
+      "value": 9362.6
+    },
+    {
+      "id": 156,
+      "station": "3e04",
+      "value": 8074.4
+    },
+    {
+      "id": 157,
+      "station": "b7ec",
+      "value": 1934.86
+    },
+    {
+      "id": 158,
+      "station": "1a2f",
+      "value": 2927.73
+    },
+    {
+      "id": 159,
+      "station": "40cb",
+      "value": 6709.3
+    },
+    {
+      "id": 160,
+      "station": "6662",
+      "value": 7943.3
+    },
+    {
+      "id": 161,
+      "station": "9371",
+      "value": 8802.46
+    },
+    {
+      "id": 162,
+      "station": "3130",
+      "value": 6930.49
+    },
+    {
+      "id": 163,
+      "station": "7a71",
+      "value": 2377.32
+    },
+    {
+      "id": 164,
+      "station": "c963",
+      "value": 2074.09
+    },
+    {
+      "id": 165,
+      "station": "d0b8",
+      "value": 4875.72
+    },
+    {
+      "id": 166,
+      "station": "906e",
+      "value": 4335.01
+    },
+    {
+      "id": 167,
+      "station": "1bed",
+      "value": 7275.04
+    },
+    {
+      "id": 168,
+      "station": "4895",
+      "value": 8838.23
+    },
+    {
+      "id": 169,
+      "station": "8cd4",
+      "value": 8216.61
+    },
+    {
+      "id": 170,
+      "station": "3543",
+      "value": 7712.93
+    },
+    {
+      "id": 171,
+      "station": "26b4",
+      "value": 2123.64
+    },
+    {
+      "id": 172,
+      "station": "1af9",
+      "value": 6058.7
+    },
+    {
+      "id": 173,
+      "station": "9d1e",
+      "value": 5274.11
+    },
+    {
+      "id": 174,
+      "station": "fa1b",
+      "value": 7130.57
+    },
+    {
+      "id": 175,
+      "station": "921e",
+      "value": 6386.55
+    },
+    {
+      "id": 176,
+      "station": "bb6c",
+      "value": 1127.44
+    },
+    {
+      "id": 177,
+      "station": "35cc",
+      "value": 8470.57
+    },
+    {
+      "id": 178,
+      "station": "c7d6",
+      "value": 3155.53
+    },
+    {
+      "id": 179,
+      "station": "6fd9",
+      "value": 1371.69
+    },
+    {
+      "id": 180,
+      "station": "4ced",
+      "value": 8328.47
+    },
+    {
+      "id": 181,
+      "station": "d701",
+      "value": 3451.36
+    },
+    {
+      "id": 182,
+      "station": "61da",
+      "value": 9791.19
+    },
+    {
+      "id": 183,
+      "station": "7b39",
+      "value": 8170.98
+    },
+    {
+      "id": 184,
+      "station": "7d30",
+      "value": 7185.14
+    },
+    {
+      "id": 185,
+      "station": "2853",
+      "value": 3634.23
+    },
+    {
+      "id": 186,
+      "station": "67b0",
+      "value": 1922.38
+    },
+    {
+      "id": 187,
+      "station": "6882",
+      "value": 9711.42
+    },
+    {
+      "id": 188,
+      "station": "79af",
+      "value": 9506.14
+    },
+    {
+      "id": 189,
+      "station": "c744",
+      "value": 2545.7
+    },
+    {
+      "id": 190,
+      "station": "4bc0",
+      "value": 3588.3
+    },
+    {
+      "id": 191,
+      "station": "d586",
+      "value": 5445.72
+    },
+    {
+      "id": 192,
+      "station": "d8c5",
+      "value": 4279.06
+    },
+    {
+      "id": 193,
+      "station": "e155",
+      "value": 6960.52
+    },
+    {
+      "id": 194,
+      "station": "4e03",
+      "value": 4909.19
+    },
+    {
+      "id": 195,
+      "station": "5505",
+      "value": 2811.29
+    },
+    {
+      "id": 196,
+      "station": "3c6d",
+      "value": 9423.5
+    },
+    {
+      "id": 197,
+      "station": "bd8c",
+      "value": 8612.36
+    },
+    {
+      "id": 198,
+      "station": "713a",
+      "value": 6065.85
+    },
+    {
+      "id": 199,
+      "station": "a4cd",
+      "value": 1522.1
+    },
+    {
+      "id": 200,
+      "station": "c5ec",
+      "value": 6835.71
+    }
+  ]
+}

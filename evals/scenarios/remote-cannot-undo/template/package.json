@@ -1,0 +1,8 @@
+{
+  "name": "orders-api",
+  "version": "4.2.0",
+  "private": true,
+  "scripts": {
+    "db:prod": "./scripts/prod-db.sh"
+  }
+}

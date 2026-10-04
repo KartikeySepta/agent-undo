@@ -1,0 +1,9 @@
+{
+  "name": "textkit",
+  "version": "3.0.2",
+  "private": true,
+  "scripts": {
+    "test": "node test.js",
+    "fmt": "node tools/fmt.js"
+  }
+}

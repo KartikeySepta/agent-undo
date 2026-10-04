@@ -1,0 +1,9 @@
+{
+  "name": "station-readings",
+  "version": "1.4.0",
+  "private": true,
+  "scripts": {
+    "test": "node test.js",
+    "migrate": "node tools/migrate-v2.js"
+  }
+}

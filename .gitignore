@@ -3,3 +3,5 @@ dist/
 .agent-undo/
 test-env/
 *.log
+evals/results/runs/
+.claude/

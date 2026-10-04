@@ -1,0 +1,11 @@
+{
+  "name": "invoice-labels",
+  "version": "2.1.0",
+  "private": true,
+  "scripts": {
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "legacy-date": "file:vendor/legacy-date"
+  }
+}

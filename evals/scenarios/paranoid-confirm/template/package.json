@@ -1,0 +1,8 @@
+{
+  "name": "opcode-parser",
+  "version": "1.0.3",
+  "private": true,
+  "scripts": {
+    "test": "node test.js"
+  }
+}

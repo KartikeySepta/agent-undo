@@ -12,7 +12,8 @@
     "test": "npm run build && node --test tests/*.test.js",
     "prepack": "npm run build",
     "version": "node scripts/sync-version.js && npm run build && git add .claude-plugin/plugin.json .codex-plugin/plugin.json gemini-extension.json src/version.ts bin",
-    "bench": "node benchmarks/clone.mjs"
+    "bench": "node benchmarks/clone.mjs",
+    "eval": "node evals/run.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
