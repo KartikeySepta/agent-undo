@@ -10,7 +10,9 @@
   "scripts": {
     "build": "tsc --noEmit && node scripts/build.mjs",
     "test": "npm run build && node --test tests/",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "version": "node scripts/sync-version.js && npm run build && git add .claude-plugin/plugin.json src/version.ts bin",
+    "bench": "node benchmarks/clone.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

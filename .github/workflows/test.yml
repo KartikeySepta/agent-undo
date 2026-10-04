@@ -1,0 +1,39 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        # macOS exercises clonefile (APFS); Ubuntu (ext4) exercises the reflink→copy fallback.
+        os: [macos-latest, ubuntu-latest]
+        node: ['20', '22', '24']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - name: Committed bundles match source
+        run: node scripts/check-bundles.js
+      - run: npm test
+      - name: Doctor
+        run: node bin/agent-undo.cjs doctor || true
+
+  plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Manifests parse
+        run: |
+          node -e "for (const f of ['.claude-plugin/plugin.json','.claude-plugin/marketplace.json','hooks/hooks.json']) JSON.parse(require('fs').readFileSync(f,'utf8'))"
