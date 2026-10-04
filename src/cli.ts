@@ -1,55 +1,71 @@
 #!/usr/bin/env node
 import { program } from 'commander';
-import { takeSnapshot, revertSnapshot } from './snapshot';
-import path from 'path';
-import fs from 'fs';
-import os from 'os';
-import crypto from 'crypto';
+import {
+  takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot, pruneSnapshots,
+} from './snapshot';
+
+const cwd = process.cwd();
+const fail = (e: unknown): never => {
+  console.error(`❌ ${(e as Error).message}`);
+  process.exit(1);
+};
+
+program.name('agent-undo').description('The Time Machine for AI Coding Agents').version('1.1.0');
 
 program
-  .name('agent-undo')
-  .description('The Time Machine for AI Coding Agents')
-  .version('1.0.0');
-
-const projectHash = crypto.createHash('md5').update(process.cwd()).digest('hex');
-const SNAPSHOT_BASE = path.join(os.homedir(), '.agent-undo', 'snapshots', projectHash);
-
-program
-  .command('snapshot')
-  .description('Take an instant CoW snapshot of the current directory')
-  .action(() => {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const snapshotDir = path.join(SNAPSHOT_BASE, timestamp);
-    
-    if (!fs.existsSync(SNAPSHOT_BASE)) {
-        fs.mkdirSync(SNAPSHOT_BASE, { recursive: true });
-    }
-    
-    takeSnapshot(process.cwd(), snapshotDir);
-    console.log(`\n✅ Snapshot saved: ${timestamp}`);
-    console.log(`Type 'agent-undo revert' to rollback to this exact state.`);
+  .command('snapshot [name]')
+  .description('Take an instant snapshot of the current directory (optionally named)')
+  .action((name?: string) => {
+    try {
+      const m = takeSnapshot(cwd, { name });
+      console.log(`✅ Snapshot ${m.id} (${m.mode === 'cow' ? 'copy-on-write' : 'full copy, no CoW on this filesystem'}, ${m.elapsedMs}ms)`);
+    } catch (e) { fail(e); }
   });
 
 program
-  .command('revert')
-  .description('Revert the directory to the most recent snapshot')
+  .command('list')
+  .description('List snapshots for this directory')
   .action(() => {
-    if (!fs.existsSync(SNAPSHOT_BASE)) {
-        console.error('❌ No snapshots found. Run `agent-undo snapshot` first.');
-        process.exit(1);
-    }
-    
-    const snapshots = fs.readdirSync(SNAPSHOT_BASE).sort();
-    if (snapshots.length === 0) {
-        console.error('❌ No snapshots found.');
-        process.exit(1);
-    }
-    
-    const latestSnapshot = snapshots[snapshots.length - 1];
-    const snapshotDir = path.join(SNAPSHOT_BASE, latestSnapshot);
-    
-    console.log(`Rewinding to snapshot: ${latestSnapshot}...`);
-    revertSnapshot(process.cwd(), snapshotDir);
+    const all = listSnapshots(cwd);
+    if (!all.length) return console.log('No snapshots.');
+    for (const s of all) console.log(`${s.id}  [${s.mode}]${s.reason ? '  ' + s.reason : ''}`);
   });
+
+program
+  .command('diff [snapshot]')
+  .description('Show what changed since a snapshot (default: latest) — i.e. what revert would undo')
+  .action((ref?: string) => {
+    try {
+      const d = diffSnapshot(cwd, ref);
+      d.added.forEach((f) => console.log(`+ ${f}`));
+      d.modified.forEach((f) => console.log(`~ ${f}`));
+      d.deleted.forEach((f) => console.log(`- ${f}`));
+      console.log(`\n${d.added.length} added, ${d.modified.length} modified, ${d.deleted.length} deleted`);
+    } catch (e) { fail(e); }
+  });
+
+program
+  .command('revert [snapshot]')
+  .description('Restore a snapshot (default: latest). Takes a "pre-revert" backup first.')
+  .option('-y, --yes', 'skip the confirmation preview')
+  .action((ref: string | undefined, o: { yes?: boolean }) => {
+    try {
+      if (!o.yes) {
+        const d = diffSnapshot(cwd, ref);
+        const n = d.added.length + d.modified.length + d.deleted.length;
+        console.log(`Revert would undo ${n} change(s): ${d.added.length} added, ${d.modified.length} modified, ${d.deleted.length} deleted.`);
+        console.log('Re-run with --yes to proceed (use `agent-undo diff` to see files).');
+        return;
+      }
+      const { restored, backup } = revertSnapshot(cwd, ref);
+      console.log(`✅ Restored ${restored.id}. Undo this revert with: agent-undo revert ${backup.id} --yes`);
+    } catch (e) { fail(e); }
+  });
+
+program
+  .command('prune')
+  .description('Delete old unnamed snapshots, keeping the newest N')
+  .option('-k, --keep <n>', 'how many to keep', '10')
+  .action((o: { keep: string }) => console.log(`Pruned ${pruneSnapshots(cwd, Number(o.keep))} snapshot(s).`));
 
 program.parse();

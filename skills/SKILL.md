@@ -1,19 +1,21 @@
 ---
 name: agent-undo
-description: Teaches the AI to use the Time Machine rollback tools when it makes mistakes or breaks the environment.
+description: Snapshot and roll back the working directory (including untracked files and node_modules) with copy-on-write snapshots. Use before risky changes, and to recover when an attempt breaks the environment.
 metadata:
   model: inherit
 ---
 
-# Agent Undo / Time Machine Skill
+# Agent Undo
 
-You have been granted access to the `agent-undo` MCP server. This gives you the superpower to travel through time and undo your own mistakes.
+Tools from the `agent-undo` MCP server: `take_snapshot`, `list_snapshots`, `diff_snapshot`, `revert_environment`.
 
-## Rules of Engagement
+## Rules
 
-1. **Take Snapshots Before Danger:** Before you run any potentially destructive commands (e.g., `npm install`, database migrations, deleting files, or running complex bash scripts), you MUST call the `take_snapshot` tool first.
-2. **Never Panic:** If a command you ran breaks the build, throws unfixable errors, or ruins the dependencies, **DO NOT** guess blindly and start deleting files manually.
-3. **Use the Rollback Tool:** If you are stuck in an error loop or realize you hallucinated, immediately call the `revert_environment` tool. This will instantly reset the directory to the state it was in before you started.
-4. **Admit Defeat Gracefully:** After reverting, tell the user: *"My previous attempt broke the code, so I successfully rewound the environment back to safety. Let's try a different approach."*
+1. **Snapshot before danger.** Before dependency installs/removals, migrations, bulk deletes, or large refactors, call `take_snapshot` with a descriptive `name`. (A PreToolUse hook also auto-snapshots obvious destructive shell commands, but do not rely on it for edits.)
+2. **Diff before you revert.** Revert discards *everything* changed since the snapshot, including legitimate work and edits the user made meanwhile. Call `diff_snapshot` first and check that every listed change is yours and is broken.
+3. **Revert only when stuck.** If a change broke the build or you are in an error loop, revert to the snapshot instead of hand-deleting files. Prefer fixing forward when the damage is small.
+4. **Ask when unsure.** If the diff contains changes you did not make, ask the user before reverting.
+5. **Reverts are undoable.** Every revert first saves a `pre-revert` snapshot; its id is in the tool result. Use it if you reverted too much.
+6. **Report plainly.** After reverting, tell the user what was undone and what you will try next.
 
-By following these rules, you provide psychological safety to the human developer. They know you can never permanently break their environment.
+Snapshots exclude the top-level `.git`, which is never touched. Unnamed snapshots are pruned to the newest 10; named ones are kept.

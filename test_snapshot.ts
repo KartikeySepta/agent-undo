@@ -1,38 +1,34 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
-import { takeSnapshot, revertSnapshot } from './src/snapshot';
+import assert from 'assert';
+import { takeSnapshot, revertSnapshot, diffSnapshot, listSnapshots } from './src/snapshot';
 
-const TEST_DIR = path.join(process.cwd(), 'test-env');
-const SNAPSHOT_DIR = path.join(process.cwd(), '.agent-undo', 'snapshots', 'test-snap');
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-undo-'));
+const f = (p: string) => path.join(dir, p);
+fs.mkdirSync(f('.git')); fs.writeFileSync(f('.git/HEAD'), 'ref');
+fs.mkdirSync(f('node_modules/x/.git'), { recursive: true }); fs.writeFileSync(f('node_modules/x/.git/HEAD'), 'nested');
+fs.writeFileSync(f('important.txt'), 'Original');
 
-// 1. Create a dummy environment
-if (fs.existsSync(TEST_DIR)) {
-    fs.rmSync(TEST_DIR, { recursive: true, force: true });
-}
-fs.mkdirSync(TEST_DIR, { recursive: true });
-fs.writeFileSync(path.join(TEST_DIR, 'important_file.txt'), 'Original Content');
-console.log('✅ Created test environment with important_file.txt');
+const snap = takeSnapshot(dir, { name: 'base' });
+fs.writeFileSync(f('important.txt'), 'RUINED');
+fs.writeFileSync(f('garbage.js'), 'slop');
+fs.rmSync(f('node_modules'), { recursive: true });
 
-// 2. Take a snapshot
-fs.mkdirSync(path.dirname(SNAPSHOT_DIR), { recursive: true });
-takeSnapshot(TEST_DIR, SNAPSHOT_DIR);
-console.log('✅ Snapshot taken.');
+const d = diffSnapshot(dir);
+assert.deepStrictEqual([d.added, d.modified, d.deleted], [['garbage.js'], ['important.txt'], [path.join('node_modules', 'x', '.git', 'HEAD')]]);
 
-// 3. Simulate AI destroying the environment
-console.log('💥 Simulating AI destruction...');
-fs.writeFileSync(path.join(TEST_DIR, 'important_file.txt'), 'AI RUINED THIS FILE');
-fs.writeFileSync(path.join(TEST_DIR, 'garbage.js'), 'console.log("AI slop")');
-console.log('   - important_file.txt modified');
-console.log('   - garbage.js added');
+const { backup } = revertSnapshot(dir, 'base');
+assert.strictEqual(fs.readFileSync(f('important.txt'), 'utf8'), 'Original');
+assert(!fs.existsSync(f('garbage.js')));
+assert.strictEqual(fs.readFileSync(f('node_modules/x/.git/HEAD'), 'utf8'), 'nested');
+assert.strictEqual(fs.readFileSync(f('.git/HEAD'), 'utf8'), 'ref');
 
-// 4. Revert the snapshot
-revertSnapshot(TEST_DIR, SNAPSHOT_DIR);
+revertSnapshot(dir, backup.id); // a revert can be undone
+assert.strictEqual(fs.readFileSync(f('important.txt'), 'utf8'), 'RUINED');
+assert(fs.existsSync(f('garbage.js')));
 
-// 5. Verify
-const files = fs.readdirSync(TEST_DIR);
-if (!files.includes('garbage.js') && fs.readFileSync(path.join(TEST_DIR, 'important_file.txt'), 'utf8') === 'Original Content') {
-    console.log('🚀 SUCCESS: Environment perfectly restored!');
-} else {
-    console.error('❌ FAILURE: Environment was not restored correctly.');
-    console.log('Files present:', files);
-}
+assert.throws(() => takeSnapshot(os.homedir()), /Refusing/);
+console.log(`🚀 SUCCESS (clone mode: ${snap.mode}, ${listSnapshots(dir).length} snapshots)`);
+fs.rmSync(path.join(os.homedir(), '.agent-undo', 'snapshots', require('crypto').createHash('md5').update(fs.realpathSync(dir) === dir ? dir : dir).digest('hex')), { recursive: true, force: true });
+fs.rmSync(dir, { recursive: true, force: true });

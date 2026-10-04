@@ -17,10 +17,11 @@ It uses OS-level mathematical Copy-on-Write (CoW) to take an instantaneous, zero
 
 ## ⚡️ The Physics Engine
 
-How do you backup a 2GB `node_modules` folder in 0.1 seconds?
-`agent-undo` leverages B-Tree mechanics native to APFS (macOS) and Btrfs (Linux). By using Node's hidden `COPYFILE_FICLONE` flag, we don't actually copy any bytes. We just duplicate the filesystem metadata pointers. 
-- **Time to Snapshot:** `< 0.1s`
-- **Disk Space Used:** `0 Bytes`
+`agent-undo` clones your directory with the OS's native copy-on-write: `cp -c` (APFS `clonefile`) on macOS and `cp --reflink` on Linux (Btrfs/XFS). Only filesystem metadata is duplicated, so a snapshot of a large `node_modules` takes milliseconds and almost no extra disk space.
+
+On filesystems without CoW (ext4, cross-volume) it falls back to a full copy and says so (`mode: copy`), so you are never misled about cost.
+
+> Node's own `COPYFILE_FICLONE` flags are not used: `copyFileSync` with `FICLONE_FORCE` returns `ENOSYS` on APFS, so they silently degrade to real copies.
 
 ---
 
@@ -35,23 +36,17 @@ npm install -g agent-undo
 
 ## 🛠️ Usage 1: The Human CLI (Safety Net)
 
-Protect yourself before you let an experimental AI loose on your codebase.
-
-**1. Take an instant snapshot:**
 ```bash
-agent-undo snapshot
-# ✅ Snapshot saved: 2026-10-04T09-00-00Z
+agent-undo snapshot before-refactor   # name is optional
+agent-undo list                       # all snapshots for this directory
+agent-undo diff                       # +added ~modified -deleted since latest snapshot
+agent-undo revert                     # preview what would be undone
+agent-undo revert --yes               # do it (saves a "pre-revert" backup first)
+agent-undo revert pre-revert --yes    # undo the revert
+agent-undo prune --keep 5             # drop old unnamed snapshots
 ```
 
-**2. Let the AI run wild.** (Oh no, it deleted your database and installed deprecated packages!)
-
-**3. Instantly revert the damage:**
-```bash
-agent-undo revert
-# 🚀 Rewinding to snapshot...
-# ✅ Environment perfectly restored in 1ms!
-```
-*(Your rogue `node_modules` are gone, your database is restored, and the git tree is clean).*
+Safety: it refuses to run in `/` or your home directory, never touches the top-level `.git`, keeps nested `.git` folders (e.g. inside `node_modules`), and auto-prunes unnamed snapshots to the newest 10.
 
 ---
 
@@ -73,15 +68,11 @@ Add the following to your MCP configuration (e.g., `claude_mcp.json`):
 }
 ```
 
-### How the AI Uses It
-The server exposes two tools to the LLM:
-1. `take_snapshot`
-2. `revert_environment`
+### Tools
+`take_snapshot(name?)`, `list_snapshots`, `diff_snapshot(snapshot?)`, `revert_environment(snapshot?)`. The `SKILL.md` tells the agent to diff before reverting and to ask when the diff contains changes it did not make.
 
-Coupled with our `SKILL.md` instruction file, the AI is given the following prompt:
-> *"If you execute a command that breaks the build, do not panic. Do not guess blindly. Immediately call `revert_environment` to clean up your mess and apologize to the human."*
-
-Now, if the AI hallucinates, it will autonomously say: *"I messed up the dependencies. I have triggered the rollback tool. Let's try a different approach."*
+### Auto-snapshot hook (Claude Code)
+`hooks/hooks.json` registers a `PreToolUse` hook that snapshots before destructive Bash commands (`rm -rf`, `npm install`, `git reset --hard`, migrations, ...), throttled to one per minute, so safety does not depend on the model remembering. Install this repo as a Claude Code plugin, or copy the hook entry into your `settings.json` with an absolute path.
 
 ---
 

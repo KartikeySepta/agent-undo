@@ -1,6 +1,6 @@
 {
   "name": "agent-undo",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Ultra-fast, instantaneous filesystem snapshots for AI coding agents. The Time Machine for AI.",
   "main": "dist/index.js",
   "bin": {
@@ -9,14 +9,17 @@
   },
   "scripts": {
     "build": "tsc",
-    "start": "node dist/cli.js"
+    "start": "node dist/cli.js",
+    "test": "tsc && npx tsx test_snapshot.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
-    "commander": "^12.0.0"
+    "commander": "^12.0.0",
+    "ignore": "^7.0.12"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "esbuild": "^0.28.2",
     "typescript": "^5.8.0"
   },
   "keywords": [
@@ -28,5 +31,14 @@
     "rollback"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "files": [
+    "dist",
+    "hooks",
+    "skills",
+    "README.md"
+  ],
+  "optionalDependencies": {
+    "koffi": "^3.3.2"
+  }
 }

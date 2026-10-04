@@ -1,104 +1,73 @@
 #!/usr/bin/env node
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
-import { takeSnapshot, revertSnapshot } from "./snapshot";
-import path from "path";
-import fs from "fs";
-import os from "os";
-import crypto from "crypto";
+import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import { takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot } from "./snapshot";
 
 const server = new Server(
-  {
-    name: "agent-undo-mcp",
-    version: "1.0.0",
-  },
-  {
-    capabilities: {
-      tools: {},
-    },
-  }
+  { name: "agent-undo-mcp", version: "1.1.0" },
+  { capabilities: { tools: {} } },
 );
 
-const projectHash = crypto.createHash('md5').update(process.cwd()).digest('hex');
-const SNAPSHOT_BASE = path.join(os.homedir(), '.agent-undo', 'snapshots', projectHash);
+const snapshotProp = { type: "string", description: "Snapshot id, name, or 'latest' (default)." };
 
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: [
-      {
-        name: "take_snapshot",
-        description: "Takes an instantaneous Copy-on-Write snapshot of the current working directory. Call this BEFORE attempting dangerous experimental changes.",
-        inputSchema: {
-          type: "object",
-          properties: {},
-        },
-      },
-      {
-        name: "revert_environment",
-        description: "Instantly reverts the entire working directory back to the most recent snapshot. Call this if you broke the environment, ruined dependencies, or got stuck in a hallucination loop.",
-        inputSchema: {
-          type: "object",
-          properties: {},
-        },
-      },
-    ],
-  };
-});
+server.setRequestHandler(ListToolsRequestSchema, async () => ({
+  tools: [
+    {
+      name: "take_snapshot",
+      description: "Take an instant copy-on-write snapshot of the working directory. Call BEFORE risky changes (installs, migrations, bulk deletes).",
+      inputSchema: { type: "object", properties: { name: { type: "string", description: "Optional label, e.g. 'before-migration'." } } },
+    },
+    {
+      name: "list_snapshots",
+      description: "List available snapshots for the working directory.",
+      inputSchema: { type: "object", properties: {} },
+    },
+    {
+      name: "diff_snapshot",
+      description: "Show files added/modified/deleted since a snapshot. Call this BEFORE revert_environment to see what will be lost.",
+      inputSchema: { type: "object", properties: { snapshot: snapshotProp } },
+    },
+    {
+      name: "revert_environment",
+      description: "Restore the working directory to a snapshot. Destroys all changes made since, including legitimate work. Run diff_snapshot first and only revert when the changes are broken. A 'pre-revert' backup is taken automatically so the revert can be undone.",
+      inputSchema: { type: "object", properties: { snapshot: snapshotProp } },
+    },
+  ],
+}));
+
+const text = (t: string, isError = false) => ({ content: [{ type: "text", text: t }], ...(isError && { isError }) });
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const cwd = process.cwd();
+  const args = (request.params.arguments ?? {}) as { name?: string; snapshot?: string };
   try {
-    if (request.params.name === "take_snapshot") {
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const snapshotDir = path.join(SNAPSHOT_BASE, timestamp);
-      
-      if (!fs.existsSync(SNAPSHOT_BASE)) {
-          fs.mkdirSync(SNAPSHOT_BASE, { recursive: true });
+    switch (request.params.name) {
+      case "take_snapshot": {
+        const m = takeSnapshot(cwd, { name: args.name });
+        return text(`Snapshot ${m.id} taken (${m.mode}, ${m.elapsedMs}ms).`);
       }
-      
-      takeSnapshot(process.cwd(), snapshotDir);
-      
-      return {
-        content: [{ type: "text", text: `Success! Snapshot taken at ${timestamp}. You can now safely experiment.` }],
-      };
+      case "list_snapshots": {
+        const all = listSnapshots(cwd);
+        return text(all.length ? all.map((s) => `${s.id} [${s.mode}]`).join("\n") : "No snapshots.");
+      }
+      case "diff_snapshot": {
+        const d = diffSnapshot(cwd, args.snapshot);
+        return text([
+          ...d.added.map((f) => `+ ${f}`), ...d.modified.map((f) => `~ ${f}`), ...d.deleted.map((f) => `- ${f}`),
+          `${d.added.length} added, ${d.modified.length} modified, ${d.deleted.length} deleted since snapshot.`,
+        ].join("\n"));
+      }
+      case "revert_environment": {
+        const { restored, backup } = revertSnapshot(cwd, args.snapshot);
+        return text(`Reverted to ${restored.id}. To undo this revert: revert_environment with snapshot "${backup.id}".`);
+      }
+      default:
+        return text("Tool not found", true);
     }
-
-    if (request.params.name === "revert_environment") {
-      if (!fs.existsSync(SNAPSHOT_BASE)) {
-          return { content: [{ type: "text", text: 'Error: No snapshots found. Cannot revert.' }], isError: true };
-      }
-      
-      const snapshots = fs.readdirSync(SNAPSHOT_BASE).sort();
-      if (snapshots.length === 0) {
-          return { content: [{ type: "text", text: 'Error: No snapshots found.' }], isError: true };
-      }
-      
-      const latestSnapshot = snapshots[snapshots.length - 1];
-      const snapshotDir = path.join(SNAPSHOT_BASE, latestSnapshot);
-      
-      revertSnapshot(process.cwd(), snapshotDir);
-      
-      return {
-        content: [{ type: "text", text: `Success! The entire directory has been reverted to the state from ${latestSnapshot}. The broken files and node_modules are gone.` }],
-      };
-    }
-
-    throw new Error("Tool not found");
-  } catch (error: any) {
-    return {
-      content: [{ type: "text", text: `Error executing tool: ${error.message}` }],
-      isError: true,
-    };
+  } catch (e: any) {
+    return text(`Error: ${e.message}`, true);
   }
 });
 
-async function run() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error("Agent-Undo MCP Server running on stdio");
-}
-
-run().catch(console.error);
+server.connect(new StdioServerTransport()).then(() => console.error("Agent-Undo MCP Server running on stdio"));
