@@ -21,9 +21,9 @@
     "ignore": "^7.0.12"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
+    "@types/node": "^26.6.4",
     "esbuild": "^0.28.2",
-    "typescript": "^5.8.0"
+    "typescript": "^7.0.2"
   },
   "keywords": [
     "ai",
