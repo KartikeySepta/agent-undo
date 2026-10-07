@@ -1,0 +1,49 @@
+name: release
+
+# Push a tag made by `npm version` (v1.2.3) to publish to npm with provenance and create the GitHub release.
+# Needs the repository secret NPM_TOKEN (an npm automation token).
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write   # create the GitHub release
+  id-token: write   # npm provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+          cache: npm
+      - run: npm ci
+      - name: Tag matches package.json
+        run: |
+          v="v$(node -p 'require("./package.json").version')"
+          if [ "$v" != "$GITHUB_REF_NAME" ]; then echo "::error::tag $GITHUB_REF_NAME does not match package.json ($v)"; exit 1; fi
+      - run: node scripts/check-bundles.js && node scripts/check-versions.js && node scripts/check-rule-copies.js
+      - run: npm test
+      - name: Publish
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Release notes from CHANGELOG.md
+        run: |
+          node -e '
+            const v = process.env.GITHUB_REF_NAME.slice(1);
+            const md = require("fs").readFileSync("CHANGELOG.md", "utf8");
+            const start = md.indexOf("## " + v);
+            if (start < 0) { console.error("no CHANGELOG section for " + v); process.exit(1); }
+            const rest = md.slice(start).split("\n").slice(1).join("\n");
+            const end = rest.search(/^## /m);
+            require("fs").writeFileSync("notes.md", (end < 0 ? rest : rest.slice(0, end)).trim() + "\n");
+          '
+      - name: GitHub release
+        run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}

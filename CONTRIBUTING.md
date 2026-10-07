@@ -74,3 +74,11 @@ into `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `gemini-extensio
 `src/version.ts`, rebuilds `bin/`, and stages it all into the version commit. Add new versioned
 manifests to both `sync-version.js` and `check-versions.js`. Update
 [`CHANGELOG.md`](CHANGELOG.md) before tagging.
+
+## Releasing
+
+1. Move the `CHANGELOG.md` entries under a `## x.y.z (date)` heading.
+2. `npm version patch|minor -m "release: %s"` syncs every manifest, rebuilds `bin/`, commits and tags.
+3. `git push origin main --follow-tags`.
+
+The `release` workflow then publishes to npm with provenance and creates the GitHub release from that CHANGELOG section. It needs the repository secret `NPM_TOKEN`.
