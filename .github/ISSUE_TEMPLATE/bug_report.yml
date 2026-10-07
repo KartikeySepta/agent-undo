@@ -1,0 +1,37 @@
+name: Bug report
+description: Something broke, or a snapshot/revert did not do what it said
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If a revert **lost data**, run `agent-undo doctor --repair` first, then report it here. If it is a security problem, use the private link in SECURITY.md instead.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `agent-undo --version`
+    validations: { required: true }
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Agent
+      options: [Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Other MCP client, CLI only]
+    validations: { required: true }
+  - type: textarea
+    id: doctor
+    attributes:
+      label: "`agent-undo doctor` output"
+      description: Run it inside the project. Includes OS, clone engine and the last hook failure.
+      render: text
+    validations: { required: true }
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations: { required: true }
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: The shortest sequence of commands or prompts. `~/.agent-undo/hooks.log` is useful if a hook was involved.
