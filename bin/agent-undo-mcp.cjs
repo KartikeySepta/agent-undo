@@ -18145,10 +18145,24 @@ function moveSync(from, to) {
     import_fs4.default.rmSync(from, { recursive: true, force: true });
   }
 }
+function realAncestor(p) {
+  for (let cur = p; ; cur = import_path4.default.dirname(cur)) {
+    try {
+      return import_fs4.default.realpathSync(cur);
+    } catch {
+      if (import_path4.default.dirname(cur) === cur) return cur;
+    }
+  }
+}
 function safeRelative(sourceDir, p) {
-  const rel = import_path4.default.relative(realDir(sourceDir), import_path4.default.resolve(realDir(sourceDir), p));
+  const root = realDir(sourceDir);
+  const rel = import_path4.default.relative(root, import_path4.default.resolve(root, p));
   if (!rel || rel === ".." || rel.startsWith(".." + import_path4.default.sep) || import_path4.default.isAbsolute(rel) || rel.split(import_path4.default.sep)[0] === ".git") {
     throw new Error(`[Agent-Undo] "${p}" is not a path inside the project.`);
+  }
+  const parent = realAncestor(import_path4.default.dirname(import_path4.default.join(root, rel)));
+  if (parent !== root && !parent.startsWith(root + import_path4.default.sep)) {
+    throw new Error(`[Agent-Undo] "${p}" is not a path inside the project (it passes through a symlink to ${parent}).`);
   }
   return rel;
 }

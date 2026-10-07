@@ -270,10 +270,23 @@ function moveSync(from: string, to: string): void {
     }
 }
 
+/** Real path of the nearest existing ancestor of p, so a not-yet-existing target is still checked. */
+function realAncestor(p: string): string {
+    for (let cur = p; ; cur = path.dirname(cur)) {
+        try { return fs.realpathSync(cur); } catch { if (path.dirname(cur) === cur) return cur; }
+    }
+}
+
 function safeRelative(sourceDir: string, p: string): string {
-    const rel = path.relative(realDir(sourceDir), path.resolve(realDir(sourceDir), p));
+    const root = realDir(sourceDir);
+    const rel = path.relative(root, path.resolve(root, p));
     if (!rel || rel === '..' || rel.startsWith('..' + path.sep) || path.isAbsolute(rel) || rel.split(path.sep)[0] === '.git') {
         throw new Error(`[Agent-Undo] "${p}" is not a path inside the project.`);
+    }
+    // A symlinked directory inside the project can point anywhere; the target's parent must really live in the project.
+    const parent = realAncestor(path.dirname(path.join(root, rel)));
+    if (parent !== root && !parent.startsWith(root + path.sep)) {
+        throw new Error(`[Agent-Undo] "${p}" is not a path inside the project (it passes through a symlink to ${parent}).`);
     }
     return rel;
 }

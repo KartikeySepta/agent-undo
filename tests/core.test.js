@@ -198,3 +198,22 @@ test('partial revert accepts names that merely start with two dots, and still re
     assert.throws(() => core.revertSnapshot(s.project, 'base', { only: [bad] }), /not a path inside the project/, bad);
   }
 });
+
+test('partial revert refuses to follow a symlink out of the project', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  const outside = path.join(s.tmp, 'outside');
+  fs.mkdirSync(outside);
+  fs.writeFileSync(path.join(outside, 'precious.txt'), 'keep me');
+  fs.symlinkSync(outside, s.p('link'));
+  s.write('a.txt', 'one');
+  core.takeSnapshot(s.project, { name: 'base' });
+
+  assert.throws(() => core.previewRevert(s.project, 'base', { only: ['link/precious.txt'] }), /not a path inside the project/);
+  assert.throws(() => core.revertSnapshot(s.project, 'base', { only: ['link/precious.txt'] }), /not a path inside the project/);
+  assert.strictEqual(fs.readFileSync(path.join(outside, 'precious.txt'), 'utf8'), 'keep me', 'the file outside the project survives');
+
+  // The symlink itself lives in the project, so it can still be reverted.
+  fs.rmSync(s.p('link'));
+  core.revertSnapshot(s.project, 'base', { only: ['link'] });
+  assert.ok(fs.lstatSync(s.p('link')).isSymbolicLink());
+});
