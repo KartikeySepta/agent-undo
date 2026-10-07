@@ -3263,8 +3263,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path6) {
-      let input = path6;
+    function removeDotSegments(path7) {
+      let input = path7;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3673,8 +3673,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path6 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path6 && path6 !== "/" ? path6 : void 0;
+        const path7 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path7 && path7 !== "/" ? path7 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -7693,26 +7693,26 @@ var require_ignore = __commonJS({
       const index = body.indexOf(SLASH);
       return index < 0 || index === body.length - 1;
     };
-    var basenameOf = (path6) => {
-      const end = path6.length - 1;
-      const index = path6.lastIndexOf(
+    var basenameOf = (path7) => {
+      const end = path7.length - 1;
+      const index = path7.lastIndexOf(
         SLASH,
-        path6[end] === SLASH ? end - 1 : end
+        path7[end] === SLASH ? end - 1 : end
       );
-      return index < 0 ? path6 : path6.slice(index + 1);
+      return index < 0 ? path7 : path7.slice(index + 1);
     };
-    var parentOf = (path6) => {
-      if (path6.charCodeAt(0) === SLASH_CODE || path6.indexOf(DOUBLE_SLASH) >= 0) {
-        const slices = path6.split(SLASH).filter(Boolean);
+    var parentOf = (path7) => {
+      if (path7.charCodeAt(0) === SLASH_CODE || path7.indexOf(DOUBLE_SLASH) >= 0) {
+        const slices = path7.split(SLASH).filter(Boolean);
         slices.pop();
         return slices.length ? slices.join(SLASH) + SLASH : EMPTY;
       }
-      const end = path6.length - 1;
-      const cut = path6.lastIndexOf(
+      const end = path7.length - 1;
+      const cut = path7.lastIndexOf(
         SLASH,
-        path6.charCodeAt(end) === SLASH_CODE ? end - 1 : end
+        path7.charCodeAt(end) === SLASH_CODE ? end - 1 : end
       );
-      return cut < 0 ? EMPTY : path6.slice(0, cut + 1);
+      return cut < 0 ? EMPTY : path7.slice(0, cut + 1);
     };
     var isString = (subject) => typeof subject === "string";
     var checkPattern = (pattern) => pattern && isString(pattern) && !REGEX_INVALID_TRAILING_BACKSLASH.test(pattern);
@@ -7847,7 +7847,7 @@ var require_ignore = __commonJS({
       // Match the literal 'abc/' for `checkIgnore`, last rule wins. Only a rule
       //   ending in a wildcard can match it (see `checkSourceOf`), so the rest
       //   are left out once, rather than tested or compiled for every path.
-      testLiteral(path6) {
+      testLiteral(path7) {
         const rules = this._literalRules || (this._literalRules = this._rules.filter(
           ({ body }) => body[body.length - (body[body.length - 1] === SLASH ? 2 : 1)] === "*"
         ));
@@ -7856,7 +7856,7 @@ var require_ignore = __commonJS({
         let matchedRule;
         for (let index = rules.length - 1; index >= 0; index--) {
           const rule = rules[index];
-          if (rule.checkRegex.test(path6)) {
+          if (rule.checkRegex.test(path7)) {
             ignored = !rule.negative;
             unignored = rule.negative;
             matchedRule = rule.negative ? UNDEFINED : rule;
@@ -7879,20 +7879,20 @@ var require_ignore = __commonJS({
       //   path matching.
       // - check `string` either `MODE_IGNORE` or `MODE_CHECK_IGNORE`
       // @returns {TestResult} true if a file is ignored
-      test(path6, checkUnignored, mode) {
+      test(path7, checkUnignored, mode) {
         let ignored = false;
         let unignored = false;
         let matchedRule;
         const rules = this._rules;
         const { length } = rules;
         const shortcut = this._basenameCount * 2 >= length;
-        const basename = shortcut ? basenameOf(path6) : path6;
+        const basename = shortcut ? basenameOf(path7) : path7;
         for (let index = 0; index < length; index++) {
           const rule = rules[index];
           const { negative } = rule;
           const skip = unignored === negative && ignored !== unignored || negative && !ignored && !unignored && !checkUnignored;
           if (!skip && rule[mode].test(
-            shortcut && rule._basenameOnly ? basename : path6
+            shortcut && rule._basenameOnly ? basename : path7
           )) {
             ignored = !negative;
             unignored = negative;
@@ -7912,17 +7912,17 @@ var require_ignore = __commonJS({
     var throwError = (message, Ctor) => {
       throw new Ctor(message);
     };
-    var checkPath = (path6, originalPath, doThrow) => {
-      if (!isString(path6)) {
+    var checkPath = (path7, originalPath, doThrow) => {
+      if (!isString(path7)) {
         return doThrow(
           `path must be a string, but got \`${originalPath}\``,
           TypeError
         );
       }
-      if (!path6) {
+      if (!path7) {
         return doThrow(`path must not be empty`, TypeError);
       }
-      if (checkPath.isNotRelative(path6)) {
+      if (checkPath.isNotRelative(path7)) {
         const r = "`path.relative()`d";
         return doThrow(
           `path should be a ${r} string, but got "${originalPath}"`,
@@ -7931,25 +7931,25 @@ var require_ignore = __commonJS({
       }
       return true;
     };
-    var isNotRelative = (path6) => {
-      const first = path6.charCodeAt(0);
+    var isNotRelative = (path7) => {
+      const first = path7.charCodeAt(0);
       if (first === SLASH_CODE) {
         return true;
       }
       if (first !== DOT_CODE) {
         return false;
       }
-      if (path6.length === 1) {
+      if (path7.length === 1) {
         return true;
       }
-      const second = path6.charCodeAt(1);
+      const second = path7.charCodeAt(1);
       if (second === SLASH_CODE) {
         return true;
       }
       if (second !== DOT_CODE) {
         return false;
       }
-      return path6.length === 2 || path6.charCodeAt(2) === SLASH_CODE;
+      return path7.length === 2 || path7.charCodeAt(2) === SLASH_CODE;
     };
     checkPath.isNotRelative = isNotRelative;
     checkPath.convert = (p) => p;
@@ -7980,54 +7980,54 @@ var require_ignore = __commonJS({
       }
       // @returns {TestResult}
       _test(originalPath, cache, checkUnignored) {
-        const path6 = originalPath && checkPath.convert(originalPath);
+        const path7 = originalPath && checkPath.convert(originalPath);
         checkPath(
-          path6,
+          path7,
           originalPath,
           this._strictPathCheck ? throwError : RETURN_FALSE
         );
-        return this._t(path6, cache, checkUnignored);
+        return this._t(path7, cache, checkUnignored);
       }
-      checkIgnore(path6) {
-        if (path6.charCodeAt(path6.length - 1) !== SLASH_CODE) {
-          return this.test(path6);
+      checkIgnore(path7) {
+        if (path7.charCodeAt(path7.length - 1) !== SLASH_CODE) {
+          return this.test(path7);
         }
-        const dir = this._t(path6, this._testCache, true);
+        const dir = this._t(path7, this._testCache, true);
         if (dir.ignored) {
           return dir;
         }
-        const literal2 = this._rules.testLiteral(path6);
+        const literal2 = this._rules.testLiteral(path7);
         return literal2.ignored || literal2.unignored ? literal2 : dir;
       }
-      _t(path6, cache, checkUnignored) {
-        if (path6 in cache) {
-          return cache[path6];
+      _t(path7, cache, checkUnignored) {
+        if (path7 in cache) {
+          return cache[path7];
         }
-        const parentPath = parentOf(path6);
+        const parentPath = parentOf(path7);
         const parent = parentPath ? this._t(parentPath, cache, checkUnignored) : UNDEFINED;
-        return cache[path6] = parent && parent.ignored ? parent : this._rules.test(path6, checkUnignored, MODE_IGNORE);
+        return cache[path7] = parent && parent.ignored ? parent : this._rules.test(path7, checkUnignored, MODE_IGNORE);
       }
-      ignores(path6) {
-        return this._test(path6, this._ignoreCache, false).ignored;
+      ignores(path7) {
+        return this._test(path7, this._ignoreCache, false).ignored;
       }
       createFilter() {
-        return (path6) => !this.ignores(path6);
+        return (path7) => !this.ignores(path7);
       }
       filter(paths) {
         return makeArray(paths).filter(this.createFilter());
       }
       // @returns {TestResult}
-      test(path6) {
-        return this._test(path6, this._testCache, true);
+      test(path7) {
+        return this._test(path7, this._testCache, true);
       }
     };
     var factory = (options) => new Ignore2(options);
-    var isPathValid = (path6) => checkPath(path6 && checkPath.convert(path6), path6, RETURN_FALSE);
+    var isPathValid = (path7) => checkPath(path7 && checkPath.convert(path7), path7, RETURN_FALSE);
     var setupWindows = () => {
       const makePosix = (str) => /^\\\\\?\\/.test(str) || /["<>|\u0000-\u001F]+/u.test(str) ? str : str.replace(/\\/g, "/");
       checkPath.convert = makePosix;
       const REGEX_TEST_WINDOWS_PATH_ABSOLUTE = /^[a-z]:\//i;
-      checkPath.isNotRelative = (path6) => REGEX_TEST_WINDOWS_PATH_ABSOLUTE.test(path6) || isNotRelative(path6);
+      checkPath.isNotRelative = (path7) => REGEX_TEST_WINDOWS_PATH_ABSOLUTE.test(path7) || isNotRelative(path7);
     };
     if (
       // Detect `process` so that it can run in browsers.
@@ -8278,10 +8278,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path6) {
-  if (!path6)
+function getElementAtPath(obj, path7) {
+  if (!path7)
     return obj;
-  return path6.reduce((acc, key) => acc?.[key], obj);
+  return path7.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -8621,11 +8621,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path6, issues) {
+function prefixIssues(path7, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path6);
+    iss.path.unshift(path7);
     return iss;
   });
 }
@@ -9071,16 +9071,16 @@ function flattenError(error2, mapper = (issue2) => issue2.message) {
 }
 function formatError(error2, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error3, path6 = []) => {
+  const processError = (error3, path7 = []) => {
     for (const issue2 of error3.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path6, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path7, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path6, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path7, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path6, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path7, ...issue2.path]);
       } else {
-        const fullpath = [...path6, ...issue2.path];
+        const fullpath = [...path7, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -17907,6 +17907,15 @@ function readLevel() {
 }
 var PROJECT_MARKERS = [".git", ".agentundoignore", "package.json", "pyproject.toml", "requirements.txt", "Cargo.toml", "go.mod", "Gemfile", "pom.xml", "build.gradle", "composer.json", "deno.json"];
 var isProjectDir = (dir) => PROJECT_MARKERS.some((m) => import_fs2.default.existsSync(import_path2.default.join(dir, m)));
+var hooksLog = () => import_path2.default.join(storeHome(), "hooks.log");
+var HOOKS_LOG_MAX = 64 * 1024;
+function lastHookError() {
+  try {
+    return import_fs2.default.readFileSync(hooksLog(), "utf8").trimEnd().split("\n").at(-1) || null;
+  } catch {
+    return null;
+  }
+}
 
 // src/stats.ts
 var import_fs3 = __toESM(require("fs"));
@@ -18345,6 +18354,7 @@ var VERSION = "1.3.1";
 // src/status.ts
 var import_fs5 = __toESM(require("fs"));
 var import_os3 = __toESM(require("os"));
+var import_path5 = __toESM(require("path"));
 function doctor(projectDir) {
   const checks = [];
   const major = Number(process.versions.node.split(".")[0]);
@@ -18367,6 +18377,8 @@ function doctor(projectDir) {
   checks.push({ ok: isProjectDir(projectDir) || "warn", label: "project", detail: isProjectDir(projectDir) ? projectDir : `${projectDir} has no project marker (.git, package.json, ...): hooks will not auto-snapshot here` });
   checks.push({ ok: projectDir !== import_os3.default.homedir() || false, label: "safe target", detail: projectDir === import_os3.default.homedir() ? "refuses to snapshot the home directory" : "ok" });
   checks.push({ ok: true, label: "level", detail: readLevel() });
+  const hookError = lastHookError();
+  checks.push({ ok: hookError ? "warn" : true, label: "hooks", detail: hookError ? `last failure: ${hookError} (see ${import_path5.default.join(storeHome(), "hooks.log")})` : "no failures logged" });
   return checks;
 }
 function status(projectDir) {
@@ -18384,12 +18396,12 @@ function status(projectDir) {
 
 // src/mcp-server.ts
 var import_fs6 = __toESM(require("fs"));
-var import_path5 = __toESM(require("path"));
+var import_path6 = __toESM(require("path"));
 var realPath = (p) => {
   try {
     return import_fs6.default.realpathSync(p);
   } catch {
-    return import_path5.default.resolve(p);
+    return import_path6.default.resolve(p);
   }
 };
 var server = new Server(
@@ -18465,7 +18477,7 @@ function previewText(p, staleToken) {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const args = request.params.arguments ?? {};
   const cwd = args.project_dir || process.env.CLAUDE_PROJECT_DIR || process.cwd();
-  if (!args.project_dir && !process.env.CLAUDE_PROJECT_DIR && realPath(cwd) === realPath(import_path5.default.join(__dirname, ".."))) {
+  if (!args.project_dir && !process.env.CLAUDE_PROJECT_DIR && realPath(cwd) === realPath(import_path6.default.join(__dirname, ".."))) {
     return text(`agent-undo: the MCP server is running in its own install directory (${cwd}), not your project. Call the tool again with project_dir set to the project's absolute path.`, true);
   }
   try {

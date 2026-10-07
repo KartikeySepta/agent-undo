@@ -4,7 +4,7 @@ import os from 'os';
 import path from 'path';
 import { listSnapshots, snapshotBase } from './snapshot';
 import { hasNativeClonefile, sizeOf } from './clone';
-import { readLevel, storeHome, isProjectDir } from './config';
+import { readLevel, storeHome, isProjectDir, lastHookError } from './config';
 import { readStats } from './stats';
 import { VERSION } from './version';
 
@@ -36,6 +36,8 @@ export function doctor(projectDir: string): Check[] {
     checks.push({ ok: isProjectDir(projectDir) || 'warn', label: 'project', detail: isProjectDir(projectDir) ? projectDir : `${projectDir} has no project marker (.git, package.json, ...): hooks will not auto-snapshot here` });
     checks.push({ ok: projectDir !== os.homedir() || false, label: 'safe target', detail: projectDir === os.homedir() ? 'refuses to snapshot the home directory' : 'ok' });
     checks.push({ ok: true, label: 'level', detail: readLevel() });
+    const hookError = lastHookError();
+    checks.push({ ok: hookError ? 'warn' : true, label: 'hooks', detail: hookError ? `last failure: ${hookError} (see ${path.join(storeHome(), 'hooks.log')})` : 'no failures logged' });
     return checks;
 }
 

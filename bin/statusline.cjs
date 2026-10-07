@@ -908,6 +908,7 @@ function readLevel() {
   }
   return DEFAULT_LEVEL;
 }
+var HOOKS_LOG_MAX = 64 * 1024;
 
 // src/snapshot.ts
 var LOCK_STALE_MS = 10 * 6e4;

@@ -41,6 +41,22 @@ function readLevel() {
   }
   return DEFAULT_LEVEL;
 }
+var hooksLog = () => import_path.default.join(storeHome(), "hooks.log");
+var HOOKS_LOG_MAX = 64 * 1024;
+function logHookError(event, err) {
+  try {
+    import_fs.default.mkdirSync(storeHome(), { recursive: true });
+    const file = hooksLog();
+    try {
+      if (import_fs.default.statSync(file).size > HOOKS_LOG_MAX) import_fs.default.renameSync(file, file + ".1");
+    } catch {
+    }
+    const msg = (err instanceof Error ? err.message : String(err)).replace(/\s+/g, " ").slice(0, 300);
+    import_fs.default.appendFileSync(file, `${(/* @__PURE__ */ new Date()).toISOString()} ${event} ${msg}
+`);
+  } catch {
+  }
+}
 
 // src/instructions.ts
 var CORE_RULES = [
@@ -123,8 +139,7 @@ function readInput() {
   });
 }
 function runHook(event, body) {
-  readInput().then(body).catch(() => {
-  }).finally(() => {
+  readInput().then(body).catch((e) => logHookError(event, e)).finally(() => {
     if (!emitted) process.stdout.write(formatOutput(platform, event));
     process.exit(0);
   });

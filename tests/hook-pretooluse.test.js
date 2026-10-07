@@ -110,3 +110,20 @@ test('the irreversible guard keeps the risky snapshot, honours the level, and is
   assert.match(run({ AGENT_UNDO_LEVEL: 'paranoid' }), /"ask"/);
   for (const p of ['codex', 'cursor', 'gemini']) assert.doesNotMatch(run({}, ['--platform', p]), /permissionDecision|"ask"/, p);
 });
+
+test('a hook that fails still exits 0, and the failure is logged and shown by doctor', (t) => {
+  const s = sandbox(); t.after(s.cleanup); s.write('f', 'x');
+  const fs = require('node:fs');
+  const path = require('node:path');
+  // Make the snapshot store unusable (a file where the snapshots dir should be) while the log dir stays writable.
+  fs.mkdirSync(s.home, { recursive: true });
+  fs.writeFileSync(path.join(s.home, 'snapshots'), 'not a directory');
+
+  const r = bash(s, 'rm -rf build');
+  assert.strictEqual(r.status, 0, 'a failing hook must never block the agent');
+  const log = fs.readFileSync(path.join(s.home, 'hooks.log'), 'utf8');
+  assert.match(log, /^\S+ PreToolUse .+/m);
+
+  const doctor = spawnSync(process.execPath, [BIN('agent-undo.cjs'), 'doctor'], { cwd: s.project, env: s.env, encoding: 'utf8' });
+  assert.match(doctor.stdout, /hooks.*last failure: .*PreToolUse/);
+});

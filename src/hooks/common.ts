@@ -1,6 +1,8 @@
 // Shared plumbing for the lifecycle hooks: read the JSON payload, emit context in the shape the
 // host expects, never throw. The same bundles serve Claude Code, Codex, Cursor and Gemini CLI.
 
+import { logHookError } from '../config';
+
 export interface HookInput {
     hook_event_name?: string;
     session_id?: string;
@@ -95,7 +97,7 @@ export function readInput(): Promise<HookInput> {
 
 /** Run a hook body; any failure exits 0 so a hook can never block the agent. */
 export function runHook(event: string, body: (input: HookInput) => void | Promise<void>): void {
-    readInput().then(body).catch(() => {}).finally(() => {
+    readInput().then(body).catch((e) => logHookError(event, e)).finally(() => {
         if (!emitted) process.stdout.write(formatOutput(platform, event));
         process.exit(0);
     });

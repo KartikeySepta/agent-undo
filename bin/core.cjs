@@ -991,6 +991,7 @@ function cloneEntries(from, to, entries, opts = {}) {
 var import_os = __toESM(require("os"));
 var import_path2 = __toESM(require("path"));
 var storeHome = () => process.env.AGENT_UNDO_HOME ?? import_path2.default.join(import_os.default.homedir(), ".agent-undo");
+var HOOKS_LOG_MAX = 64 * 1024;
 
 // src/stats.ts
 var import_fs2 = __toESM(require("fs"));

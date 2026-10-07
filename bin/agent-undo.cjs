@@ -4004,6 +4004,15 @@ function writeLevel(level) {
 }
 var PROJECT_MARKERS = [".git", ".agentundoignore", "package.json", "pyproject.toml", "requirements.txt", "Cargo.toml", "go.mod", "Gemfile", "pom.xml", "build.gradle", "composer.json", "deno.json"];
 var isProjectDir = (dir) => PROJECT_MARKERS.some((m) => import_fs2.default.existsSync(import_path2.default.join(dir, m)));
+var hooksLog = () => import_path2.default.join(storeHome(), "hooks.log");
+var HOOKS_LOG_MAX = 64 * 1024;
+function lastHookError() {
+  try {
+    return import_fs2.default.readFileSync(hooksLog(), "utf8").trimEnd().split("\n").at(-1) || null;
+  } catch {
+    return null;
+  }
+}
 
 // src/stats.ts
 var import_fs3 = __toESM(require("fs"));
@@ -4442,6 +4451,8 @@ function doctor(projectDir) {
   checks.push({ ok: isProjectDir(projectDir) || "warn", label: "project", detail: isProjectDir(projectDir) ? projectDir : `${projectDir} has no project marker (.git, package.json, ...): hooks will not auto-snapshot here` });
   checks.push({ ok: projectDir !== import_os3.default.homedir() || false, label: "safe target", detail: projectDir === import_os3.default.homedir() ? "refuses to snapshot the home directory" : "ok" });
   checks.push({ ok: true, label: "level", detail: readLevel() });
+  const hookError = lastHookError();
+  checks.push({ ok: hookError ? "warn" : true, label: "hooks", detail: hookError ? `last failure: ${hookError} (see ${import_path5.default.join(storeHome(), "hooks.log")})` : "no failures logged" });
   return checks;
 }
 function status(projectDir) {

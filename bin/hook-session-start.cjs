@@ -991,6 +991,22 @@ function readLevel() {
 }
 var PROJECT_MARKERS = [".git", ".agentundoignore", "package.json", "pyproject.toml", "requirements.txt", "Cargo.toml", "go.mod", "Gemfile", "pom.xml", "build.gradle", "composer.json", "deno.json"];
 var isProjectDir = (dir) => PROJECT_MARKERS.some((m) => import_fs2.default.existsSync(import_path2.default.join(dir, m)));
+var hooksLog = () => import_path2.default.join(storeHome(), "hooks.log");
+var HOOKS_LOG_MAX = 64 * 1024;
+function logHookError(event, err) {
+  try {
+    import_fs2.default.mkdirSync(storeHome(), { recursive: true });
+    const file2 = hooksLog();
+    try {
+      if (import_fs2.default.statSync(file2).size > HOOKS_LOG_MAX) import_fs2.default.renameSync(file2, file2 + ".1");
+    } catch {
+    }
+    const msg = (err instanceof Error ? err.message : String(err)).replace(/\s+/g, " ").slice(0, 300);
+    import_fs2.default.appendFileSync(file2, `${(/* @__PURE__ */ new Date()).toISOString()} ${event} ${msg}
+`);
+  } catch {
+  }
+}
 
 // src/stats.ts
 var import_fs3 = __toESM(require("fs"));
@@ -1274,8 +1290,7 @@ function readInput() {
   });
 }
 function runHook(event, body) {
-  readInput().then(body).catch(() => {
-  }).finally(() => {
+  readInput().then(body).catch((e) => logHookError(event, e)).finally(() => {
     if (!emitted) process.stdout.write(formatOutput(platform, event));
     process.exit(0);
   });
