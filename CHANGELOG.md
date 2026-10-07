@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Safety
+- Partial revert (`--only` / `paths`) refuses paths that pass through a symlink leaving the project, and paths excluded by `.agentundoignore`. Previously the first could delete files outside the project and the second deleted ignored files that no snapshot could restore.
+- A project path such as `..cache` is no longer rejected as an escape.
+- The lock is no longer taken from a live process owned by another user (EPERM).
+
+### Fixes
+- `diff` and the revert preview report a retargeted symlink as modified.
+- `diff` compares same-size files in 64 KiB chunks instead of reading both whole.
+- An exact snapshot id or name now beats a newer fragment match (`before` no longer resolves to `before-install`).
+- Snapshot names longer than 80 characters are shortened in the id instead of failing with ENAMETOOLONG.
+- `revert_environment` accepts a single path string and returns a clear error for a malformed `paths`.
+- `agent-undo list` shows the trigger, as the README documents.
+
 ## 1.3.1 (2026-10-04)
 
 - README: getting-started guide (30-second CLI try-out, per-agent install, verify, use), badges, eval numbers. No code changes.
