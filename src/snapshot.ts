@@ -272,7 +272,7 @@ function moveSync(from: string, to: string): void {
 
 function safeRelative(sourceDir: string, p: string): string {
     const rel = path.relative(realDir(sourceDir), path.resolve(realDir(sourceDir), p));
-    if (!rel || rel.startsWith('..') || path.isAbsolute(rel) || rel.split(path.sep)[0] === '.git') {
+    if (!rel || rel === '..' || rel.startsWith('..' + path.sep) || path.isAbsolute(rel) || rel.split(path.sep)[0] === '.git') {
         throw new Error(`[Agent-Undo] "${p}" is not a path inside the project.`);
     }
     return rel;

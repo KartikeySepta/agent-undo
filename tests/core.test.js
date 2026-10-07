@@ -184,3 +184,17 @@ test('pruned snapshots disappear instantly and are deleted in the background', a
   for (let i = 0; i < 50 && trash().length; i++) await new Promise((r) => setTimeout(r, 50));
   assert.deepStrictEqual(trash(), [], 'background deleter removed the trash');
 });
+
+test('partial revert accepts names that merely start with two dots, and still rejects escapes', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  s.write('..cache/blob', 'good');
+  core.takeSnapshot(s.project, { name: 'base' });
+  s.write('..cache/blob', 'bad');
+
+  core.revertSnapshot(s.project, 'base', { only: ['..cache'] });
+  assert.strictEqual(s.read('..cache/blob'), 'good');
+
+  for (const bad of ['..', '../sibling', path.join(s.tmp, 'store'), '.git/HEAD']) {
+    assert.throws(() => core.revertSnapshot(s.project, 'base', { only: [bad] }), /not a path inside the project/, bad);
+  }
+});

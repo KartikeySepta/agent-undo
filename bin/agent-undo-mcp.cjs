@@ -18147,7 +18147,7 @@ function moveSync(from, to) {
 }
 function safeRelative(sourceDir, p) {
   const rel = import_path4.default.relative(realDir(sourceDir), import_path4.default.resolve(realDir(sourceDir), p));
-  if (!rel || rel.startsWith("..") || import_path4.default.isAbsolute(rel) || rel.split(import_path4.default.sep)[0] === ".git") {
+  if (!rel || rel === ".." || rel.startsWith(".." + import_path4.default.sep) || import_path4.default.isAbsolute(rel) || rel.split(import_path4.default.sep)[0] === ".git") {
     throw new Error(`[Agent-Undo] "${p}" is not a path inside the project.`);
   }
   return rel;
