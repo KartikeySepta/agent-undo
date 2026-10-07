@@ -207,7 +207,7 @@ Renders `⏪ undo · 3 snaps · 2m`.
 
 ```bash
 git clone https://github.com/KartikeySepta/agent-undo && cd agent-undo && npm install
-npm test            # type-check, bundle, 67 node:test tests (core, CLI, hooks, MCP, manifests, evals)
+npm test            # type-check, bundle, 79 node:test tests (core, CLI, hooks, MCP, manifests, evals)
 npm run bench       # clone-engine benchmark → benchmarks/results/
 npm run eval        # behavioral evals against real Claude Code sessions (costs API usage)
 claude --plugin-dir .   # try your local changes as a plugin

@@ -1,11 +1,20 @@
 # Changelog
 
-## Unreleased
+## 1.3.2 (2026-10-08)
 
 ### Safety
+- **Crash recovery.** A full revert killed halfway (crash, OOM, closed terminal) used to leave the project empty or half restored. It now records its progress; `agent-undo doctor` reports an interrupted revert and `agent-undo doctor --repair` returns the project to its pre-revert state, including paths excluded by `.agentundoignore`.
 - Partial revert (`--only` / `paths`) refuses paths that pass through a symlink leaving the project, and paths excluded by `.agentundoignore`. Previously the first could delete files outside the project and the second deleted ignored files that no snapshot could restore.
 - A project path such as `..cache` is no longer rejected as an escape.
 - The lock is no longer taken from a live process owned by another user (EPERM).
+
+### Hooks
+- PreToolUse also matches `Write`, `Edit` and `MultiEdit`, and snapshots only when the edit throws away most of an existing file (a `Write` shrinking a 2 KiB+ file below half, or an edit removing 2000+ characters). Ordinary edits never snapshot.
+- Hook failures are logged to `$AGENT_UNDO_HOME/hooks.log` and the latest is shown by `doctor` / `undo_status`. Hooks still always exit 0.
+- The newest session baseline is exempt from pruning, so "roll back to the start" keeps working in a long session.
+
+### Install
+- Plugin installs get the directory-level `clonefile(2)` fast path with nothing to `npm install`: koffi (loader plus the macOS arm64 and x64 binaries) is vendored under `vendor/koffi-runtime`. Before, a plugin installed from git silently used per-file `cp -c`, about 16x slower.
 
 ### Fixes
 - `diff` and the revert preview report a retargeted symlink as modified.
