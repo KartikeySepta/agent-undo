@@ -4263,6 +4263,17 @@ function safeRelative(sourceDir, p) {
   }
   return rel;
 }
+function assertNotIgnored(sourceDir, rel) {
+  const ig = loadIgnore(sourceDir);
+  if (!ig) return;
+  const parts = posix(rel).split("/");
+  for (let i = 1; i <= parts.length; i++) {
+    const prefix = parts.slice(0, i).join("/");
+    if (ig.ignores(prefix) || ig.ignores(prefix + "/")) {
+      throw new Error(`[Agent-Undo] "${rel}" is excluded by ${IGNORE_FILE} and is never touched by a revert.`);
+    }
+  }
+}
 function moveTreeToBackup(sourceDir, reason) {
   const base = snapshotBase(sourceDir);
   const { id, createdAt } = claimId(base, "pre-revert");
@@ -4303,6 +4314,7 @@ function revertSnapshot(sourceDir, ref, opts = {}) {
     const snapRoot = dataDir(base, snap.id);
     if (!import_fs4.default.existsSync(snapRoot)) throw new Error(`[Agent-Undo] Snapshot data missing for ${snap.id}.`);
     const only = opts.only?.map((p) => safeRelative(sourceDir, p));
+    only?.forEach((o) => assertNotIgnored(sourceDir, o));
     const reason = `before reverting to ${snap.id}`;
     let backup;
     if (only) {

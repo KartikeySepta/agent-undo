@@ -291,6 +291,19 @@ function safeRelative(sourceDir: string, p: string): string {
     return rel;
 }
 
+/** Reject a path that .agentundoignore excludes, or that sits inside an excluded directory. */
+function assertNotIgnored(sourceDir: string, rel: string): void {
+    const ig = loadIgnore(sourceDir);
+    if (!ig) return;
+    const parts = posix(rel).split('/');
+    for (let i = 1; i <= parts.length; i++) {
+        const prefix = parts.slice(0, i).join('/');
+        if (ig.ignores(prefix) || ig.ignores(prefix + '/')) {
+            throw new Error(`[Agent-Undo] "${rel}" is excluded by ${IGNORE_FILE} and is never touched by a revert.`);
+        }
+    }
+}
+
 /** Rename every top-level entry (except .git) into a new pre-revert snapshot. Returns null if the store is on another volume. */
 function moveTreeToBackup(sourceDir: string, reason: string): SnapshotMeta | null {
     const base = snapshotBase(sourceDir);
@@ -341,6 +354,7 @@ export interface RevertPreview {
 export function previewRevert(sourceDir: string, ref?: string, opts: RevertOptions = {}): RevertPreview {
     const snapshot = resolveSnapshot(sourceDir, ref);
     const only = opts.only?.length ? [...new Set(opts.only.map((p) => posix(safeRelative(sourceDir, p))))].sort() : null;
+    only?.forEach((o) => assertNotIgnored(sourceDir, o));
     const inScope = (f: string) => !only || only.some((o) => posix(f) === o || posix(f).startsWith(o + '/'));
     const full = diffSnapshot(sourceDir, snapshot.id);
     const diff: DiffResult = { added: full.added.filter(inScope), modified: full.modified.filter(inScope), deleted: full.deleted.filter(inScope) };
@@ -367,6 +381,7 @@ export function revertSnapshot(
         const snapRoot = dataDir(base, snap.id);
         if (!fs.existsSync(snapRoot)) throw new Error(`[Agent-Undo] Snapshot data missing for ${snap.id}.`);
         const only = opts.only?.map((p) => safeRelative(sourceDir, p));
+        only?.forEach((o) => assertNotIgnored(sourceDir, o));
         const reason = `before reverting to ${snap.id}`;
         let backup: SnapshotMeta;
 

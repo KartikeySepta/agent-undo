@@ -1250,6 +1250,17 @@ function safeRelative(sourceDir, p) {
   }
   return rel;
 }
+function assertNotIgnored(sourceDir, rel) {
+  const ig = loadIgnore(sourceDir);
+  if (!ig) return;
+  const parts = posix(rel).split("/");
+  for (let i = 1; i <= parts.length; i++) {
+    const prefix = parts.slice(0, i).join("/");
+    if (ig.ignores(prefix) || ig.ignores(prefix + "/")) {
+      throw new Error(`[Agent-Undo] "${rel}" is excluded by ${IGNORE_FILE} and is never touched by a revert.`);
+    }
+  }
+}
 function moveTreeToBackup(sourceDir, reason) {
   const base = snapshotBase(sourceDir);
   const { id, createdAt } = claimId(base, "pre-revert");
@@ -1285,6 +1296,7 @@ function moveTreeToBackup(sourceDir, reason) {
 function previewRevert(sourceDir, ref, opts = {}) {
   const snapshot = resolveSnapshot(sourceDir, ref);
   const only = opts.only?.length ? [...new Set(opts.only.map((p) => posix(safeRelative(sourceDir, p))))].sort() : null;
+  only?.forEach((o) => assertNotIgnored(sourceDir, o));
   const inScope = (f) => !only || only.some((o) => posix(f) === o || posix(f).startsWith(o + "/"));
   const full = diffSnapshot(sourceDir, snapshot.id);
   const diff = { added: full.added.filter(inScope), modified: full.modified.filter(inScope), deleted: full.deleted.filter(inScope) };
@@ -1312,6 +1324,7 @@ function revertSnapshot(sourceDir, ref, opts = {}) {
     const snapRoot = dataDir(base, snap.id);
     if (!import_fs3.default.existsSync(snapRoot)) throw new Error(`[Agent-Undo] Snapshot data missing for ${snap.id}.`);
     const only = opts.only?.map((p) => safeRelative(sourceDir, p));
+    only?.forEach((o) => assertNotIgnored(sourceDir, o));
     const reason = `before reverting to ${snap.id}`;
     let backup;
     if (only) {

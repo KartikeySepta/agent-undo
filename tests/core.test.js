@@ -217,3 +217,23 @@ test('partial revert refuses to follow a symlink out of the project', (t) => {
   core.revertSnapshot(s.project, 'base', { only: ['link'] });
   assert.ok(fs.lstatSync(s.p('link')).isSymbolicLink());
 });
+
+test('partial revert never touches paths excluded by .agentundoignore', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  s.write('.agentundoignore', 'dist/\n.env.local\n');
+  s.write('dist/out.js', 'built');
+  s.write('.env.local', 'SECRET=1');
+  s.write('src/a.js', 'v1');
+  core.takeSnapshot(s.project, { name: 'base' });
+  s.write('src/a.js', 'v2');
+
+  for (const target of ['dist', 'dist/out.js', '.env.local']) {
+    assert.throws(() => core.revertSnapshot(s.project, 'base', { only: [target] }), /excluded by \.agentundoignore/, target);
+    assert.throws(() => core.previewRevert(s.project, 'base', { only: [target] }), /excluded by \.agentundoignore/, target);
+  }
+  assert.strictEqual(s.read('dist/out.js'), 'built');
+  assert.strictEqual(s.read('.env.local'), 'SECRET=1');
+
+  core.revertSnapshot(s.project, 'base', { only: ['src'] });
+  assert.strictEqual(s.read('src/a.js'), 'v1');
+});
