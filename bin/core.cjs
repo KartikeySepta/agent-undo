@@ -883,9 +883,11 @@ __export(snapshot_exports, {
   IGNORE_FILE: () => IGNORE_FILE,
   assertSafeTarget: () => assertSafeTarget,
   diffSnapshot: () => diffSnapshot,
+  interruptedRevert: () => interruptedRevert,
   listSnapshots: () => listSnapshots,
   previewRevert: () => previewRevert,
   pruneSnapshots: () => pruneSnapshots,
+  repairInterruptedRevert: () => repairInterruptedRevert,
   resolveSnapshot: () => resolveSnapshot,
   revertSnapshot: () => revertSnapshot,
   snapshotBase: () => snapshotBase,
@@ -1046,6 +1048,19 @@ function assertSafeTarget(dir) {
 }
 var BusyError = class extends Error {
 };
+function lockIsLive(lock) {
+  try {
+    const { pid, at } = JSON.parse(import_fs3.default.readFileSync(lock, "utf8"));
+    try {
+      process.kill(pid, 0);
+    } catch (k) {
+      if (k.code !== "EPERM") return false;
+    }
+    return Date.now() - at <= LOCK_STALE_MS;
+  } catch {
+    return false;
+  }
+}
 function withLock(sourceDir, fn) {
   const base = snapshotBase(sourceDir);
   import_fs3.default.mkdirSync(base, { recursive: true });
@@ -1055,19 +1070,7 @@ function withLock(sourceDir, fn) {
       import_fs3.default.writeFileSync(lock, JSON.stringify({ pid: process.pid, at: Date.now() }), { flag: "wx" });
       break;
     } catch (e) {
-      if (e.code !== "EEXIST" || attempt > 0) throw new BusyError("[Agent-Undo] Another snapshot or revert is running for this directory.");
-      let stale = true;
-      try {
-        const { pid, at } = JSON.parse(import_fs3.default.readFileSync(lock, "utf8"));
-        try {
-          process.kill(pid, 0);
-        } catch (k) {
-          if (k.code !== "EPERM") throw k;
-        }
-        stale = Date.now() - at > LOCK_STALE_MS;
-      } catch {
-      }
-      if (!stale) throw new BusyError("[Agent-Undo] Another snapshot or revert is running for this directory.");
+      if (e.code !== "EEXIST" || attempt > 0 || lockIsLive(lock)) throw new BusyError("[Agent-Undo] Another snapshot or revert is running for this directory.");
       import_fs3.default.rmSync(lock, { force: true });
     }
   }
@@ -1303,9 +1306,10 @@ function assertNotIgnored(sourceDir, rel) {
     }
   }
 }
-function moveTreeToBackup(sourceDir, reason) {
+function moveTreeToBackup(sourceDir, reason, onClaim) {
   const base = snapshotBase(sourceDir);
   const { id, createdAt } = claimId(base, "pre-revert");
+  onClaim?.(id);
   const data = dataDir(base, id);
   import_fs3.default.mkdirSync(data);
   const start = Date.now();
@@ -1334,6 +1338,57 @@ function moveTreeToBackup(sourceDir, reason) {
   };
   import_fs3.default.writeFileSync(metaFile(base, id), JSON.stringify(meta, null, 2));
   return meta;
+}
+var markerFile = (base) => import_path4.default.join(base, ".reverting.json");
+function readMarker(base) {
+  try {
+    return JSON.parse(import_fs3.default.readFileSync(markerFile(base), "utf8"));
+  } catch {
+    return null;
+  }
+}
+function writeMarker(base, m) {
+  const tmp = markerFile(base) + ".tmp";
+  import_fs3.default.writeFileSync(tmp, JSON.stringify(m));
+  import_fs3.default.renameSync(tmp, markerFile(base));
+}
+function restoreStash(sourceDir, stash, ignored) {
+  for (const r of ignored) {
+    if (!import_fs3.default.existsSync(import_path4.default.join(stash, r))) continue;
+    import_fs3.default.rmSync(import_path4.default.join(sourceDir, r), { recursive: true, force: true });
+    moveSync(import_path4.default.join(stash, r), import_path4.default.join(sourceDir, r));
+  }
+  import_fs3.default.rmSync(stash, { recursive: true, force: true });
+}
+function interruptedRevert(sourceDir) {
+  const base = snapshotBase(sourceDir);
+  const m = readMarker(base);
+  if (!m || lockIsLive(import_path4.default.join(base, ".lock"))) return null;
+  return { phase: m.phase, snapshot: m.snap, backup: m.backup, at: new Date(m.at).toISOString() };
+}
+function repairInterruptedRevert(sourceDir) {
+  assertSafeTarget(sourceDir);
+  return withLock(sourceDir, () => {
+    const base = snapshotBase(sourceDir);
+    const m = readMarker(base);
+    if (!m) return null;
+    const backupDir = m.backup ? import_path4.default.join(base, m.backup) : null;
+    const backupData = backupDir ? import_path4.default.join(backupDir, "data") : null;
+    const items = backupData && import_fs3.default.existsSync(backupData) ? import_fs3.default.readdirSync(backupData) : [];
+    if (m.phase === "restoring") {
+      for (const item of import_fs3.default.readdirSync(sourceDir)) if (item !== ".git") forceRemove(import_path4.default.join(sourceDir, item));
+    }
+    if (m.phase === "moving" || m.phase === "restoring" || m.phase === "rollback") {
+      for (const item of items) {
+        if (m.backupMode === "moved") moveSync(import_path4.default.join(backupData, item), import_path4.default.join(sourceDir, item));
+        else cloneEntries(backupData, sourceDir, [item]);
+      }
+      if (m.backupMode === "moved" && backupDir) import_fs3.default.rmSync(backupDir, { recursive: true, force: true });
+    }
+    restoreStash(sourceDir, m.stash, m.ignored);
+    import_fs3.default.rmSync(markerFile(base), { force: true });
+    return m.phase === "stash" ? `Revert to ${m.snap} had finished; only the paths excluded by ${IGNORE_FILE} needed putting back.` : `Interrupted revert to ${m.snap} (it stopped at "${m.phase}"). The project is back to its state before that revert.`;
+  });
 }
 function previewRevert(sourceDir, ref, opts = {}) {
   const snapshot = resolveSnapshot(sourceDir, ref);
@@ -1380,22 +1435,29 @@ function revertSnapshot(sourceDir, ref, opts = {}) {
     } else {
       const stash = import_path4.default.join(base, `.stash-${process.pid}`);
       const ignored = findIgnored(sourceDir, loadIgnore(sourceDir));
+      const marker = { phase: "stashing", snap: snap.id, stash, ignored, backup: null, backupMode: null, at: Date.now() };
+      writeMarker(base, marker);
+      const mark = (patch) => writeMarker(base, Object.assign(marker, patch));
       for (const r of ignored) moveSync(import_path4.default.join(sourceDir, r), import_path4.default.join(stash, r));
       try {
-        backup = moveTreeToBackup(sourceDir, reason) ?? (() => {
+        backup = moveTreeToBackup(sourceDir, reason, (id) => mark({ phase: "moving", backup: id, backupMode: "moved" })) ?? (() => {
           const b = snapshotUnlocked(sourceDir, { name: "pre-revert", reason, trigger: "pre-revert" });
+          mark({ phase: "restoring", backup: b.id, backupMode: b.mode });
           for (const item of import_fs3.default.readdirSync(sourceDir)) {
             if (item !== ".git") import_fs3.default.rmSync(import_path4.default.join(sourceDir, item), { recursive: true, force: true });
           }
           return b;
         })();
+        mark({ phase: "restoring", backup: backup.id, backupMode: backup.mode });
         try {
           cloneEntries(snapRoot, sourceDir, import_fs3.default.readdirSync(snapRoot));
+          mark({ phase: "stash" });
         } catch (e) {
           const backupData = dataDir(base, backup.id);
           for (const item of import_fs3.default.readdirSync(sourceDir)) {
             if (item !== ".git") forceRemove(import_path4.default.join(sourceDir, item));
           }
+          mark({ phase: "rollback" });
           if (backup.mode === "moved") {
             for (const item of import_fs3.default.readdirSync(backupData)) moveSync(import_path4.default.join(backupData, item), import_path4.default.join(sourceDir, item));
             import_fs3.default.rmSync(import_path4.default.join(base, backup.id), { recursive: true, force: true });
@@ -1405,11 +1467,8 @@ function revertSnapshot(sourceDir, ref, opts = {}) {
           throw new Error(`[Agent-Undo] Revert failed and was rolled back, project unchanged: ${e.message}`);
         }
       } finally {
-        for (const r of ignored) {
-          import_fs3.default.rmSync(import_path4.default.join(sourceDir, r), { recursive: true, force: true });
-          moveSync(import_path4.default.join(stash, r), import_path4.default.join(sourceDir, r));
-        }
-        import_fs3.default.rmSync(stash, { recursive: true, force: true });
+        restoreStash(sourceDir, stash, ignored);
+        import_fs3.default.rmSync(markerFile(base), { force: true });
       }
     }
     discard(base, listSnapshots(sourceDir).filter((old) => old.name === "pre-revert" && old.id !== backup.id && old.id !== snap.id).map((old) => old.id));
@@ -1429,9 +1488,11 @@ function revertSnapshot(sourceDir, ref, opts = {}) {
   IGNORE_FILE,
   assertSafeTarget,
   diffSnapshot,
+  interruptedRevert,
   listSnapshots,
   previewRevert,
   pruneSnapshots,
+  repairInterruptedRevert,
   resolveSnapshot,
   revertSnapshot,
   snapshotBase,

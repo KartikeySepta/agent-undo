@@ -17970,6 +17970,19 @@ function assertSafeTarget(dir) {
 }
 var BusyError = class extends Error {
 };
+function lockIsLive(lock) {
+  try {
+    const { pid, at } = JSON.parse(import_fs4.default.readFileSync(lock, "utf8"));
+    try {
+      process.kill(pid, 0);
+    } catch (k) {
+      if (k.code !== "EPERM") return false;
+    }
+    return Date.now() - at <= LOCK_STALE_MS;
+  } catch {
+    return false;
+  }
+}
 function withLock(sourceDir, fn) {
   const base = snapshotBase(sourceDir);
   import_fs4.default.mkdirSync(base, { recursive: true });
@@ -17979,19 +17992,7 @@ function withLock(sourceDir, fn) {
       import_fs4.default.writeFileSync(lock, JSON.stringify({ pid: process.pid, at: Date.now() }), { flag: "wx" });
       break;
     } catch (e) {
-      if (e.code !== "EEXIST" || attempt > 0) throw new BusyError("[Agent-Undo] Another snapshot or revert is running for this directory.");
-      let stale = true;
-      try {
-        const { pid, at } = JSON.parse(import_fs4.default.readFileSync(lock, "utf8"));
-        try {
-          process.kill(pid, 0);
-        } catch (k) {
-          if (k.code !== "EPERM") throw k;
-        }
-        stale = Date.now() - at > LOCK_STALE_MS;
-      } catch {
-      }
-      if (!stale) throw new BusyError("[Agent-Undo] Another snapshot or revert is running for this directory.");
+      if (e.code !== "EEXIST" || attempt > 0 || lockIsLive(lock)) throw new BusyError("[Agent-Undo] Another snapshot or revert is running for this directory.");
       import_fs4.default.rmSync(lock, { force: true });
     }
   }
@@ -18227,9 +18228,10 @@ function assertNotIgnored(sourceDir, rel) {
     }
   }
 }
-function moveTreeToBackup(sourceDir, reason) {
+function moveTreeToBackup(sourceDir, reason, onClaim) {
   const base = snapshotBase(sourceDir);
   const { id, createdAt } = claimId(base, "pre-revert");
+  onClaim?.(id);
   const data = dataDir(base, id);
   import_fs4.default.mkdirSync(data);
   const start = Date.now();
@@ -18258,6 +18260,33 @@ function moveTreeToBackup(sourceDir, reason) {
   };
   import_fs4.default.writeFileSync(metaFile(base, id), JSON.stringify(meta2, null, 2));
   return meta2;
+}
+var markerFile = (base) => import_path4.default.join(base, ".reverting.json");
+function readMarker(base) {
+  try {
+    return JSON.parse(import_fs4.default.readFileSync(markerFile(base), "utf8"));
+  } catch {
+    return null;
+  }
+}
+function writeMarker(base, m) {
+  const tmp = markerFile(base) + ".tmp";
+  import_fs4.default.writeFileSync(tmp, JSON.stringify(m));
+  import_fs4.default.renameSync(tmp, markerFile(base));
+}
+function restoreStash(sourceDir, stash, ignored) {
+  for (const r of ignored) {
+    if (!import_fs4.default.existsSync(import_path4.default.join(stash, r))) continue;
+    import_fs4.default.rmSync(import_path4.default.join(sourceDir, r), { recursive: true, force: true });
+    moveSync(import_path4.default.join(stash, r), import_path4.default.join(sourceDir, r));
+  }
+  import_fs4.default.rmSync(stash, { recursive: true, force: true });
+}
+function interruptedRevert(sourceDir) {
+  const base = snapshotBase(sourceDir);
+  const m = readMarker(base);
+  if (!m || lockIsLive(import_path4.default.join(base, ".lock"))) return null;
+  return { phase: m.phase, snapshot: m.snap, backup: m.backup, at: new Date(m.at).toISOString() };
 }
 function previewRevert(sourceDir, ref, opts = {}) {
   const snapshot = resolveSnapshot(sourceDir, ref);
@@ -18304,22 +18333,29 @@ function revertSnapshot(sourceDir, ref, opts = {}) {
     } else {
       const stash = import_path4.default.join(base, `.stash-${process.pid}`);
       const ignored = findIgnored(sourceDir, loadIgnore(sourceDir));
+      const marker = { phase: "stashing", snap: snap.id, stash, ignored, backup: null, backupMode: null, at: Date.now() };
+      writeMarker(base, marker);
+      const mark = (patch) => writeMarker(base, Object.assign(marker, patch));
       for (const r of ignored) moveSync(import_path4.default.join(sourceDir, r), import_path4.default.join(stash, r));
       try {
-        backup = moveTreeToBackup(sourceDir, reason) ?? (() => {
+        backup = moveTreeToBackup(sourceDir, reason, (id) => mark({ phase: "moving", backup: id, backupMode: "moved" })) ?? (() => {
           const b = snapshotUnlocked(sourceDir, { name: "pre-revert", reason, trigger: "pre-revert" });
+          mark({ phase: "restoring", backup: b.id, backupMode: b.mode });
           for (const item of import_fs4.default.readdirSync(sourceDir)) {
             if (item !== ".git") import_fs4.default.rmSync(import_path4.default.join(sourceDir, item), { recursive: true, force: true });
           }
           return b;
         })();
+        mark({ phase: "restoring", backup: backup.id, backupMode: backup.mode });
         try {
           cloneEntries(snapRoot, sourceDir, import_fs4.default.readdirSync(snapRoot));
+          mark({ phase: "stash" });
         } catch (e) {
           const backupData = dataDir(base, backup.id);
           for (const item of import_fs4.default.readdirSync(sourceDir)) {
             if (item !== ".git") forceRemove(import_path4.default.join(sourceDir, item));
           }
+          mark({ phase: "rollback" });
           if (backup.mode === "moved") {
             for (const item of import_fs4.default.readdirSync(backupData)) moveSync(import_path4.default.join(backupData, item), import_path4.default.join(sourceDir, item));
             import_fs4.default.rmSync(import_path4.default.join(base, backup.id), { recursive: true, force: true });
@@ -18329,11 +18365,8 @@ function revertSnapshot(sourceDir, ref, opts = {}) {
           throw new Error(`[Agent-Undo] Revert failed and was rolled back, project unchanged: ${e.message}`);
         }
       } finally {
-        for (const r of ignored) {
-          import_fs4.default.rmSync(import_path4.default.join(sourceDir, r), { recursive: true, force: true });
-          moveSync(import_path4.default.join(stash, r), import_path4.default.join(sourceDir, r));
-        }
-        import_fs4.default.rmSync(stash, { recursive: true, force: true });
+        restoreStash(sourceDir, stash, ignored);
+        import_fs4.default.rmSync(markerFile(base), { force: true });
       }
     }
     discard(base, listSnapshots(sourceDir).filter((old) => old.name === "pre-revert" && old.id !== backup.id && old.id !== snap.id).map((old) => old.id));
@@ -18376,6 +18409,8 @@ function doctor(projectDir) {
   }
   checks.push({ ok: isProjectDir(projectDir) || "warn", label: "project", detail: isProjectDir(projectDir) ? projectDir : `${projectDir} has no project marker (.git, package.json, ...): hooks will not auto-snapshot here` });
   checks.push({ ok: projectDir !== import_os3.default.homedir() || false, label: "safe target", detail: projectDir === import_os3.default.homedir() ? "refuses to snapshot the home directory" : "ok" });
+  const cut = interruptedRevert(projectDir);
+  if (cut) checks.push({ ok: false, label: "interrupted", detail: `a revert to ${cut.snapshot} stopped at "${cut.phase}" (${cut.at}): the project may be empty or half restored. Run \`agent-undo doctor --repair\`` });
   checks.push({ ok: true, label: "level", detail: readLevel() });
   const hookError = lastHookError();
   checks.push({ ok: hookError ? "warn" : true, label: "hooks", detail: hookError ? `last failure: ${hookError} (see ${import_path5.default.join(storeHome(), "hooks.log")})` : "no failures logged" });

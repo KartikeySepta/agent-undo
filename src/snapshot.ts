@@ -72,6 +72,16 @@ export function assertSafeTarget(dir: string): void {
 
 export class BusyError extends Error {}
 
+/** True while the process that wrote this lock is alive (EPERM: alive, just not ours to signal) and the lock is fresh. */
+function lockIsLive(lock: string): boolean {
+    try {
+        const { pid, at } = JSON.parse(fs.readFileSync(lock, 'utf8'));
+        try { process.kill(pid, 0); }
+        catch (k: any) { if (k.code !== 'EPERM') return false; }
+        return Date.now() - at <= LOCK_STALE_MS;
+    } catch { return false; } // unreadable lock: stale
+}
+
 function withLock<T>(sourceDir: string, fn: () => T): T {
     const base = snapshotBase(sourceDir);
     fs.mkdirSync(base, { recursive: true });
@@ -81,15 +91,7 @@ function withLock<T>(sourceDir: string, fn: () => T): T {
             fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, at: Date.now() }), { flag: 'wx' });
             break;
         } catch (e: any) {
-            if (e.code !== 'EEXIST' || attempt > 0) throw new BusyError('[Agent-Undo] Another snapshot or revert is running for this directory.');
-            let stale = true;
-            try {
-                const { pid, at } = JSON.parse(fs.readFileSync(lock, 'utf8'));
-                try { process.kill(pid, 0); } // throws if the holder is gone
-                catch (k: any) { if (k.code !== 'EPERM') throw k; } // EPERM: alive, just not ours to signal
-                stale = Date.now() - at > LOCK_STALE_MS;
-            } catch { /* unreadable lock or dead pid: stale */ }
-            if (!stale) throw new BusyError('[Agent-Undo] Another snapshot or revert is running for this directory.');
+            if (e.code !== 'EEXIST' || attempt > 0 || lockIsLive(lock)) throw new BusyError('[Agent-Undo] Another snapshot or revert is running for this directory.');
             fs.rmSync(lock, { force: true });
         }
     }
@@ -347,9 +349,10 @@ function assertNotIgnored(sourceDir: string, rel: string): void {
 }
 
 /** Rename every top-level entry (except .git) into a new pre-revert snapshot. Returns null if the store is on another volume. */
-function moveTreeToBackup(sourceDir: string, reason: string): SnapshotMeta | null {
+function moveTreeToBackup(sourceDir: string, reason: string, onClaim?: (id: string) => void): SnapshotMeta | null {
     const base = snapshotBase(sourceDir);
     const { id, createdAt } = claimId(base, 'pre-revert');
+    onClaim?.(id);
     const data = dataDir(base, id);
     fs.mkdirSync(data);
     const start = Date.now();
@@ -371,6 +374,85 @@ function moveTreeToBackup(sourceDir: string, reason: string): SnapshotMeta | nul
     };
     fs.writeFileSync(metaFile(base, id), JSON.stringify(meta, null, 2));
     return meta;
+}
+
+// ---------- crash recovery ----------
+// A full revert moves the live tree aside and clones the snapshot back. Killed in between, that
+// leaves the project empty or half restored. The marker records how far it got so `doctor --repair`
+// can put everything back from the pre-revert backup.
+
+type RevertPhase = 'stashing' | 'moving' | 'restoring' | 'rollback' | 'stash';
+
+interface RevertMarker {
+    phase: RevertPhase;
+    snap: string;
+    stash: string;
+    ignored: string[];
+    backup: string | null;
+    backupMode: SnapshotMeta['mode'] | null;
+    at: number;
+}
+
+const markerFile = (base: string) => path.join(base, '.reverting.json');
+
+function readMarker(base: string): RevertMarker | null {
+    try { return JSON.parse(fs.readFileSync(markerFile(base), 'utf8')) as RevertMarker; } catch { return null; }
+}
+
+function writeMarker(base: string, m: RevertMarker): void {
+    const tmp = markerFile(base) + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(m));
+    fs.renameSync(tmp, markerFile(base));
+}
+
+/** Put ignored paths parked outside the tree back where they were. Tolerates entries that never made it into the stash. */
+function restoreStash(sourceDir: string, stash: string, ignored: string[]): void {
+    for (const r of ignored) {
+        if (!fs.existsSync(path.join(stash, r))) continue;
+        fs.rmSync(path.join(sourceDir, r), { recursive: true, force: true });
+        moveSync(path.join(stash, r), path.join(sourceDir, r));
+    }
+    fs.rmSync(stash, { recursive: true, force: true });
+}
+
+export interface InterruptedRevert { phase: string; snapshot: string; backup: string | null; at: string }
+
+/** A full revert that died before finishing, or null. Null while a live process still holds the lock. */
+export function interruptedRevert(sourceDir: string): InterruptedRevert | null {
+    const base = snapshotBase(sourceDir);
+    const m = readMarker(base);
+    if (!m || lockIsLive(path.join(base, '.lock'))) return null;
+    return { phase: m.phase, snapshot: m.snap, backup: m.backup, at: new Date(m.at).toISOString() };
+}
+
+/** Undo the damage of an interrupted full revert: the project goes back to its pre-revert state. Returns a summary, or null if there was nothing to repair. */
+export function repairInterruptedRevert(sourceDir: string): string | null {
+    assertSafeTarget(sourceDir);
+    return withLock(sourceDir, () => {
+        const base = snapshotBase(sourceDir);
+        const m = readMarker(base);
+        if (!m) return null;
+        const backupDir = m.backup ? path.join(base, m.backup) : null;
+        const backupData = backupDir ? path.join(backupDir, 'data') : null;
+        const items = backupData && fs.existsSync(backupData) ? fs.readdirSync(backupData) : [];
+
+        if (m.phase === 'restoring') {
+            // Partly restored from the snapshot: discard that, the backup holds the real pre-revert state.
+            for (const item of fs.readdirSync(sourceDir)) if (item !== '.git') forceRemove(path.join(sourceDir, item));
+        }
+        if (m.phase === 'moving' || m.phase === 'restoring' || m.phase === 'rollback') {
+            for (const item of items) {
+                if (m.backupMode === 'moved') moveSync(path.join(backupData!, item), path.join(sourceDir, item));
+                else cloneEntries(backupData!, sourceDir, [item]);
+            }
+            if (m.backupMode === 'moved' && backupDir) fs.rmSync(backupDir, { recursive: true, force: true });
+        }
+        restoreStash(sourceDir, m.stash, m.ignored);
+        fs.rmSync(markerFile(base), { force: true });
+        return m.phase === 'stash'
+            ? `Revert to ${m.snap} had finished; only the paths excluded by ${IGNORE_FILE} needed putting back.`
+            : `Interrupted revert to ${m.snap} (it stopped at "${m.phase}"). The project is back to its state before that revert.`;
+    });
 }
 
 export interface RevertOptions {
@@ -440,25 +522,32 @@ export function revertSnapshot(
             // Park ignored paths outside the tree, wipe, restore, then put them back.
             const stash = path.join(base, `.stash-${process.pid}`);
             const ignored = findIgnored(sourceDir, loadIgnore(sourceDir));
+            const marker: RevertMarker = { phase: 'stashing', snap: snap.id, stash, ignored, backup: null, backupMode: null, at: Date.now() };
+            writeMarker(base, marker);
+            const mark = (patch: Partial<RevertMarker>) => writeMarker(base, Object.assign(marker, patch));
             for (const r of ignored) moveSync(path.join(sourceDir, r), path.join(stash, r));
             try {
                 // Moving the live tree into the backup is both the backup and the wipe, in O(entries).
                 // Cross-volume store: clone a backup, then delete.
-                backup = moveTreeToBackup(sourceDir, reason) ?? (() => {
+                backup = moveTreeToBackup(sourceDir, reason, (id) => mark({ phase: 'moving', backup: id, backupMode: 'moved' })) ?? (() => {
                     const b = snapshotUnlocked(sourceDir, { name: 'pre-revert', reason, trigger: 'pre-revert' });
+                    mark({ phase: 'restoring', backup: b.id, backupMode: b.mode });
                     for (const item of fs.readdirSync(sourceDir)) {
                         if (item !== '.git') fs.rmSync(path.join(sourceDir, item), { recursive: true, force: true });
                     }
                     return b;
                 })();
+                mark({ phase: 'restoring', backup: backup.id, backupMode: backup.mode });
                 try {
                     cloneEntries(snapRoot, sourceDir, fs.readdirSync(snapRoot));
+                    mark({ phase: 'stash' });
                 } catch (e: any) {
                     // Restore failed halfway: put the pre-revert state back so the project is never left empty.
                     const backupData = dataDir(base, backup.id);
                     for (const item of fs.readdirSync(sourceDir)) {
                         if (item !== '.git') forceRemove(path.join(sourceDir, item));
                     }
+                    mark({ phase: 'rollback' });
                     if (backup.mode === 'moved') {
                         for (const item of fs.readdirSync(backupData)) moveSync(path.join(backupData, item), path.join(sourceDir, item));
                         fs.rmSync(path.join(base, backup.id), { recursive: true, force: true });
@@ -468,11 +557,8 @@ export function revertSnapshot(
                     throw new Error(`[Agent-Undo] Revert failed and was rolled back, project unchanged: ${e.message}`);
                 }
             } finally {
-                for (const r of ignored) {
-                    fs.rmSync(path.join(sourceDir, r), { recursive: true, force: true });
-                    moveSync(path.join(stash, r), path.join(sourceDir, r));
-                }
-                fs.rmSync(stash, { recursive: true, force: true });
+                restoreStash(sourceDir, stash, ignored);
+                fs.rmSync(markerFile(base), { force: true });
             }
         }
 

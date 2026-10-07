@@ -2,7 +2,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { listSnapshots, snapshotBase } from './snapshot';
+import { listSnapshots, snapshotBase, interruptedRevert } from './snapshot';
 import { hasNativeClonefile, sizeOf } from './clone';
 import { readLevel, storeHome, isProjectDir, lastHookError } from './config';
 import { readStats } from './stats';
@@ -35,6 +35,8 @@ export function doctor(projectDir: string): Check[] {
 
     checks.push({ ok: isProjectDir(projectDir) || 'warn', label: 'project', detail: isProjectDir(projectDir) ? projectDir : `${projectDir} has no project marker (.git, package.json, ...): hooks will not auto-snapshot here` });
     checks.push({ ok: projectDir !== os.homedir() || false, label: 'safe target', detail: projectDir === os.homedir() ? 'refuses to snapshot the home directory' : 'ok' });
+    const cut = interruptedRevert(projectDir);
+    if (cut) checks.push({ ok: false, label: 'interrupted', detail: `a revert to ${cut.snapshot} stopped at "${cut.phase}" (${cut.at}): the project may be empty or half restored. Run \`agent-undo doctor --repair\`` });
     checks.push({ ok: true, label: 'level', detail: readLevel() });
     const hookError = lastHookError();
     checks.push({ ok: hookError ? 'warn' : true, label: 'hooks', detail: hookError ? `last failure: ${hookError} (see ${path.join(storeHome(), 'hooks.log')})` : 'no failures logged' });

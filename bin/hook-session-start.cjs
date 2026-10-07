@@ -1061,6 +1061,19 @@ function assertSafeTarget(dir) {
 }
 var BusyError = class extends Error {
 };
+function lockIsLive(lock) {
+  try {
+    const { pid, at } = JSON.parse(import_fs4.default.readFileSync(lock, "utf8"));
+    try {
+      process.kill(pid, 0);
+    } catch (k) {
+      if (k.code !== "EPERM") return false;
+    }
+    return Date.now() - at <= LOCK_STALE_MS;
+  } catch {
+    return false;
+  }
+}
 function withLock(sourceDir, fn) {
   const base = snapshotBase(sourceDir);
   import_fs4.default.mkdirSync(base, { recursive: true });
@@ -1070,19 +1083,7 @@ function withLock(sourceDir, fn) {
       import_fs4.default.writeFileSync(lock, JSON.stringify({ pid: process.pid, at: Date.now() }), { flag: "wx" });
       break;
     } catch (e) {
-      if (e.code !== "EEXIST" || attempt > 0) throw new BusyError("[Agent-Undo] Another snapshot or revert is running for this directory.");
-      let stale = true;
-      try {
-        const { pid, at } = JSON.parse(import_fs4.default.readFileSync(lock, "utf8"));
-        try {
-          process.kill(pid, 0);
-        } catch (k) {
-          if (k.code !== "EPERM") throw k;
-        }
-        stale = Date.now() - at > LOCK_STALE_MS;
-      } catch {
-      }
-      if (!stale) throw new BusyError("[Agent-Undo] Another snapshot or revert is running for this directory.");
+      if (e.code !== "EEXIST" || attempt > 0 || lockIsLive(lock)) throw new BusyError("[Agent-Undo] Another snapshot or revert is running for this directory.");
       import_fs4.default.rmSync(lock, { force: true });
     }
   }

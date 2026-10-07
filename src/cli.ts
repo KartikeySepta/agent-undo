@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { program } from 'commander';
 import {
-  takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot, pruneSnapshots,
+  takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot, pruneSnapshots, repairInterruptedRevert,
 } from './snapshot';
 import { VERSION } from './version';
 import { LEVELS, isLevel, readLevel, writeLevel } from './config';
@@ -104,7 +104,14 @@ program
 program
   .command('doctor')
   .description('Check the clone engine, store volume, and project setup')
-  .action(() => {
+  .option('--repair', 'finish or undo a revert that was interrupted (project empty or half restored)')
+  .action((opts: { repair?: boolean }) => {
+    if (opts.repair) {
+      try {
+        const done = repairInterruptedRevert(cwd);
+        console.log(done ? `✅ ${done}` : 'Nothing to repair: no interrupted revert found.');
+      } catch (e) { fail(e); }
+    }
     const icon = { true: '✅', false: '❌', warn: '⚠️ ' } as const;
     const checks = doctor(cwd);
     for (const c of checks) console.log(`${icon[String(c.ok) as keyof typeof icon]} ${c.label.padEnd(13)} ${c.detail}`);
