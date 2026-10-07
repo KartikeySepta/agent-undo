@@ -237,3 +237,16 @@ test('partial revert never touches paths excluded by .agentundoignore', (t) => {
   core.revertSnapshot(s.project, 'base', { only: ['src'] });
   assert.strictEqual(s.read('src/a.js'), 'v1');
 });
+
+test('an exact snapshot name or id beats a newer fragment match', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  s.write('f.txt', 'one');
+  const exact = core.takeSnapshot(s.project, { name: 'before' });
+  s.write('f.txt', 'two');
+  const newer = core.takeSnapshot(s.project, { name: 'before-install' });
+
+  assert.strictEqual(core.resolveSnapshot(s.project, 'before').id, exact.id, 'exact name wins over a newer id fragment');
+  assert.strictEqual(core.resolveSnapshot(s.project, exact.id).id, exact.id);
+  assert.strictEqual(core.resolveSnapshot(s.project, 'before-inst').id, newer.id, 'fragments still work');
+  assert.strictEqual(core.resolveSnapshot(s.project, 'latest').id, newer.id);
+});

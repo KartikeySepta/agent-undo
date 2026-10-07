@@ -206,12 +206,14 @@ export function listSnapshots(sourceDir: string): SnapshotMeta[] {
         });
 }
 
-/** Resolve "latest", an exact id, a name, or an id fragment (newest match wins). */
+/** Resolve "latest", an exact id or name, or else an id fragment (newest match wins). */
 export function resolveSnapshot(sourceDir: string, ref?: string): SnapshotMeta {
     const all = listSnapshots(sourceDir);
     if (all.length === 0) throw new Error('[Agent-Undo] No snapshots found. Take one first.');
     if (!ref || ref === 'latest') return all[all.length - 1];
-    const matches = all.filter((s) => s.id === ref || s.name === ref || s.id.includes(ref));
+    // An exact id or name beats a fragment match, which could otherwise pick a newer, different snapshot.
+    const exact = all.filter((s) => s.id === ref || s.name === ref);
+    const matches = exact.length ? exact : all.filter((s) => s.id.includes(ref));
     if (matches.length === 0) throw new Error(`[Agent-Undo] No snapshot matches "${ref}".`);
     return matches[matches.length - 1];
 }

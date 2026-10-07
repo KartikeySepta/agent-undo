@@ -18097,7 +18097,8 @@ function resolveSnapshot(sourceDir, ref) {
   const all = listSnapshots(sourceDir);
   if (all.length === 0) throw new Error("[Agent-Undo] No snapshots found. Take one first.");
   if (!ref || ref === "latest") return all[all.length - 1];
-  const matches = all.filter((s) => s.id === ref || s.name === ref || s.id.includes(ref));
+  const exact = all.filter((s) => s.id === ref || s.name === ref);
+  const matches = exact.length ? exact : all.filter((s) => s.id.includes(ref));
   if (matches.length === 0) throw new Error(`[Agent-Undo] No snapshot matches "${ref}".`);
   return matches[matches.length - 1];
 }
