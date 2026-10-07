@@ -134,3 +134,21 @@ test('paranoid level: the preview tells the agent not to confirm on its own', as
   s.write('a.txt', 'two');
   assert.match(await call('revert_environment'), /PARANOID: do not confirm yourself/);
 });
+
+test('revert_environment accepts a single path string and rejects a malformed paths value clearly', async (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  s.write('a.txt', 'one'); s.write('b.txt', 'one');
+  const { client, call, revert } = await connect(s);
+  t.after(() => client.close());
+
+  await call('take_snapshot', { name: 'base' });
+  s.write('a.txt', 'two'); s.write('b.txt', 'two');
+
+  assert.match(await call('revert_environment', { paths: 42 }), /`paths` must be an array of project-relative path strings/);
+  assert.match(await call('revert_environment', { paths: [''] }), /`paths` must be an array of project-relative path strings/);
+  assert.strictEqual(s.read('a.txt'), 'two', 'a rejected request changes nothing');
+
+  assert.match(await revert({ paths: 'a.txt' }), /\(only a\.txt\)/, 'a bare string is treated as one path');
+  assert.strictEqual(s.read('a.txt'), 'one');
+  assert.strictEqual(s.read('b.txt'), 'two');
+});

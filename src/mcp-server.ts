@@ -61,6 +61,16 @@ const text = (t: string, isError = false) => ({ content: [{ type: "text", text: 
 
 const PREVIEW_CAP = 50;
 
+/** Models sometimes send one path as a bare string. Accept that; reject anything else that isn't a list of non-empty strings. */
+function parsePaths(raw: unknown): string[] | undefined | Error {
+  if (raw === undefined || raw === null) return undefined;
+  const list = typeof raw === "string" ? [raw] : raw;
+  if (!Array.isArray(list) || list.some((p) => typeof p !== "string" || !p.trim())) {
+    return new Error("`paths` must be an array of project-relative path strings.");
+  }
+  return list.length ? list : undefined;
+}
+
 /** Step one of a revert: what it would undo, and how to confirm. Nothing on disk changes. */
 function previewText(p: RevertPreview, staleToken?: string): string {
   const { added, modified, deleted } = p.diff;
@@ -83,7 +93,7 @@ function previewText(p: RevertPreview, staleToken?: string): string {
 }
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const args = (request.params.arguments ?? {}) as { name?: string; snapshot?: string; paths?: string[]; project_dir?: string; confirm?: string };
+  const args = (request.params.arguments ?? {}) as { name?: string; snapshot?: string; paths?: unknown; project_dir?: string; confirm?: string };
   const cwd = args.project_dir || process.env.CLAUDE_PROJECT_DIR || process.cwd();
   // Some hosts (Codex plugins, Gemini extensions) start the server inside the plugin's own
   // directory. Never silently snapshot or revert agent-undo itself: ask for project_dir instead.
@@ -108,11 +118,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         ].join("\n"));
       }
       case "revert_environment": {
-        const only = args.paths?.length ? args.paths : undefined;
+        const only = parsePaths(args.paths);
+        if (only instanceof Error) return text(`Error: ${only.message}`, true);
         const preview = previewRevert(cwd, args.snapshot, { only });
         if (args.confirm !== preview.token) return text(previewText(preview, args.confirm));
         const { restored, backup } = revertSnapshot(cwd, preview.snapshot.id, { only });
-        const scope = args.paths?.length ? ` (only ${args.paths.join(", ")})` : "";
+        const scope = only ? ` (only ${only.join(", ")})` : "";
         return text(`Reverted to ${restored.id}${scope}. To undo this revert: revert_environment with snapshot "${backup.id}".`);
       }
       case "undo_status": {

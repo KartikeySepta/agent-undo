@@ -18430,6 +18430,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 }));
 var text = (t, isError = false) => ({ content: [{ type: "text", text: t }], ...isError && { isError } });
 var PREVIEW_CAP = 50;
+function parsePaths(raw) {
+  if (raw === void 0 || raw === null) return void 0;
+  const list = typeof raw === "string" ? [raw] : raw;
+  if (!Array.isArray(list) || list.some((p) => typeof p !== "string" || !p.trim())) {
+    return new Error("`paths` must be an array of project-relative path strings.");
+  }
+  return list.length ? list : void 0;
+}
 function previewText(p, staleToken) {
   const { added, modified, deleted } = p.diff;
   const lines = [...added.map((f) => `+ ${f}`), ...modified.map((f) => `~ ${f}`), ...deleted.map((f) => `- ${f}`)];
@@ -18473,11 +18481,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         ].join("\n"));
       }
       case "revert_environment": {
-        const only = args.paths?.length ? args.paths : void 0;
+        const only = parsePaths(args.paths);
+        if (only instanceof Error) return text(`Error: ${only.message}`, true);
         const preview = previewRevert(cwd, args.snapshot, { only });
         if (args.confirm !== preview.token) return text(previewText(preview, args.confirm));
         const { restored, backup } = revertSnapshot(cwd, preview.snapshot.id, { only });
-        const scope = args.paths?.length ? ` (only ${args.paths.join(", ")})` : "";
+        const scope = only ? ` (only ${only.join(", ")})` : "";
         return text(`Reverted to ${restored.id}${scope}. To undo this revert: revert_environment with snapshot "${backup.id}".`);
       }
       case "undo_status": {
