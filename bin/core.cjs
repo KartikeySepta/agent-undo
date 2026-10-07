@@ -1019,6 +1019,7 @@ function recordStats(update) {
 // src/snapshot.ts
 var IGNORE_FILE = ".agentundoignore";
 var KEEP_DEFAULT = 10;
+var MAX_SLUG = 80;
 var LOCK_STALE_MS = 10 * 6e4;
 var maxCopyBytes = () => Number(process.env.AGENT_UNDO_MAX_COPY_MB ?? 1024) * 1e6;
 function realDir(dir) {
@@ -1114,7 +1115,7 @@ function discard(base, ids) {
 }
 function claimId(base, name) {
   const createdAt = (/* @__PURE__ */ new Date()).toISOString();
-  const slug = name ? "-" + name.replace(/[^\w-]+/g, "_") : "";
+  const slug = name ? "-" + name.replace(/[^\w-]+/g, "_").slice(0, MAX_SLUG) : "";
   const stamp = createdAt.replace(/[:.]/g, "-");
   let id = stamp + slug;
   for (let n = 1; ; n++) {

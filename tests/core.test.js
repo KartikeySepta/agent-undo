@@ -279,3 +279,15 @@ test('diff compares same-size files by content, including a difference in the la
   fs.writeFileSync(s.p('same.bin'), big); // rewritten, identical bytes
   assert.deepStrictEqual(core.diffSnapshot(s.project), { added: [], modified: ['big.bin'], deleted: [] });
 });
+
+test('a very long snapshot name is shortened instead of failing with ENAMETOOLONG', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  s.write('f.txt', 'one');
+  const long = 'before-the-giant-refactor-' + 'x'.repeat(400);
+  const meta = core.takeSnapshot(s.project, { name: long });
+  assert.ok(meta.id.length < 150, `id is ${meta.id.length} chars`);
+  assert.strictEqual(core.resolveSnapshot(s.project, long).id, meta.id, 'the full name still resolves it');
+  s.write('f.txt', 'two');
+  core.revertSnapshot(s.project, long);
+  assert.strictEqual(s.read('f.txt'), 'one');
+});

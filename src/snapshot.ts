@@ -40,6 +40,7 @@ export interface DiffResult {
 
 export const IGNORE_FILE = '.agentundoignore';
 const KEEP_DEFAULT = 10;
+const MAX_SLUG = 80;
 const LOCK_STALE_MS = 10 * 60_000;
 const maxCopyBytes = () => Number(process.env.AGENT_UNDO_MAX_COPY_MB ?? 1024) * 1e6;
 
@@ -143,7 +144,8 @@ function discard(base: string, ids: string[]): void {
 /** Claim a snapshot id atomically; snapshots within the same millisecond get a .N suffix (sorts after). */
 function claimId(base: string, name?: string): { id: string; createdAt: string } {
     const createdAt = new Date().toISOString();
-    const slug = name ? '-' + name.replace(/[^\w-]+/g, '_') : '';
+    // The id is a directory name (255-byte limit); meta.name keeps the full text and still resolves the snapshot.
+    const slug = name ? '-' + name.replace(/[^\w-]+/g, '_').slice(0, MAX_SLUG) : '';
     const stamp = createdAt.replace(/[:.]/g, '-');
     let id = stamp + slug;
     for (let n = 1; ; n++) {
