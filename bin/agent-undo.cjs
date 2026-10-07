@@ -4419,7 +4419,7 @@ program.command("snapshot [name]").description("Take an instant snapshot of the 
 program.command("list").description("List snapshots for this directory").action(() => {
   const all = listSnapshots(cwd);
   if (!all.length) return console.log("No snapshots.");
-  for (const s of all) console.log(`${s.id}  [${s.mode}]${s.reason ? "  " + s.reason : ""}`);
+  for (const s of all) console.log(`${s.id}  [${s.trigger ?? "manual"}, ${s.mode}]${s.reason ? "  " + s.reason : ""}`);
 });
 program.command("diff [snapshot]").description("Show what changed since a snapshot (default: latest) \u2014 i.e. what revert would undo").action((ref) => {
   try {

@@ -32,7 +32,7 @@ program
   .action(() => {
     const all = listSnapshots(cwd);
     if (!all.length) return console.log('No snapshots.');
-    for (const s of all) console.log(`${s.id}  [${s.mode}]${s.reason ? '  ' + s.reason : ''}`);
+    for (const s of all) console.log(`${s.id}  [${s.trigger ?? 'manual'}, ${s.mode}]${s.reason ? '  ' + s.reason : ''}`);
   });
 
 program

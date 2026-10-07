@@ -22,7 +22,7 @@ test('list, diff and revert --only', (t) => {
   cli(s, 'snapshot', 'base');
   s.write('a.txt', 'two'); s.write('b.txt', 'two');
 
-  assert.match(cli(s, 'list'), /-base\s+\[/);
+  assert.match(cli(s, 'list'), /-base\s+\[manual, /, 'list shows what triggered each snapshot');
   assert.match(cli(s, 'diff'), /~ a\.txt[\s\S]*~ b\.txt[\s\S]*0 added, 2 modified, 0 deleted/);
   cli(s, 'revert', '--only', 'a.txt');
   assert.strictEqual(s.read('a.txt'), 'one');
