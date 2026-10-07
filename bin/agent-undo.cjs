@@ -4486,7 +4486,7 @@ function revertSnapshot(sourceDir, ref, opts = {}) {
 }
 
 // src/version.ts
-var VERSION = "1.3.1";
+var VERSION = "1.3.2";
 
 // src/status.ts
 var import_fs5 = __toESM(require("fs"));
