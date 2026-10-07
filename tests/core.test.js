@@ -265,3 +265,17 @@ test('diff and revert notice a symlink that was retargeted', (t) => {
   assert.strictEqual(fs.readlinkSync(s.p('current')), 'a.txt');
   assert.deepStrictEqual(core.diffSnapshot(s.project, 'base'), { added: [], modified: [], deleted: [] });
 });
+
+test('diff compares same-size files by content, including a difference in the last byte of a large file', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  const big = Buffer.alloc(3 * 1024 * 1024 + 7, 'x');
+  fs.writeFileSync(s.p('big.bin'), big);
+  fs.writeFileSync(s.p('same.bin'), big);
+  s.write('empty.txt', '');
+  core.takeSnapshot(s.project, { name: 'base' });
+
+  const edited = Buffer.from(big); edited[edited.length - 1] = 'y'.charCodeAt(0);
+  fs.writeFileSync(s.p('big.bin'), edited);
+  fs.writeFileSync(s.p('same.bin'), big); // rewritten, identical bytes
+  assert.deepStrictEqual(core.diffSnapshot(s.project), { added: [], modified: ['big.bin'], deleted: [] });
+});

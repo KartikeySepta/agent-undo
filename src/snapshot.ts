@@ -243,6 +243,37 @@ function walk(root: string, ig: Ignore | null, rel = '', out = new Map<string, n
     return out;
 }
 
+/** Read until buf is full or EOF; readSync may legitimately return fewer bytes than asked. */
+function readFull(fd: number, buf: Buffer): number {
+    let got = 0;
+    while (got < buf.length) {
+        const n = fs.readSync(fd, buf, got, buf.length - got, null);
+        if (n === 0) break;
+        got += n;
+    }
+    return got;
+}
+
+/** Byte-for-byte comparison in fixed-size chunks: stops at the first difference and never holds a whole file in memory. */
+function sameContent(a: string, b: string): boolean {
+    const CHUNK = 64 * 1024;
+    const bufA = Buffer.allocUnsafe(CHUNK);
+    const bufB = Buffer.allocUnsafe(CHUNK);
+    const fdA = fs.openSync(a, 'r');
+    try {
+        const fdB = fs.openSync(b, 'r');
+        try {
+            for (;;) {
+                const n = readFull(fdA, bufA);
+                const m = readFull(fdB, bufB);
+                if (n !== m) return false;
+                if (n === 0) return true;
+                if (!bufA.subarray(0, n).equals(bufB.subarray(0, n))) return false;
+            }
+        } finally { fs.closeSync(fdB); }
+    } finally { fs.closeSync(fdA); }
+}
+
 /** What changed in sourceDir since the snapshot, i.e. what a revert would undo. */
 export function diffSnapshot(sourceDir: string, ref?: string): DiffResult {
     const snap = resolveSnapshot(sourceDir, ref);
@@ -255,7 +286,7 @@ export function diffSnapshot(sourceDir: string, ref?: string): DiffResult {
     for (const [file, size] of now) {
         if (!before.has(file)) result.added.push(file);
         else if (before.get(file) !== size) result.modified.push(file);
-        else if (typeof size === 'number' && size > 0 && !fs.readFileSync(path.join(sourceDir, file)).equals(fs.readFileSync(path.join(snapRoot, file)))) {
+        else if (typeof size === 'number' && size > 0 && !sameContent(path.join(sourceDir, file), path.join(snapRoot, file))) {
             result.modified.push(file);
         }
     }

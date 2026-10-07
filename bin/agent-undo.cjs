@@ -4218,6 +4218,37 @@ function walk(root, ig, rel = "", out = /* @__PURE__ */ new Map()) {
   }
   return out;
 }
+function readFull(fd, buf) {
+  let got = 0;
+  while (got < buf.length) {
+    const n = import_fs4.default.readSync(fd, buf, got, buf.length - got, null);
+    if (n === 0) break;
+    got += n;
+  }
+  return got;
+}
+function sameContent(a, b) {
+  const CHUNK = 64 * 1024;
+  const bufA = Buffer.allocUnsafe(CHUNK);
+  const bufB = Buffer.allocUnsafe(CHUNK);
+  const fdA = import_fs4.default.openSync(a, "r");
+  try {
+    const fdB = import_fs4.default.openSync(b, "r");
+    try {
+      for (; ; ) {
+        const n = readFull(fdA, bufA);
+        const m = readFull(fdB, bufB);
+        if (n !== m) return false;
+        if (n === 0) return true;
+        if (!bufA.subarray(0, n).equals(bufB.subarray(0, n))) return false;
+      }
+    } finally {
+      import_fs4.default.closeSync(fdB);
+    }
+  } finally {
+    import_fs4.default.closeSync(fdA);
+  }
+}
 function diffSnapshot(sourceDir, ref) {
   const snap = resolveSnapshot(sourceDir, ref);
   const snapRoot = dataDir(snapshotBase(sourceDir), snap.id);
@@ -4228,7 +4259,7 @@ function diffSnapshot(sourceDir, ref) {
   for (const [file2, size] of now) {
     if (!before.has(file2)) result.added.push(file2);
     else if (before.get(file2) !== size) result.modified.push(file2);
-    else if (typeof size === "number" && size > 0 && !import_fs4.default.readFileSync(import_path4.default.join(sourceDir, file2)).equals(import_fs4.default.readFileSync(import_path4.default.join(snapRoot, file2)))) {
+    else if (typeof size === "number" && size > 0 && !sameContent(import_path4.default.join(sourceDir, file2), import_path4.default.join(snapRoot, file2))) {
       result.modified.push(file2);
     }
   }
