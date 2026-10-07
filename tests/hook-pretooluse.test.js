@@ -127,3 +127,43 @@ test('a hook that fails still exits 0, and the failure is logged and shown by do
   const doctor = spawnSync(process.execPath, [BIN('agent-undo.cjs'), 'doctor'], { cwd: s.project, env: s.env, encoding: 'utf8' });
   assert.match(doctor.stdout, /hooks.*last failure: .*PreToolUse/);
 });
+
+const edit = (s, tool_name, tool_input) => fire(s, { tool_name, cwd: s.project, tool_input });
+
+test('snapshots before a Write or Edit that clobbers most of a file, and only then', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  const big = 'line of real work\n'.repeat(400); // ~7 KB
+  s.write('notes.md', big);
+  s.write('tiny.txt', 'x');
+
+  // Harmless edits never snapshot: new file, small file, a normal rewrite, a small deletion.
+  edit(s, 'Write', { file_path: s.p('brand-new.md'), content: 'hello' });
+  edit(s, 'Write', { file_path: s.p('tiny.txt'), content: '' });
+  edit(s, 'Write', { file_path: s.p('notes.md'), content: big + 'one more line\n' });
+  edit(s, 'Edit', { file_path: s.p('notes.md'), old_string: 'line of real work', new_string: 'line of work' });
+  assert.strictEqual(core.listSnapshots(s.project).length, 0);
+
+  edit(s, 'Write', { file_path: s.p('notes.md'), content: '# TODO' });
+  const snaps = core.listSnapshots(s.project);
+  assert.strictEqual(snaps.length, 1);
+  assert.match(snaps[0].reason, /^auto: Write shrinks notes\.md from \d+ to 6 bytes/);
+});
+
+test('an Edit or MultiEdit that deletes thousands of characters snapshots first', (t) => {
+  const s = sandbox(); t.after(s.cleanup); s.write('f.ts', 'x');
+  const block = 'function a() { return 1; }\n'.repeat(120);
+  edit(s, 'Edit', { file_path: s.p('f.ts'), old_string: block, new_string: '' });
+  assert.match(core.listSnapshots(s.project)[0].reason, /^auto: Edit deletes \d+ characters from f\.ts/);
+
+  const s2 = sandbox(); t.after(s2.cleanup); s2.write('f.ts', 'x');
+  edit(s2, 'MultiEdit', { file_path: s2.p('f.ts'), edits: [{ old_string: block, new_string: '// removed' }] });
+  assert.match(core.listSnapshots(s2.project)[0].reason, /^auto: MultiEdit deletes/);
+});
+
+test('write guards respect level lite and never run outside a project', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  s.write('notes.md', 'x'.repeat(5000));
+  s.env.AGENT_UNDO_LEVEL = 'lite';
+  edit(s, 'Write', { file_path: s.p('notes.md'), content: '' });
+  assert.strictEqual(core.listSnapshots(s.project).length, 0);
+});

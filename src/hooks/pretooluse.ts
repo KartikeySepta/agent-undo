@@ -1,11 +1,14 @@
-// PreToolUse(shell), levels full and paranoid:
+// PreToolUse(shell, Write, Edit), levels full and paranoid:
 //  - auto-snapshot before destructive shell commands, so safety does not depend on the model
 //    remembering to call take_snapshot;
+//  - auto-snapshot before a Write/Edit that clobbers most of a file (git cannot recover uncommitted work);
 //  - for commands that act outside the project and cannot be rolled back (force-push, deploys,
 //    infra applies, remote/production databases), ask the user first (Claude Code only).
+import fs from 'fs';
+import path from 'path';
 import { takeSnapshot, listSnapshots } from '../snapshot';
 import { readLevel, isProjectDir } from '../config';
-import { runHook, lastSnapshotAgeMs, shellCommand, projectDir, emitAsk } from './common';
+import { runHook, lastSnapshotAgeMs, shellCommand, projectDir, emitAsk, HookInput } from './common';
 
 export const RISKY = new RegExp(
     [
@@ -52,19 +55,49 @@ export function irreversibleReason(command: string): string | null {
 // suppress protection for work done since.
 const BURST_MS = 10_000;
 
+// An edit only counts as destructive when it throws away most of a file that was big enough to matter.
+const CLOBBER_MIN_BYTES = 2048;
+
+/** Why this Write/Edit/MultiEdit destroys most of an existing file's content, or null. */
+export function clobberReason(input: HookInput): string | null {
+    const ti = input.tool_input;
+    const file = ti?.file_path;
+    if (!file) return null;
+    const label = path.basename(file);
+    if (input.tool_name === 'Write' && typeof ti.content === 'string') {
+        let before: number;
+        try { before = fs.statSync(file).size; } catch { return null; } // a new file destroys nothing
+        const after = Buffer.byteLength(ti.content);
+        return before >= CLOBBER_MIN_BYTES && after < before / 2 ? `Write shrinks ${label} from ${before} to ${after} bytes` : null;
+    }
+    if (input.tool_name === 'Edit' || input.tool_name === 'MultiEdit') {
+        const edits = input.tool_name === 'Edit' ? [{ old_string: ti.old_string, new_string: ti.new_string }] : ti.edits ?? [];
+        const removed = edits.reduce((n, e) => n + Math.max(0, (e.old_string?.length ?? 0) - (e.new_string?.length ?? 0)), 0);
+        const replaced = edits.reduce((n, e) => n + (e.old_string?.length ?? 0), 0);
+        return removed >= CLOBBER_MIN_BYTES && removed > replaced / 2 ? `${input.tool_name} deletes ${removed} characters from ${label}` : null;
+    }
+    return null;
+}
+
 runHook('PreToolUse', (input) => {
-    const command = shellCommand(input);
-    if (!command) return;
     const level = readLevel();
     if (level !== 'full' && level !== 'paranoid') return;
 
-    const why = irreversibleReason(command);
-    if (why) {
-        emitAsk(`agent-undo cannot roll this back: it acts outside the project (${why}). Snapshots only cover the project directory. Confirm with the user before running it.`);
+    let auto: string | null = null;
+    const command = shellCommand(input);
+    if (command) {
+        const why = irreversibleReason(command);
+        if (why) {
+            emitAsk(`agent-undo cannot roll this back: it acts outside the project (${why}). Snapshots only cover the project directory. Confirm with the user before running it.`);
+        }
+        if (RISKY.test(command)) auto = `auto: ${command.slice(0, 80)}`;
+    } else {
+        const clobber = clobberReason(input);
+        if (clobber) auto = `auto: ${clobber}`;
     }
+    if (!auto) return;
 
-    if (!RISKY.test(command)) return;
     const cwd = projectDir(input);
     if (!isProjectDir(cwd) || lastSnapshotAgeMs(listSnapshots(cwd).filter((s) => s.trigger === 'hook')) < BURST_MS) return;
-    takeSnapshot(cwd, { reason: `auto: ${command.slice(0, 80)}`, trigger: 'hook' });
+    takeSnapshot(cwd, { reason: auto, trigger: 'hook' });
 });

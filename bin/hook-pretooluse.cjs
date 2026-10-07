@@ -527,26 +527,26 @@ var require_ignore = __commonJS({
       const index = body.indexOf(SLASH);
       return index < 0 || index === body.length - 1;
     };
-    var basenameOf = (path5) => {
-      const end = path5.length - 1;
-      const index = path5.lastIndexOf(
+    var basenameOf = (path6) => {
+      const end = path6.length - 1;
+      const index = path6.lastIndexOf(
         SLASH,
-        path5[end] === SLASH ? end - 1 : end
+        path6[end] === SLASH ? end - 1 : end
       );
-      return index < 0 ? path5 : path5.slice(index + 1);
+      return index < 0 ? path6 : path6.slice(index + 1);
     };
-    var parentOf = (path5) => {
-      if (path5.charCodeAt(0) === SLASH_CODE || path5.indexOf(DOUBLE_SLASH) >= 0) {
-        const slices = path5.split(SLASH).filter(Boolean);
+    var parentOf = (path6) => {
+      if (path6.charCodeAt(0) === SLASH_CODE || path6.indexOf(DOUBLE_SLASH) >= 0) {
+        const slices = path6.split(SLASH).filter(Boolean);
         slices.pop();
         return slices.length ? slices.join(SLASH) + SLASH : EMPTY;
       }
-      const end = path5.length - 1;
-      const cut = path5.lastIndexOf(
+      const end = path6.length - 1;
+      const cut = path6.lastIndexOf(
         SLASH,
-        path5.charCodeAt(end) === SLASH_CODE ? end - 1 : end
+        path6.charCodeAt(end) === SLASH_CODE ? end - 1 : end
       );
-      return cut < 0 ? EMPTY : path5.slice(0, cut + 1);
+      return cut < 0 ? EMPTY : path6.slice(0, cut + 1);
     };
     var isString = (subject) => typeof subject === "string";
     var checkPattern = (pattern) => pattern && isString(pattern) && !REGEX_INVALID_TRAILING_BACKSLASH.test(pattern);
@@ -681,7 +681,7 @@ var require_ignore = __commonJS({
       // Match the literal 'abc/' for `checkIgnore`, last rule wins. Only a rule
       //   ending in a wildcard can match it (see `checkSourceOf`), so the rest
       //   are left out once, rather than tested or compiled for every path.
-      testLiteral(path5) {
+      testLiteral(path6) {
         const rules = this._literalRules || (this._literalRules = this._rules.filter(
           ({ body }) => body[body.length - (body[body.length - 1] === SLASH ? 2 : 1)] === "*"
         ));
@@ -690,7 +690,7 @@ var require_ignore = __commonJS({
         let matchedRule;
         for (let index = rules.length - 1; index >= 0; index--) {
           const rule = rules[index];
-          if (rule.checkRegex.test(path5)) {
+          if (rule.checkRegex.test(path6)) {
             ignored = !rule.negative;
             unignored = rule.negative;
             matchedRule = rule.negative ? UNDEFINED : rule;
@@ -713,20 +713,20 @@ var require_ignore = __commonJS({
       //   path matching.
       // - check `string` either `MODE_IGNORE` or `MODE_CHECK_IGNORE`
       // @returns {TestResult} true if a file is ignored
-      test(path5, checkUnignored, mode) {
+      test(path6, checkUnignored, mode) {
         let ignored = false;
         let unignored = false;
         let matchedRule;
         const rules = this._rules;
         const { length } = rules;
         const shortcut = this._basenameCount * 2 >= length;
-        const basename = shortcut ? basenameOf(path5) : path5;
+        const basename = shortcut ? basenameOf(path6) : path6;
         for (let index = 0; index < length; index++) {
           const rule = rules[index];
           const { negative } = rule;
           const skip = unignored === negative && ignored !== unignored || negative && !ignored && !unignored && !checkUnignored;
           if (!skip && rule[mode].test(
-            shortcut && rule._basenameOnly ? basename : path5
+            shortcut && rule._basenameOnly ? basename : path6
           )) {
             ignored = !negative;
             unignored = negative;
@@ -746,17 +746,17 @@ var require_ignore = __commonJS({
     var throwError = (message, Ctor) => {
       throw new Ctor(message);
     };
-    var checkPath = (path5, originalPath, doThrow) => {
-      if (!isString(path5)) {
+    var checkPath = (path6, originalPath, doThrow) => {
+      if (!isString(path6)) {
         return doThrow(
           `path must be a string, but got \`${originalPath}\``,
           TypeError
         );
       }
-      if (!path5) {
+      if (!path6) {
         return doThrow(`path must not be empty`, TypeError);
       }
-      if (checkPath.isNotRelative(path5)) {
+      if (checkPath.isNotRelative(path6)) {
         const r = "`path.relative()`d";
         return doThrow(
           `path should be a ${r} string, but got "${originalPath}"`,
@@ -765,25 +765,25 @@ var require_ignore = __commonJS({
       }
       return true;
     };
-    var isNotRelative = (path5) => {
-      const first = path5.charCodeAt(0);
+    var isNotRelative = (path6) => {
+      const first = path6.charCodeAt(0);
       if (first === SLASH_CODE) {
         return true;
       }
       if (first !== DOT_CODE) {
         return false;
       }
-      if (path5.length === 1) {
+      if (path6.length === 1) {
         return true;
       }
-      const second = path5.charCodeAt(1);
+      const second = path6.charCodeAt(1);
       if (second === SLASH_CODE) {
         return true;
       }
       if (second !== DOT_CODE) {
         return false;
       }
-      return path5.length === 2 || path5.charCodeAt(2) === SLASH_CODE;
+      return path6.length === 2 || path6.charCodeAt(2) === SLASH_CODE;
     };
     checkPath.isNotRelative = isNotRelative;
     checkPath.convert = (p) => p;
@@ -814,54 +814,54 @@ var require_ignore = __commonJS({
       }
       // @returns {TestResult}
       _test(originalPath, cache, checkUnignored) {
-        const path5 = originalPath && checkPath.convert(originalPath);
+        const path6 = originalPath && checkPath.convert(originalPath);
         checkPath(
-          path5,
+          path6,
           originalPath,
           this._strictPathCheck ? throwError : RETURN_FALSE
         );
-        return this._t(path5, cache, checkUnignored);
+        return this._t(path6, cache, checkUnignored);
       }
-      checkIgnore(path5) {
-        if (path5.charCodeAt(path5.length - 1) !== SLASH_CODE) {
-          return this.test(path5);
+      checkIgnore(path6) {
+        if (path6.charCodeAt(path6.length - 1) !== SLASH_CODE) {
+          return this.test(path6);
         }
-        const dir = this._t(path5, this._testCache, true);
+        const dir = this._t(path6, this._testCache, true);
         if (dir.ignored) {
           return dir;
         }
-        const literal = this._rules.testLiteral(path5);
+        const literal = this._rules.testLiteral(path6);
         return literal.ignored || literal.unignored ? literal : dir;
       }
-      _t(path5, cache, checkUnignored) {
-        if (path5 in cache) {
-          return cache[path5];
+      _t(path6, cache, checkUnignored) {
+        if (path6 in cache) {
+          return cache[path6];
         }
-        const parentPath = parentOf(path5);
+        const parentPath = parentOf(path6);
         const parent = parentPath ? this._t(parentPath, cache, checkUnignored) : UNDEFINED;
-        return cache[path5] = parent && parent.ignored ? parent : this._rules.test(path5, checkUnignored, MODE_IGNORE);
+        return cache[path6] = parent && parent.ignored ? parent : this._rules.test(path6, checkUnignored, MODE_IGNORE);
       }
-      ignores(path5) {
-        return this._test(path5, this._ignoreCache, false).ignored;
+      ignores(path6) {
+        return this._test(path6, this._ignoreCache, false).ignored;
       }
       createFilter() {
-        return (path5) => !this.ignores(path5);
+        return (path6) => !this.ignores(path6);
       }
       filter(paths) {
         return makeArray(paths).filter(this.createFilter());
       }
       // @returns {TestResult}
-      test(path5) {
-        return this._test(path5, this._testCache, true);
+      test(path6) {
+        return this._test(path6, this._testCache, true);
       }
     };
     var factory = (options) => new Ignore2(options);
-    var isPathValid = (path5) => checkPath(path5 && checkPath.convert(path5), path5, RETURN_FALSE);
+    var isPathValid = (path6) => checkPath(path6 && checkPath.convert(path6), path6, RETURN_FALSE);
     var setupWindows = () => {
       const makePosix = (str) => /^\\\\\?\\/.test(str) || /["<>|\u0000-\u001F]+/u.test(str) ? str : str.replace(/\\/g, "/");
       checkPath.convert = makePosix;
       const REGEX_TEST_WINDOWS_PATH_ABSOLUTE = /^[a-z]:\//i;
-      checkPath.isNotRelative = (path5) => REGEX_TEST_WINDOWS_PATH_ABSOLUTE.test(path5) || isNotRelative(path5);
+      checkPath.isNotRelative = (path6) => REGEX_TEST_WINDOWS_PATH_ABSOLUTE.test(path6) || isNotRelative(path6);
     };
     if (
       // Detect `process` so that it can run in browsers.
@@ -880,9 +880,12 @@ var require_ignore = __commonJS({
 var pretooluse_exports = {};
 __export(pretooluse_exports, {
   RISKY: () => RISKY,
+  clobberReason: () => clobberReason,
   irreversibleReason: () => irreversibleReason
 });
 module.exports = __toCommonJS(pretooluse_exports);
+var import_fs5 = __toESM(require("fs"));
+var import_path5 = __toESM(require("path"));
 
 // src/snapshot.ts
 var import_fs4 = __toESM(require("fs"));
@@ -1310,22 +1313,53 @@ function irreversibleReason(command) {
   return null;
 }
 var BURST_MS = 1e4;
+var CLOBBER_MIN_BYTES = 2048;
+function clobberReason(input) {
+  const ti = input.tool_input;
+  const file2 = ti?.file_path;
+  if (!file2) return null;
+  const label = import_path5.default.basename(file2);
+  if (input.tool_name === "Write" && typeof ti.content === "string") {
+    let before;
+    try {
+      before = import_fs5.default.statSync(file2).size;
+    } catch {
+      return null;
+    }
+    const after = Buffer.byteLength(ti.content);
+    return before >= CLOBBER_MIN_BYTES && after < before / 2 ? `Write shrinks ${label} from ${before} to ${after} bytes` : null;
+  }
+  if (input.tool_name === "Edit" || input.tool_name === "MultiEdit") {
+    const edits = input.tool_name === "Edit" ? [{ old_string: ti.old_string, new_string: ti.new_string }] : ti.edits ?? [];
+    const removed = edits.reduce((n, e) => n + Math.max(0, (e.old_string?.length ?? 0) - (e.new_string?.length ?? 0)), 0);
+    const replaced = edits.reduce((n, e) => n + (e.old_string?.length ?? 0), 0);
+    return removed >= CLOBBER_MIN_BYTES && removed > replaced / 2 ? `${input.tool_name} deletes ${removed} characters from ${label}` : null;
+  }
+  return null;
+}
 runHook("PreToolUse", (input) => {
-  const command = shellCommand(input);
-  if (!command) return;
   const level = readLevel();
   if (level !== "full" && level !== "paranoid") return;
-  const why = irreversibleReason(command);
-  if (why) {
-    emitAsk(`agent-undo cannot roll this back: it acts outside the project (${why}). Snapshots only cover the project directory. Confirm with the user before running it.`);
+  let auto = null;
+  const command = shellCommand(input);
+  if (command) {
+    const why = irreversibleReason(command);
+    if (why) {
+      emitAsk(`agent-undo cannot roll this back: it acts outside the project (${why}). Snapshots only cover the project directory. Confirm with the user before running it.`);
+    }
+    if (RISKY.test(command)) auto = `auto: ${command.slice(0, 80)}`;
+  } else {
+    const clobber = clobberReason(input);
+    if (clobber) auto = `auto: ${clobber}`;
   }
-  if (!RISKY.test(command)) return;
+  if (!auto) return;
   const cwd = projectDir(input);
   if (!isProjectDir(cwd) || lastSnapshotAgeMs(listSnapshots(cwd).filter((s) => s.trigger === "hook")) < BURST_MS) return;
-  takeSnapshot(cwd, { reason: `auto: ${command.slice(0, 80)}`, trigger: "hook" });
+  takeSnapshot(cwd, { reason: auto, trigger: "hook" });
 });
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   RISKY,
+  clobberReason,
   irreversibleReason
 });

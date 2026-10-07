@@ -10,7 +10,11 @@ export interface HookInput {
     source?: string;
     prompt?: string;
     tool_name?: string;
-    tool_input?: { command?: string | string[]; cmd?: string | string[] };
+    tool_input?: {
+        command?: string | string[]; cmd?: string | string[];
+        file_path?: string; content?: string;
+        old_string?: string; new_string?: string; edits?: { old_string?: string; new_string?: string }[];
+    };
     workspace?: { current_dir?: string };
     workspace_roots?: string[];
 }
