@@ -250,3 +250,18 @@ test('an exact snapshot name or id beats a newer fragment match', (t) => {
   assert.strictEqual(core.resolveSnapshot(s.project, 'before-inst').id, newer.id, 'fragments still work');
   assert.strictEqual(core.resolveSnapshot(s.project, 'latest').id, newer.id);
 });
+
+test('diff and revert notice a symlink that was retargeted', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  s.write('a.txt', 'a'); s.write('b.txt', 'b');
+  fs.symlinkSync('a.txt', s.p('current'));
+  core.takeSnapshot(s.project, { name: 'base' });
+
+  fs.rmSync(s.p('current'));
+  fs.symlinkSync('b.txt', s.p('current'));
+  assert.deepStrictEqual(core.diffSnapshot(s.project).modified, ['current']);
+
+  core.revertSnapshot(s.project, 'base');
+  assert.strictEqual(fs.readlinkSync(s.p('current')), 'a.txt');
+  assert.deepStrictEqual(core.diffSnapshot(s.project, 'base'), { added: [], modified: [], deleted: [] });
+});

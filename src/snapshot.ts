@@ -229,13 +229,16 @@ export function pruneSnapshots(sourceDir: string, keep: number = KEEP_DEFAULT): 
 
 // ---------- diff ----------
 
-function walk(root: string, ig: Ignore | null, rel = '', out = new Map<string, number>()): Map<string, number> {
+/** Relative path -> file size, or `-> target` for a symlink, so a retargeted link counts as a change. */
+function walk(root: string, ig: Ignore | null, rel = '', out = new Map<string, number | string>()): Map<string, number | string> {
     for (const e of fs.readdirSync(path.join(root, rel), { withFileTypes: true })) {
         const r = path.join(rel, e.name);
         if (r === '.git') continue;
         if (ig?.ignores(posix(r) + (e.isDirectory() ? '/' : ''))) continue;
         if (e.isDirectory()) walk(root, ig, r, out);
-        else out.set(r, e.isFile() ? fs.statSync(path.join(root, r)).size : -1);
+        else if (e.isFile()) out.set(r, fs.statSync(path.join(root, r)).size);
+        else if (e.isSymbolicLink()) out.set(r, `-> ${fs.readlinkSync(path.join(root, r))}`);
+        else out.set(r, -1);
     }
     return out;
 }
@@ -252,7 +255,7 @@ export function diffSnapshot(sourceDir: string, ref?: string): DiffResult {
     for (const [file, size] of now) {
         if (!before.has(file)) result.added.push(file);
         else if (before.get(file) !== size) result.modified.push(file);
-        else if (size > 0 && !fs.readFileSync(path.join(sourceDir, file)).equals(fs.readFileSync(path.join(snapRoot, file)))) {
+        else if (typeof size === 'number' && size > 0 && !fs.readFileSync(path.join(sourceDir, file)).equals(fs.readFileSync(path.join(snapRoot, file)))) {
             result.modified.push(file);
         }
     }

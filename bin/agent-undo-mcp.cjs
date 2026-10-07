@@ -18115,7 +18115,9 @@ function walk(root, ig, rel = "", out = /* @__PURE__ */ new Map()) {
     if (r === ".git") continue;
     if (ig?.ignores(posix(r) + (e.isDirectory() ? "/" : ""))) continue;
     if (e.isDirectory()) walk(root, ig, r, out);
-    else out.set(r, e.isFile() ? import_fs4.default.statSync(import_path4.default.join(root, r)).size : -1);
+    else if (e.isFile()) out.set(r, import_fs4.default.statSync(import_path4.default.join(root, r)).size);
+    else if (e.isSymbolicLink()) out.set(r, `-> ${import_fs4.default.readlinkSync(import_path4.default.join(root, r))}`);
+    else out.set(r, -1);
   }
   return out;
 }
@@ -18129,7 +18131,7 @@ function diffSnapshot(sourceDir, ref) {
   for (const [file2, size] of now) {
     if (!before.has(file2)) result.added.push(file2);
     else if (before.get(file2) !== size) result.modified.push(file2);
-    else if (size > 0 && !import_fs4.default.readFileSync(import_path4.default.join(sourceDir, file2)).equals(import_fs4.default.readFileSync(import_path4.default.join(snapRoot, file2)))) {
+    else if (typeof size === "number" && size > 0 && !import_fs4.default.readFileSync(import_path4.default.join(sourceDir, file2)).equals(import_fs4.default.readFileSync(import_path4.default.join(snapRoot, file2)))) {
       result.modified.push(file2);
     }
   }
