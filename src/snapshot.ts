@@ -223,8 +223,11 @@ export function resolveSnapshot(sourceDir: string, ref?: string): SnapshotMeta {
 
 export function pruneSnapshots(sourceDir: string, keep: number = KEEP_DEFAULT): number {
     const base = snapshotBase(sourceDir);
-    // Named snapshots are deliberate; only unnamed ones count against the limit.
-    const prunable = listSnapshots(sourceDir).filter((s) => !s.name);
+    // Named snapshots are deliberate; only unnamed ones count against the limit. The newest session
+    // baseline is also kept: it is what "roll back to the start" means, however busy the session got.
+    const all = listSnapshots(sourceDir);
+    const baseline = all.filter((s) => s.trigger === 'session').at(-1);
+    const prunable = all.filter((s) => !s.name && s !== baseline);
     const drop = prunable.slice(0, Math.max(0, prunable.length - keep));
     discard(base, drop.map((s) => s.id));
     return drop.length;

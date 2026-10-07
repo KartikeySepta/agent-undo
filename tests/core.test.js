@@ -304,3 +304,21 @@ test('a lock held by a live process we cannot signal is not treated as stale', (
   fs.writeFileSync(path.join(base, '.lock'), JSON.stringify({ pid: 2 ** 22 + 12345, at: Date.now() }));
   core.takeSnapshot(s.project); // dead holder: the stale lock is reclaimed
 });
+
+test('pruning never drops the newest session baseline', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  s.write('f.txt', '0');
+  const baseline = core.takeSnapshot(s.project, { trigger: 'session', reason: 'baseline' });
+  for (let i = 1; i <= 14; i++) { s.write('f.txt', String(i)); core.takeSnapshot(s.project, { trigger: 'hook', reason: `auto ${i}` }); }
+
+  const ids = core.listSnapshots(s.project).map((x) => x.id);
+  assert.ok(ids.includes(baseline.id), 'the session baseline survives 14 hook snapshots');
+  assert.strictEqual(ids.length, 11, 'baseline plus the newest 10 unnamed');
+
+  // A newer baseline replaces the older one's protection.
+  const next = core.takeSnapshot(s.project, { trigger: 'session', reason: 'baseline 2' });
+  for (let i = 0; i < 12; i++) core.takeSnapshot(s.project, { trigger: 'hook' });
+  const after = core.listSnapshots(s.project).map((x) => x.id);
+  assert.ok(after.includes(next.id));
+  assert.ok(!after.includes(baseline.id), 'the old baseline is prunable once a newer one exists');
+});

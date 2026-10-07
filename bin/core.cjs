@@ -1193,7 +1193,9 @@ function resolveSnapshot(sourceDir, ref) {
 }
 function pruneSnapshots(sourceDir, keep = KEEP_DEFAULT) {
   const base = snapshotBase(sourceDir);
-  const prunable = listSnapshots(sourceDir).filter((s) => !s.name);
+  const all = listSnapshots(sourceDir);
+  const baseline = all.filter((s) => s.trigger === "session").at(-1);
+  const prunable = all.filter((s) => !s.name && s !== baseline);
   const drop = prunable.slice(0, Math.max(0, prunable.length - keep));
   discard(base, drop.map((s) => s.id));
   return drop.length;
