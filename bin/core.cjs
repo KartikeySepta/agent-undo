@@ -1058,7 +1058,11 @@ function withLock(sourceDir, fn) {
       let stale = true;
       try {
         const { pid, at } = JSON.parse(import_fs3.default.readFileSync(lock, "utf8"));
-        process.kill(pid, 0);
+        try {
+          process.kill(pid, 0);
+        } catch (k) {
+          if (k.code !== "EPERM") throw k;
+        }
         stale = Date.now() - at > LOCK_STALE_MS;
       } catch {
       }

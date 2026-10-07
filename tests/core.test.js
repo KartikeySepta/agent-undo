@@ -291,3 +291,16 @@ test('a very long snapshot name is shortened instead of failing with ENAMETOOLON
   core.revertSnapshot(s.project, long);
   assert.strictEqual(s.read('f.txt'), 'one');
 });
+
+test('a lock held by a live process we cannot signal is not treated as stale', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  s.write('f.txt', 'one');
+  const base = core.snapshotBase(s.project);
+  fs.mkdirSync(base, { recursive: true });
+  // pid 1 always exists; for a non-root user kill(1, 0) fails with EPERM rather than ESRCH.
+  fs.writeFileSync(path.join(base, '.lock'), JSON.stringify({ pid: 1, at: Date.now() }));
+  assert.throws(() => core.takeSnapshot(s.project), /Another snapshot or revert is running/);
+
+  fs.writeFileSync(path.join(base, '.lock'), JSON.stringify({ pid: 2 ** 22 + 12345, at: Date.now() }));
+  core.takeSnapshot(s.project); // dead holder: the stale lock is reclaimed
+});

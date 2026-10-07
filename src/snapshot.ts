@@ -85,7 +85,8 @@ function withLock<T>(sourceDir: string, fn: () => T): T {
             let stale = true;
             try {
                 const { pid, at } = JSON.parse(fs.readFileSync(lock, 'utf8'));
-                process.kill(pid, 0); // throws if the holder is gone
+                try { process.kill(pid, 0); } // throws if the holder is gone
+                catch (k: any) { if (k.code !== 'EPERM') throw k; } // EPERM: alive, just not ours to signal
                 stale = Date.now() - at > LOCK_STALE_MS;
             } catch { /* unreadable lock or dead pid: stale */ }
             if (!stale) throw new BusyError('[Agent-Undo] Another snapshot or revert is running for this directory.');
