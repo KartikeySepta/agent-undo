@@ -17804,13 +17804,19 @@ var import_child_process = require("child_process");
 var RANK = { clonefile: 0, cow: 1, copy: 2 };
 var CLONE_NOFOLLOW = 1;
 var clonefileFn;
+function loadKoffi() {
+  try {
+    return require("koffi");
+  } catch {
+    return require(import_path.default.join(__dirname, "..", "vendor", "koffi-runtime", "koffi"));
+  }
+}
 function nativeClonefile() {
   if (clonefileFn !== void 0) return clonefileFn;
   clonefileFn = null;
   if (process.platform !== "darwin" || process.env.AGENT_UNDO_NO_FFI) return null;
   try {
-    const koffi = require("koffi");
-    clonefileFn = koffi.load("/usr/lib/libSystem.B.dylib").func("int clonefile(const char *src, const char *dst, uint32_t flags)");
+    clonefileFn = loadKoffi().load("/usr/lib/libSystem.B.dylib").func("int clonefile(const char *src, const char *dst, uint32_t flags)");
   } catch {
   }
   return clonefileFn;
@@ -18394,7 +18400,7 @@ function doctor(projectDir) {
   checks.push({ ok: major >= 18, label: "node", detail: `v${process.versions.node}${major >= 18 ? "" : " (need >= 18)"}` });
   if (process.platform === "darwin") {
     const native = hasNativeClonefile();
-    checks.push({ ok: native || "warn", label: "clone engine", detail: native ? "clonefile(2), directory-level (fastest)" : "cp -c per file: run `npm install` in the plugin dir to enable the koffi fast path" });
+    checks.push({ ok: native || "warn", label: "clone engine", detail: native ? "clonefile(2), directory-level (fastest)" : "cp -c per file: koffi could not be loaded (unsupported CPU/OS, or AGENT_UNDO_NO_FFI is set), so no directory-level clonefile" });
   } else if (process.platform === "linux") {
     checks.push({ ok: "warn", label: "clone engine", detail: "cp --reflink (CoW on Btrfs/XFS; full copy on ext4)" });
   } else {

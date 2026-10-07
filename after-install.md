@@ -17,4 +17,4 @@ Try:
 - `/undo-revert`: guided rollback.
 - `/agent-undo lite|full|paranoid|off`: change the level (or `agent-undo mode <level>` in a terminal).
 
-Check the snapshot engine with `agent-undo doctor` (macOS: run `npm install` in the plugin directory for the fastest path). Other agents: [INSTALL.md](INSTALL.md).
+Check the snapshot engine with `agent-undo doctor` (macOS should report `clonefile(2)`, the fastest path, with nothing to install). Other agents: [INSTALL.md](INSTALL.md).

@@ -17,7 +17,7 @@ export function doctor(projectDir: string): Check[] {
 
     if (process.platform === 'darwin') {
         const native = hasNativeClonefile();
-        checks.push({ ok: native || 'warn', label: 'clone engine', detail: native ? 'clonefile(2), directory-level (fastest)' : 'cp -c per file: run `npm install` in the plugin dir to enable the koffi fast path' });
+        checks.push({ ok: native || 'warn', label: 'clone engine', detail: native ? 'clonefile(2), directory-level (fastest)' : 'cp -c per file: koffi could not be loaded (unsupported CPU/OS, or AGENT_UNDO_NO_FFI is set), so no directory-level clonefile' });
     } else if (process.platform === 'linux') {
         checks.push({ ok: 'warn', label: 'clone engine', detail: 'cp --reflink (CoW on Btrfs/XFS; full copy on ext4)' });
     } else {

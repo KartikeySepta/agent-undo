@@ -83,7 +83,7 @@ The full per-agent guide, and what each agent supports, is in [INSTALL.md](INSTA
 agent-undo doctor          # in a terminal, inside your project
 ```
 
-`doctor` should show `✅ clone engine clonefile(2)` on macOS. If it says `cp -c`, run `npm install` in the plugin directory to enable the fast path.
+`doctor` should show `✅ clone engine clonefile(2)` on macOS. Plugin installs carry their own copy of koffi (`vendor/`), so there is nothing to `npm install`. If it still says `cp -c`, the CPU/OS is unsupported or `AGENT_UNDO_NO_FFI` is set.
 
 ### 4. Use it
 

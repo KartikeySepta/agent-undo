@@ -902,13 +902,19 @@ var import_child_process = require("child_process");
 var RANK = { clonefile: 0, cow: 1, copy: 2 };
 var CLONE_NOFOLLOW = 1;
 var clonefileFn;
+function loadKoffi() {
+  try {
+    return require("koffi");
+  } catch {
+    return require(import_path.default.join(__dirname, "..", "vendor", "koffi-runtime", "koffi"));
+  }
+}
 function nativeClonefile() {
   if (clonefileFn !== void 0) return clonefileFn;
   clonefileFn = null;
   if (process.platform !== "darwin" || process.env.AGENT_UNDO_NO_FFI) return null;
   try {
-    const koffi = require("koffi");
-    clonefileFn = koffi.load("/usr/lib/libSystem.B.dylib").func("int clonefile(const char *src, const char *dst, uint32_t flags)");
+    clonefileFn = loadKoffi().load("/usr/lib/libSystem.B.dylib").func("int clonefile(const char *src, const char *dst, uint32_t flags)");
   } catch {
   }
   return clonefileFn;

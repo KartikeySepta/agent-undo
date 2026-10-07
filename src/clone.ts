@@ -15,19 +15,28 @@ const CLONE_NOFOLLOW = 0x0001; // clone symlinks themselves, not their targets
 type ClonefileFn = (src: string, dst: string, flags: number) => number;
 let clonefileFn: ClonefileFn | null | undefined;
 
-// Node has no clonefile binding; koffi (optional dependency) gives us one without a compiler.
+// Node has no clonefile binding; koffi gives us one without a compiler. It is an optional
+// dependency, so a plugin installed straight from git (no `npm install`) uses the copy in vendor/.
+function loadKoffi(): any {
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        return require('koffi');
+    } catch {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        return require(path.join(__dirname, '..', 'vendor', 'koffi-runtime', 'koffi'));
+    }
+}
+
 function nativeClonefile(): ClonefileFn | null {
     if (clonefileFn !== undefined) return clonefileFn;
     clonefileFn = null;
     if (process.platform !== 'darwin' || process.env.AGENT_UNDO_NO_FFI) return null;
     try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const koffi = require('koffi');
-        clonefileFn = koffi
+        clonefileFn = loadKoffi()
             .load('/usr/lib/libSystem.B.dylib')
             .func('int clonefile(const char *src, const char *dst, uint32_t flags)') as ClonefileFn;
     } catch {
-        // koffi not installed (e.g. plugin used without npm install): fall back to cp -c.
+        // Neither copy of koffi loads (unsupported CPU/OS): fall back to cp -c.
     }
     return clonefileFn;
 }
