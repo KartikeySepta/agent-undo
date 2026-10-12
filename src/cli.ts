@@ -7,6 +7,8 @@ import { VERSION } from './version';
 import { LEVELS, isLevel, readLevel, writeLevel } from './config';
 import { doctor, status, protectedBytes } from './status';
 import fs from 'fs';
+import path from 'path';
+import { spawnSync } from 'child_process';
 
 const cwd = process.cwd();
 const MODE_LABEL = { clonefile: 'clonefile', cow: 'copy-on-write', copy: 'full copy: no CoW on this filesystem', moved: 'moved' } as const;
@@ -36,11 +38,26 @@ program
     for (const s of all) console.log(`${s.id}  [${s.trigger ?? 'manual'}, ${s.mode}]${s.reason ? '  ' + s.reason : ''}`);
   });
 
+/** Unified diff of one file between the snapshot and the working tree, via the system `diff`. */
+function fileDiff(file: string, ref?: string): void {
+  const { snapshot, path: before } = snapshotFilePath(cwd, file, ref);
+  const live = path.join(cwd, file);
+  const now = fs.existsSync(live) && fs.statSync(live).isFile() ? live : null;
+  if (!before && !now) fail(new Error(`"${file}" is neither in snapshot ${snapshot.id} nor in the project.`));
+  const r = spawnSync('diff', ['-u', '--label', `${file} (${snapshot.id})`, '--label', `${file} (now)`, before ?? '/dev/null', now ?? '/dev/null'], { encoding: 'utf8' });
+  if (r.error) fail(new Error(`could not run \`diff\`: ${r.error.message}. Use \`agent-undo show ${file}\` to print the snapshot copy.`));
+  if (r.status === 0) return console.log(`${file}: unchanged since ${snapshot.id}`);
+  if (r.status !== 1) fail(new Error(r.stderr.trim() || `diff exited with ${r.status}`));
+  process.stdout.write(r.stdout);
+}
+
 program
   .command('diff [snapshot]')
   .description('Show what changed since a snapshot (default: latest) — i.e. what revert would undo')
-  .action((ref?: string) => {
+  .option('-f, --file <path>', 'unified diff of one file between the snapshot and now')
+  .action((ref: string | undefined, o: { file?: string }) => {
     try {
+      if (o.file) return fileDiff(o.file, ref);
       const d = diffSnapshot(cwd, ref);
       d.added.forEach((f) => console.log(`+ ${f}`));
       d.modified.forEach((f) => console.log(`~ ${f}`));
