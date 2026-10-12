@@ -157,7 +157,9 @@ The level is shared by every agent and the CLI (`agent-undo mode <level>`). Auto
 
 ### MCP tools
 
-`take_snapshot(name?)` · `list_snapshots` · `diff_snapshot(snapshot?)` · `revert_environment(snapshot?, paths?, confirm?)` · `undo_status`. Every tool takes an optional `project_dir`.
+`take_snapshot(name?)` · `list_snapshots` · `diff_snapshot(snapshot?)` · `read_snapshot_file(path, snapshot?)` · `revert_environment(snapshot?, paths?, confirm?)` · `undo_status`. Every tool takes an optional `project_dir`.
+
+`read_snapshot_file` returns a file as it was in a snapshot, so the agent can look at (or hand-copy one function from) the old version instead of reverting the whole file.
 
 Reverts are two-step. Without `confirm`, `revert_environment` changes nothing and returns every path it would undo plus a `confirm_token`. The agent calls again with that token to revert. If the files change in between, the token is rejected and a fresh preview comes back.
 
@@ -165,8 +167,11 @@ Reverts are two-step. Without `confirm`, `revert_environment` changes nothing an
 
 ```bash
 agent-undo snapshot [name]              # name is optional
-agent-undo list                         # with trigger: manual / hook / session / turn / pre-revert
+agent-undo snapshot --if-changed        # only if the tree moved since the last snapshot
+agent-undo list                         # trigger (manual / hook / session / turn / pre-revert) and age
 agent-undo diff [snapshot]              # +added ~modified -deleted
+agent-undo diff --file src/db.ts        # unified diff of one file, snapshot vs now
+agent-undo show src/db.ts [snapshot]    # print a file as it was, no revert
 agent-undo revert [snapshot]            # preview only
 agent-undo revert --yes                 # restore (saves a pre-revert backup first)
 agent-undo revert --only src/db.ts      # restore just these paths
@@ -175,7 +180,11 @@ agent-undo mode paranoid                # lite | full | paranoid | off
 agent-undo stats                        # lifetime scoreboard + MB protected
 agent-undo doctor                       # engine, store volume, project checks
 agent-undo prune --keep 5
+agent-undo prune --older-than 7d        # by age instead; named snapshots always stay
+agent-undo delete before-oops           # remove one snapshot by id or name
 ```
+
+`list`, `diff` and `stats` take `--json`.
 
 ### Statusline (Claude Code)
 

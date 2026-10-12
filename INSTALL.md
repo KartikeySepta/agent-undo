@@ -166,7 +166,7 @@ Windsurf, Cline, Zed, Claude Desktop and anything else that speaks MCP over stdi
 }
 ```
 
-Tools: `take_snapshot(name?)`, `list_snapshots`, `diff_snapshot(snapshot?)`,
+Tools: `take_snapshot(name?)`, `list_snapshots`, `diff_snapshot(snapshot?)`, `read_snapshot_file(path, snapshot?)`,
 `revert_environment(snapshot?, paths?, confirm?)` (two-step: preview, then `confirm`), `undo_status`; each takes `project_dir`. For the rules,
 copy [`AGENTS.md`](AGENTS.md) into the project; agents that read it (Codex, Amp, Jules, OpenCode,
 Copilot, Junie when pointed at it) then know when to snapshot and how to revert safely.
@@ -182,8 +182,9 @@ The package is scoped (`@atpes/agent-undo`) because the unscoped `agent-undo` na
 to an unrelated project; the commands are still `agent-undo` and `agent-undo-mcp`. Any MCP client
 can also run the server with `npx -y -p @atpes/agent-undo agent-undo-mcp`. To hack on it, clone
 the repository and `npm install -g .` instead. Commands:
-`snapshot [name]`, `list`, `diff [snap]`, `revert [snap] [--yes] [--only <paths...>]`,
-`mode [level]`, `stats`, `doctor`, `prune --keep <n>`.
+`snapshot [name] [--if-changed]`, `list [--json]`, `diff [snap] [--file <path>] [--json]`, `show <path> [snap]`,
+`revert [snap] [--yes] [--only <paths...>]`, `delete <snap>`, `prune [--keep <n>] [--older-than <age>]`,
+`mode [level]`, `stats [--json]`, `doctor [--repair]`.
 
 ## Uninstall
 

@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Inspect before you revert
+- **`read_snapshot_file(path, snapshot?)`** MCP tool and **`agent-undo show <path> [snapshot]`**: a file as it was in a snapshot, without reverting. An agent can read the old version, or copy one function back by hand, instead of undoing a whole file. Binary content is reported by size; text is capped at 200k characters over MCP.
+- **`agent-undo diff --file <path>`**: a unified diff of one file between the snapshot and now. Added and deleted files diff against nothing, so the whole content shows.
+- **`--json`** on `list` and `diff` for scripts and CI gates.
+- `list` shows each snapshot's age.
+
+### Housekeeping
+- **`agent-undo delete <snapshot>`** removes one snapshot by id or name. Named snapshots are exempt from prune, so a stale checkpoint used to need a manual delete inside the store. An implicit "latest" is refused.
+- **`agent-undo prune --older-than <age>`** (`90m`, `12h`, `7d`) prunes by age. Like `--keep`, it never touches named snapshots or the newest session baseline.
+- **`agent-undo snapshot --if-changed`** takes a snapshot only when the tree moved since the last one; for cron jobs and scripts that checkpoint on a timer.
+
 ## 1.3.2 (2026-10-08)
 
 ### Safety

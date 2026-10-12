@@ -34,9 +34,10 @@ Display this card. One-shot: do not change the level or take snapshots.
 
 ```
 agent-undo snapshot [name]     agent-undo revert [snap] [--yes] [--only <paths...>]
-agent-undo list                agent-undo diff [snap]
+agent-undo list                agent-undo diff [snap] [--file <path>]
+agent-undo show <path> [snap]  agent-undo delete <snap>
 agent-undo mode [level]        agent-undo stats
-agent-undo doctor              agent-undo prune --keep 10
+agent-undo doctor              agent-undo prune --keep 10 | --older-than 7d
 ```
 
 ## Config
