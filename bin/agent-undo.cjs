@@ -4229,6 +4229,14 @@ function pruneSnapshots(sourceDir, keep = KEEP_DEFAULT) {
   discard(base, drop.map((s) => s.id));
   return drop.length;
 }
+function deleteSnapshot(sourceDir, ref) {
+  if (!ref || ref === "latest") throw new Error('[Agent-Undo] Name the snapshot to delete (id or name); "latest" is not accepted.');
+  return withLock(sourceDir, () => {
+    const snap = resolveSnapshot(sourceDir, ref);
+    discard(snapshotBase(sourceDir), [snap.id]);
+    return snap;
+  });
+}
 function walk(root, ig, rel = "", out = /* @__PURE__ */ new Map()) {
   for (const e of import_fs4.default.readdirSync(import_path4.default.join(root, rel), { withFileTypes: true })) {
     const r = import_path4.default.join(rel, e.name);
@@ -4624,6 +4632,13 @@ program.command("revert [snapshot]").description('Restore a snapshot (default: l
     }
     const { restored, backup } = revertSnapshot(cwd, ref, { only: o.only });
     console.log(`\u2705 Restored ${restored.id}. Undo this revert with: agent-undo revert ${backup.id} --yes`);
+  } catch (e) {
+    fail(e);
+  }
+});
+program.command("delete <snapshot>").description("Delete one snapshot by id or name (named snapshots are otherwise never pruned)").action((ref) => {
+  try {
+    console.log(`Deleted ${deleteSnapshot(cwd, ref).id}.`);
   } catch (e) {
     fail(e);
   }

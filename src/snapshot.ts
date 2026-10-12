@@ -235,6 +235,16 @@ export function pruneSnapshots(sourceDir: string, keep: number = KEEP_DEFAULT): 
     return drop.length;
 }
 
+/** Delete one snapshot by exact id or name. Refuses an implicit "latest": deleting is deliberate, name the snapshot. */
+export function deleteSnapshot(sourceDir: string, ref: string): SnapshotMeta {
+    if (!ref || ref === 'latest') throw new Error('[Agent-Undo] Name the snapshot to delete (id or name); "latest" is not accepted.');
+    return withLock(sourceDir, () => {
+        const snap = resolveSnapshot(sourceDir, ref);
+        discard(snapshotBase(sourceDir), [snap.id]);
+        return snap;
+    });
+}
+
 // ---------- diff ----------
 
 /** Relative path -> file size, or `-> target` for a symlink, so a retargeted link counts as a change. */

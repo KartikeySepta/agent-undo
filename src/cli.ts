@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { program } from 'commander';
 import {
-  takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot, pruneSnapshots, repairInterruptedRevert, snapshotFilePath,
+  takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot, pruneSnapshots, repairInterruptedRevert, snapshotFilePath, deleteSnapshot,
 } from './snapshot';
 import { VERSION } from './version';
 import { LEVELS, isLevel, readLevel, writeLevel } from './config';
@@ -98,6 +98,13 @@ program
       const { restored, backup } = revertSnapshot(cwd, ref, { only: o.only });
       console.log(`✅ Restored ${restored.id}. Undo this revert with: agent-undo revert ${backup.id} --yes`);
     } catch (e) { fail(e); }
+  });
+
+program
+  .command('delete <snapshot>')
+  .description('Delete one snapshot by id or name (named snapshots are otherwise never pruned)')
+  .action((ref: string) => {
+    try { console.log(`Deleted ${deleteSnapshot(cwd, ref).id}.`); } catch (e) { fail(e); }
   });
 
 program

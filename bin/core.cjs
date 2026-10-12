@@ -882,6 +882,7 @@ __export(snapshot_exports, {
   BusyError: () => BusyError,
   IGNORE_FILE: () => IGNORE_FILE,
   assertSafeTarget: () => assertSafeTarget,
+  deleteSnapshot: () => deleteSnapshot,
   diffSnapshot: () => diffSnapshot,
   interruptedRevert: () => interruptedRevert,
   listSnapshots: () => listSnapshots,
@@ -1211,6 +1212,14 @@ function pruneSnapshots(sourceDir, keep = KEEP_DEFAULT) {
   discard(base, drop.map((s) => s.id));
   return drop.length;
 }
+function deleteSnapshot(sourceDir, ref) {
+  if (!ref || ref === "latest") throw new Error('[Agent-Undo] Name the snapshot to delete (id or name); "latest" is not accepted.');
+  return withLock(sourceDir, () => {
+    const snap = resolveSnapshot(sourceDir, ref);
+    discard(snapshotBase(sourceDir), [snap.id]);
+    return snap;
+  });
+}
 function walk(root, ig, rel = "", out = /* @__PURE__ */ new Map()) {
   for (const e of import_fs3.default.readdirSync(import_path4.default.join(root, rel), { withFileTypes: true })) {
     const r = import_path4.default.join(rel, e.name);
@@ -1505,6 +1514,7 @@ function revertSnapshot(sourceDir, ref, opts = {}) {
   BusyError,
   IGNORE_FILE,
   assertSafeTarget,
+  deleteSnapshot,
   diffSnapshot,
   interruptedRevert,
   listSnapshots,
