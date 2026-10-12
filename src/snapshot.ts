@@ -225,14 +225,27 @@ export function resolveSnapshot(sourceDir: string, ref?: string): SnapshotMeta {
 
 export function pruneSnapshots(sourceDir: string, keep: number = KEEP_DEFAULT): number {
     const base = snapshotBase(sourceDir);
-    // Named snapshots are deliberate; only unnamed ones count against the limit. The newest session
-    // baseline is also kept: it is what "roll back to the start" means, however busy the session got.
-    const all = listSnapshots(sourceDir);
-    const baseline = all.filter((s) => s.trigger === 'session').at(-1);
-    const prunable = all.filter((s) => !s.name && s !== baseline);
+    const prunable = prunableSnapshots(sourceDir);
     const drop = prunable.slice(0, Math.max(0, prunable.length - keep));
     discard(base, drop.map((s) => s.id));
     return drop.length;
+}
+
+/** Delete unnamed snapshots created more than `ageMs` ago. Named snapshots and the newest session baseline stay. */
+export function pruneOlderThan(sourceDir: string, ageMs: number): number {
+    if (!(ageMs >= 0)) throw new Error('[Agent-Undo] Age must be a non-negative number of milliseconds.');
+    const cutoff = Date.now() - ageMs;
+    const drop = prunableSnapshots(sourceDir).filter((s) => Date.parse(s.createdAt) < cutoff);
+    discard(snapshotBase(sourceDir), drop.map((s) => s.id));
+    return drop.length;
+}
+
+// Named snapshots are deliberate; only unnamed ones count against the limit. The newest session
+// baseline is also kept: it is what "roll back to the start" means, however busy the session got.
+function prunableSnapshots(sourceDir: string): SnapshotMeta[] {
+    const all = listSnapshots(sourceDir);
+    const baseline = all.filter((s) => s.trigger === 'session').at(-1);
+    return all.filter((s) => !s.name && s !== baseline);
 }
 
 /** Delete one snapshot by exact id or name. Refuses an implicit "latest": deleting is deliberate, name the snapshot. */

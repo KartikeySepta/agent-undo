@@ -4222,12 +4222,22 @@ function resolveSnapshot(sourceDir, ref) {
 }
 function pruneSnapshots(sourceDir, keep = KEEP_DEFAULT) {
   const base = snapshotBase(sourceDir);
-  const all = listSnapshots(sourceDir);
-  const baseline = all.filter((s) => s.trigger === "session").at(-1);
-  const prunable = all.filter((s) => !s.name && s !== baseline);
+  const prunable = prunableSnapshots(sourceDir);
   const drop = prunable.slice(0, Math.max(0, prunable.length - keep));
   discard(base, drop.map((s) => s.id));
   return drop.length;
+}
+function pruneOlderThan(sourceDir, ageMs) {
+  if (!(ageMs >= 0)) throw new Error("[Agent-Undo] Age must be a non-negative number of milliseconds.");
+  const cutoff = Date.now() - ageMs;
+  const drop = prunableSnapshots(sourceDir).filter((s) => Date.parse(s.createdAt) < cutoff);
+  discard(snapshotBase(sourceDir), drop.map((s) => s.id));
+  return drop.length;
+}
+function prunableSnapshots(sourceDir) {
+  const all = listSnapshots(sourceDir);
+  const baseline = all.filter((s) => s.trigger === "session").at(-1);
+  return all.filter((s) => !s.name && s !== baseline);
 }
 function deleteSnapshot(sourceDir, ref) {
   if (!ref || ref === "latest") throw new Error('[Agent-Undo] Name the snapshot to delete (id or name); "latest" is not accepted.');
@@ -4643,7 +4653,20 @@ program.command("delete <snapshot>").description("Delete one snapshot by id or n
     fail(e);
   }
 });
-program.command("prune").description("Delete old unnamed snapshots, keeping the newest N").option("-k, --keep <n>", "how many to keep", "10").action((o) => console.log(`Pruned ${pruneSnapshots(cwd, Number(o.keep))} snapshot(s).`));
+program.command("prune").description("Delete old unnamed snapshots, keeping the newest N (or everything newer than --older-than)").option("-k, --keep <n>", "how many to keep", "10").option("--older-than <age>", "delete unnamed snapshots older than this, e.g. 90m, 12h, 7d").action((o) => {
+  try {
+    const n = o.olderThan ? pruneOlderThan(cwd, parseAge(o.olderThan)) : pruneSnapshots(cwd, Number(o.keep));
+    console.log(`Pruned ${n} snapshot(s).`);
+  } catch (e) {
+    fail(e);
+  }
+});
+function parseAge(text) {
+  const m = /^(\d+(?:\.\d+)?)\s*(s|m|h|d|w)$/.exec(text.trim());
+  if (!m) throw new Error(`Bad age "${text}". Use a number plus s, m, h, d or w, e.g. 12h or 7d.`);
+  const unit = { s: 1e3, m: 6e4, h: 36e5, d: 864e5, w: 7 * 864e5 }[m[2]];
+  return Number(m[1]) * unit;
+}
 program.command("mode [level]").description(`Show or set the level: ${LEVELS.join("|")}`).action((level) => {
   if (!level) return console.log(readLevel());
   if (!isLevel(level)) fail(new Error(`Unknown level "${level}". Use one of: ${LEVELS.join(", ")}`));

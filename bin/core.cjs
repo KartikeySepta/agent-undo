@@ -887,6 +887,7 @@ __export(snapshot_exports, {
   interruptedRevert: () => interruptedRevert,
   listSnapshots: () => listSnapshots,
   previewRevert: () => previewRevert,
+  pruneOlderThan: () => pruneOlderThan,
   pruneSnapshots: () => pruneSnapshots,
   repairInterruptedRevert: () => repairInterruptedRevert,
   resolveSnapshot: () => resolveSnapshot,
@@ -1205,12 +1206,22 @@ function resolveSnapshot(sourceDir, ref) {
 }
 function pruneSnapshots(sourceDir, keep = KEEP_DEFAULT) {
   const base = snapshotBase(sourceDir);
-  const all = listSnapshots(sourceDir);
-  const baseline = all.filter((s) => s.trigger === "session").at(-1);
-  const prunable = all.filter((s) => !s.name && s !== baseline);
+  const prunable = prunableSnapshots(sourceDir);
   const drop = prunable.slice(0, Math.max(0, prunable.length - keep));
   discard(base, drop.map((s) => s.id));
   return drop.length;
+}
+function pruneOlderThan(sourceDir, ageMs) {
+  if (!(ageMs >= 0)) throw new Error("[Agent-Undo] Age must be a non-negative number of milliseconds.");
+  const cutoff = Date.now() - ageMs;
+  const drop = prunableSnapshots(sourceDir).filter((s) => Date.parse(s.createdAt) < cutoff);
+  discard(snapshotBase(sourceDir), drop.map((s) => s.id));
+  return drop.length;
+}
+function prunableSnapshots(sourceDir) {
+  const all = listSnapshots(sourceDir);
+  const baseline = all.filter((s) => s.trigger === "session").at(-1);
+  return all.filter((s) => !s.name && s !== baseline);
 }
 function deleteSnapshot(sourceDir, ref) {
   if (!ref || ref === "latest") throw new Error('[Agent-Undo] Name the snapshot to delete (id or name); "latest" is not accepted.');
@@ -1519,6 +1530,7 @@ function revertSnapshot(sourceDir, ref, opts = {}) {
   interruptedRevert,
   listSnapshots,
   previewRevert,
+  pruneOlderThan,
   pruneSnapshots,
   repairInterruptedRevert,
   resolveSnapshot,

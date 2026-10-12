@@ -18125,12 +18125,15 @@ function resolveSnapshot(sourceDir, ref) {
 }
 function pruneSnapshots(sourceDir, keep = KEEP_DEFAULT) {
   const base = snapshotBase(sourceDir);
-  const all = listSnapshots(sourceDir);
-  const baseline = all.filter((s) => s.trigger === "session").at(-1);
-  const prunable = all.filter((s) => !s.name && s !== baseline);
+  const prunable = prunableSnapshots(sourceDir);
   const drop = prunable.slice(0, Math.max(0, prunable.length - keep));
   discard(base, drop.map((s) => s.id));
   return drop.length;
+}
+function prunableSnapshots(sourceDir) {
+  const all = listSnapshots(sourceDir);
+  const baseline = all.filter((s) => s.trigger === "session").at(-1);
+  return all.filter((s) => !s.name && s !== baseline);
 }
 function walk(root, ig, rel = "", out = /* @__PURE__ */ new Map()) {
   for (const e of import_fs4.default.readdirSync(import_path4.default.join(root, rel), { withFileTypes: true })) {

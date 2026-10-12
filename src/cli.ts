@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { program } from 'commander';
 import {
-  takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot, pruneSnapshots, repairInterruptedRevert, snapshotFilePath, deleteSnapshot,
+  takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot, pruneSnapshots, repairInterruptedRevert, snapshotFilePath, deleteSnapshot, pruneOlderThan,
 } from './snapshot';
 import { VERSION } from './version';
 import { LEVELS, isLevel, readLevel, writeLevel } from './config';
@@ -109,9 +109,23 @@ program
 
 program
   .command('prune')
-  .description('Delete old unnamed snapshots, keeping the newest N')
+  .description('Delete old unnamed snapshots, keeping the newest N (or everything newer than --older-than)')
   .option('-k, --keep <n>', 'how many to keep', '10')
-  .action((o: { keep: string }) => console.log(`Pruned ${pruneSnapshots(cwd, Number(o.keep))} snapshot(s).`));
+  .option('--older-than <age>', 'delete unnamed snapshots older than this, e.g. 90m, 12h, 7d')
+  .action((o: { keep: string; olderThan?: string }) => {
+    try {
+      const n = o.olderThan ? pruneOlderThan(cwd, parseAge(o.olderThan)) : pruneSnapshots(cwd, Number(o.keep));
+      console.log(`Pruned ${n} snapshot(s).`);
+    } catch (e) { fail(e); }
+  });
+
+/** "90m", "12h", "7d" (also s, w) to milliseconds. */
+function parseAge(text: string): number {
+  const m = /^(\d+(?:\.\d+)?)\s*(s|m|h|d|w)$/.exec(text.trim());
+  if (!m) throw new Error(`Bad age "${text}". Use a number plus s, m, h, d or w, e.g. 12h or 7d.`);
+  const unit = { s: 1e3, m: 60e3, h: 3600e3, d: 86400e3, w: 7 * 86400e3 }[m[2] as 's' | 'm' | 'h' | 'd' | 'w'];
+  return Number(m[1]) * unit;
+}
 
 program
   .command('mode [level]')
