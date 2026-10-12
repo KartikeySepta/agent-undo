@@ -18195,6 +18195,17 @@ function diffSnapshot(sourceDir, ref) {
   for (const file2 of before.keys()) if (!now.has(file2)) result.deleted.push(file2);
   return result;
 }
+function snapshotFilePath(sourceDir, rel, ref) {
+  const snapshot = resolveSnapshot(sourceDir, ref);
+  const inside = safeRelative(sourceDir, rel);
+  const p = import_path4.default.join(dataDir(snapshotBase(sourceDir), snapshot.id), inside);
+  let exists = false;
+  try {
+    exists = import_fs4.default.lstatSync(p).isFile();
+  } catch {
+  }
+  return { snapshot, path: exists ? p : null };
+}
 function moveSync(from, to) {
   import_fs4.default.mkdirSync(import_path4.default.dirname(to), { recursive: true });
   try {
@@ -18485,6 +18496,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       }
     },
     {
+      name: "read_snapshot_file",
+      description: "Return a project file's content as it was in a snapshot, without reverting anything. Use it to see what you broke, or to copy one function back by hand instead of reverting a whole file.",
+      inputSchema: { type: "object", properties: { path: { type: "string", description: "Project-relative path of the file." }, snapshot: snapshotProp, project_dir: projectProp }, required: ["path"] }
+    },
+    {
       name: "undo_status",
       description: "agent-undo level, snapshot count, lifetime stats, and environment checks (clone engine, store volume).",
       inputSchema: { type: "object", properties: { project_dir: projectProp } }
@@ -18493,6 +18509,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 }));
 var text = (t, isError = false) => ({ content: [{ type: "text", text: t }], ...isError && { isError } });
 var PREVIEW_CAP = 50;
+var READ_CAP = 2e5;
 function parsePaths(raw) {
   if (raw === void 0 || raw === null) return void 0;
   const list = typeof raw === "string" ? [raw] : raw;
@@ -18551,6 +18568,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const { restored, backup } = revertSnapshot(cwd, preview.snapshot.id, { only });
         const scope = only ? ` (only ${only.join(", ")})` : "";
         return text(`Reverted to ${restored.id}${scope}. To undo this revert: revert_environment with snapshot "${backup.id}".`);
+      }
+      case "read_snapshot_file": {
+        if (typeof args.path !== "string" || !args.path.trim()) return text("Error: `path` must be a project-relative path string.", true);
+        const { snapshot, path: p } = snapshotFilePath(cwd, args.path, args.snapshot);
+        if (!p) return text(`"${args.path}" is not in snapshot ${snapshot.id} (it was added after the snapshot, or is excluded by .agentundoignore).`, true);
+        const size = import_fs6.default.statSync(p).size;
+        const head = Buffer.alloc(Math.min(size, 8192));
+        const fd = import_fs6.default.openSync(p, "r");
+        try {
+          import_fs6.default.readSync(fd, head, 0, head.length, 0);
+        } finally {
+          import_fs6.default.closeSync(fd);
+        }
+        if (head.includes(0)) return text(`"${args.path}" in ${snapshot.id} is binary (${size} bytes); not shown. Revert that path to restore it.`);
+        const body = import_fs6.default.readFileSync(p, "utf8");
+        const clipped = body.length > READ_CAP ? body.slice(0, READ_CAP) + `
+... [truncated, ${body.length - READ_CAP} more characters; revert the path to restore it in full]` : body;
+        return text(`${args.path} as of ${snapshot.id}:
+${clipped}`);
       }
       case "undo_status": {
         const checks = doctor(cwd).map((c) => `${c.ok === true ? "ok" : c.ok === false ? "FAIL" : "warn"}  ${c.label}: ${c.detail}`);

@@ -2,7 +2,7 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import { takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot, previewRevert, RevertPreview } from "./snapshot";
+import { takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot, previewRevert, snapshotFilePath, RevertPreview } from "./snapshot";
 import { readLevel } from "./config";
 import { VERSION } from "./version";
 import { status, doctor } from "./status";
@@ -50,6 +50,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: "read_snapshot_file",
+      description: "Return a project file's content as it was in a snapshot, without reverting anything. Use it to see what you broke, or to copy one function back by hand instead of reverting a whole file.",
+      inputSchema: { type: "object", properties: { path: { type: "string", description: "Project-relative path of the file." }, snapshot: snapshotProp, project_dir: projectProp }, required: ["path"] },
+    },
+    {
       name: "undo_status",
       description: "agent-undo level, snapshot count, lifetime stats, and environment checks (clone engine, store volume).",
       inputSchema: { type: "object", properties: { project_dir: projectProp } },
@@ -60,6 +65,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 const text = (t: string, isError = false) => ({ content: [{ type: "text", text: t }], ...(isError && { isError }) });
 
 const PREVIEW_CAP = 50;
+const READ_CAP = 200_000;
 
 /** Models sometimes send one path as a bare string. Accept that; reject anything else that isn't a list of non-empty strings. */
 function parsePaths(raw: unknown): string[] | undefined | Error {
@@ -93,7 +99,7 @@ function previewText(p: RevertPreview, staleToken?: string): string {
 }
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const args = (request.params.arguments ?? {}) as { name?: string; snapshot?: string; paths?: unknown; project_dir?: string; confirm?: string };
+  const args = (request.params.arguments ?? {}) as { name?: string; snapshot?: string; paths?: unknown; project_dir?: string; confirm?: string; path?: unknown };
   const cwd = args.project_dir || process.env.CLAUDE_PROJECT_DIR || process.cwd();
   // Some hosts (Codex plugins, Gemini extensions) start the server inside the plugin's own
   // directory. Never silently snapshot or revert agent-undo itself: ask for project_dir instead.
@@ -125,6 +131,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const { restored, backup } = revertSnapshot(cwd, preview.snapshot.id, { only });
         const scope = only ? ` (only ${only.join(", ")})` : "";
         return text(`Reverted to ${restored.id}${scope}. To undo this revert: revert_environment with snapshot "${backup.id}".`);
+      }
+      case "read_snapshot_file": {
+        if (typeof args.path !== "string" || !args.path.trim()) return text("Error: `path` must be a project-relative path string.", true);
+        const { snapshot, path: p } = snapshotFilePath(cwd, args.path, args.snapshot);
+        if (!p) return text(`"${args.path}" is not in snapshot ${snapshot.id} (it was added after the snapshot, or is excluded by .agentundoignore).`, true);
+        const size = fs.statSync(p).size;
+        const head = Buffer.alloc(Math.min(size, 8192));
+        const fd = fs.openSync(p, "r");
+        try { fs.readSync(fd, head, 0, head.length, 0); } finally { fs.closeSync(fd); }
+        if (head.includes(0)) return text(`"${args.path}" in ${snapshot.id} is binary (${size} bytes); not shown. Revert that path to restore it.`);
+        const body = fs.readFileSync(p, "utf8");
+        const clipped = body.length > READ_CAP ? body.slice(0, READ_CAP) + `\n... [truncated, ${body.length - READ_CAP} more characters; revert the path to restore it in full]` : body;
+        return text(`${args.path} as of ${snapshot.id}:\n${clipped}`);
       }
       case "undo_status": {
         const checks = doctor(cwd).map((c) => `${c.ok === true ? "ok" : c.ok === false ? "FAIL" : "warn"}  ${c.label}: ${c.detail}`);

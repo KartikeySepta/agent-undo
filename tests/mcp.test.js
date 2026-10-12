@@ -18,18 +18,20 @@ async function connect(s) {
   return { client, call, revert };
 }
 
-test('MCP server exposes the four tools and they work end to end', async (t) => {
+test('MCP server exposes the six tools and they work end to end', async (t) => {
   const s = sandbox(); t.after(s.cleanup);
   s.write('a.txt', 'one'); s.write('b.txt', 'one');
   const { client, call, revert } = await connect(s);
   t.after(() => client.close());
 
   const { tools } = await client.listTools();
-  assert.deepStrictEqual(tools.map((x) => x.name).sort(), ['diff_snapshot', 'list_snapshots', 'revert_environment', 'take_snapshot', 'undo_status']);
+  assert.deepStrictEqual(tools.map((x) => x.name).sort(), ['diff_snapshot', 'list_snapshots', 'read_snapshot_file', 'revert_environment', 'take_snapshot', 'undo_status']);
 
   assert.match(await call('take_snapshot', { name: 'base' }), /Snapshot .*-base taken/);
   s.write('a.txt', 'two'); s.write('b.txt', 'two');
   assert.match(await call('diff_snapshot'), /0 added, 2 modified, 0 deleted/);
+  assert.match(await call('read_snapshot_file', { path: 'a.txt' }), /a\.txt as of .*-base:\none$/);
+  assert.strictEqual((await client.callTool({ name: 'read_snapshot_file', arguments: { path: '../x' } })).isError, true);
   assert.match(await revert({ paths: ['a.txt'] }), /\(only a\.txt\).*pre-revert/);
   assert.strictEqual(s.read('a.txt'), 'one');
   assert.strictEqual(s.read('b.txt'), 'two');
