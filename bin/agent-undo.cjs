@@ -4583,8 +4583,21 @@ var fail = (e) => {
   process.exit(1);
 };
 program.name("agent-undo").description("The Time Machine for AI Coding Agents").version(VERSION);
-program.command("snapshot [name]").description("Take an instant snapshot of the current directory (optionally named)").action((name) => {
+function ago(iso) {
+  const s = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1e3));
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.round(s / 60)}m ago`;
+  if (s < 86400) return `${Math.round(s / 3600)}h ago`;
+  return `${Math.round(s / 86400)}d ago`;
+}
+program.command("snapshot [name]").description("Take an instant snapshot of the current directory (optionally named)").option("--if-changed", "skip when nothing changed since the latest snapshot").action((name, o) => {
   try {
+    if (o.ifChanged && listSnapshots(cwd).length) {
+      const d = diffSnapshot(cwd);
+      if (!d.added.length && !d.modified.length && !d.deleted.length) {
+        return console.log(`Nothing changed since ${listSnapshots(cwd).at(-1).id}; no snapshot taken.`);
+      }
+    }
     const m = takeSnapshot(cwd, { name });
     console.log(`\u2705 Snapshot ${m.id} (${MODE_LABEL[m.mode]}, ${m.elapsedMs}ms)`);
   } catch (e) {
@@ -4595,7 +4608,7 @@ program.command("list").description("List snapshots for this directory").option(
   const all = listSnapshots(cwd);
   if (o.json) return console.log(JSON.stringify(all, null, 2));
   if (!all.length) return console.log("No snapshots.");
-  for (const s of all) console.log(`${s.id}  [${s.trigger ?? "manual"}, ${s.mode}]${s.reason ? "  " + s.reason : ""}`);
+  for (const s of all) console.log(`${s.id}  [${s.trigger ?? "manual"}, ${s.mode}]  ${ago(s.createdAt)}${s.reason ? "  " + s.reason : ""}`);
 });
 function fileDiff(file2, ref) {
   const { snapshot, path: before } = snapshotFilePath(cwd, file2, ref);
