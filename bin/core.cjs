@@ -891,6 +891,7 @@ __export(snapshot_exports, {
   resolveSnapshot: () => resolveSnapshot,
   revertSnapshot: () => revertSnapshot,
   snapshotBase: () => snapshotBase,
+  snapshotFilePath: () => snapshotFilePath,
   takeSnapshot: () => takeSnapshot
 });
 module.exports = __toCommonJS(snapshot_exports);
@@ -1270,6 +1271,17 @@ function diffSnapshot(sourceDir, ref) {
   for (const file2 of before.keys()) if (!now.has(file2)) result.deleted.push(file2);
   return result;
 }
+function snapshotFilePath(sourceDir, rel, ref) {
+  const snapshot = resolveSnapshot(sourceDir, ref);
+  const inside = safeRelative(sourceDir, rel);
+  const p = import_path4.default.join(dataDir(snapshotBase(sourceDir), snapshot.id), inside);
+  let exists = false;
+  try {
+    exists = import_fs3.default.lstatSync(p).isFile();
+  } catch {
+  }
+  return { snapshot, path: exists ? p : null };
+}
 function moveSync(from, to) {
   import_fs3.default.mkdirSync(import_path4.default.dirname(to), { recursive: true });
   try {
@@ -1502,5 +1514,6 @@ function revertSnapshot(sourceDir, ref, opts = {}) {
   resolveSnapshot,
   revertSnapshot,
   snapshotBase,
+  snapshotFilePath,
   takeSnapshot
 });

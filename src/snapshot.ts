@@ -302,6 +302,18 @@ export function diffSnapshot(sourceDir: string, ref?: string): DiffResult {
     return result;
 }
 
+// ---------- inspect ----------
+
+/** Absolute path of a project file as it was in a snapshot, or null if the snapshot has no such file. Rejects paths outside the project. */
+export function snapshotFilePath(sourceDir: string, rel: string, ref?: string): { snapshot: SnapshotMeta; path: string | null } {
+    const snapshot = resolveSnapshot(sourceDir, ref);
+    const inside = safeRelative(sourceDir, rel);
+    const p = path.join(dataDir(snapshotBase(sourceDir), snapshot.id), inside);
+    let exists = false;
+    try { exists = fs.lstatSync(p).isFile(); } catch { /* not in the snapshot */ }
+    return { snapshot, path: exists ? p : null };
+}
+
 // ---------- revert ----------
 
 function moveSync(from: string, to: string): void {
