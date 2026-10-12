@@ -4573,8 +4573,9 @@ program.command("snapshot [name]").description("Take an instant snapshot of the 
     fail(e);
   }
 });
-program.command("list").description("List snapshots for this directory").action(() => {
+program.command("list").description("List snapshots for this directory").option("--json", "machine-readable output").action((o) => {
   const all = listSnapshots(cwd);
+  if (o.json) return console.log(JSON.stringify(all, null, 2));
   if (!all.length) return console.log("No snapshots.");
   for (const s of all) console.log(`${s.id}  [${s.trigger ?? "manual"}, ${s.mode}]${s.reason ? "  " + s.reason : ""}`);
 });
@@ -4589,10 +4590,11 @@ function fileDiff(file2, ref) {
   if (r.status !== 1) fail(new Error(r.stderr.trim() || `diff exited with ${r.status}`));
   process.stdout.write(r.stdout);
 }
-program.command("diff [snapshot]").description("Show what changed since a snapshot (default: latest) \u2014 i.e. what revert would undo").option("-f, --file <path>", "unified diff of one file between the snapshot and now").action((ref, o) => {
+program.command("diff [snapshot]").description("Show what changed since a snapshot (default: latest) \u2014 i.e. what revert would undo").option("-f, --file <path>", "unified diff of one file between the snapshot and now").option("--json", "machine-readable output").action((ref, o) => {
   try {
     if (o.file) return fileDiff(o.file, ref);
     const d = diffSnapshot(cwd, ref);
+    if (o.json) return console.log(JSON.stringify(d, null, 2));
     d.added.forEach((f) => console.log(`+ ${f}`));
     d.modified.forEach((f) => console.log(`~ ${f}`));
     d.deleted.forEach((f) => console.log(`- ${f}`));

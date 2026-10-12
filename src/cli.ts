@@ -32,8 +32,10 @@ program
 program
   .command('list')
   .description('List snapshots for this directory')
-  .action(() => {
+  .option('--json', 'machine-readable output')
+  .action((o: { json?: boolean }) => {
     const all = listSnapshots(cwd);
+    if (o.json) return console.log(JSON.stringify(all, null, 2));
     if (!all.length) return console.log('No snapshots.');
     for (const s of all) console.log(`${s.id}  [${s.trigger ?? 'manual'}, ${s.mode}]${s.reason ? '  ' + s.reason : ''}`);
   });
@@ -55,10 +57,12 @@ program
   .command('diff [snapshot]')
   .description('Show what changed since a snapshot (default: latest) — i.e. what revert would undo')
   .option('-f, --file <path>', 'unified diff of one file between the snapshot and now')
-  .action((ref: string | undefined, o: { file?: string }) => {
+  .option('--json', 'machine-readable output')
+  .action((ref: string | undefined, o: { file?: string; json?: boolean }) => {
     try {
       if (o.file) return fileDiff(o.file, ref);
       const d = diffSnapshot(cwd, ref);
+      if (o.json) return console.log(JSON.stringify(d, null, 2));
       d.added.forEach((f) => console.log(`+ ${f}`));
       d.modified.forEach((f) => console.log(`~ ${f}`));
       d.deleted.forEach((f) => console.log(`- ${f}`));
