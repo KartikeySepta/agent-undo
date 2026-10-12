@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 import { program } from 'commander';
 import {
-  takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot, pruneSnapshots, repairInterruptedRevert,
+  takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot, pruneSnapshots, repairInterruptedRevert, snapshotFilePath,
 } from './snapshot';
 import { VERSION } from './version';
 import { LEVELS, isLevel, readLevel, writeLevel } from './config';
 import { doctor, status, protectedBytes } from './status';
+import fs from 'fs';
 
 const cwd = process.cwd();
 const MODE_LABEL = { clonefile: 'clonefile', cow: 'copy-on-write', copy: 'full copy: no CoW on this filesystem', moved: 'moved' } as const;
@@ -45,6 +46,17 @@ program
       d.modified.forEach((f) => console.log(`~ ${f}`));
       d.deleted.forEach((f) => console.log(`- ${f}`));
       console.log(`\n${d.added.length} added, ${d.modified.length} modified, ${d.deleted.length} deleted`);
+    } catch (e) { fail(e); }
+  });
+
+program
+  .command('show <path> [snapshot]')
+  .description('Print a file as it was in a snapshot (default: latest), without reverting anything')
+  .action((file: string, ref?: string) => {
+    try {
+      const { snapshot, path: p } = snapshotFilePath(cwd, file, ref);
+      if (!p) fail(new Error(`"${file}" is not in snapshot ${snapshot.id}.`));
+      process.stdout.write(fs.readFileSync(p!));
     } catch (e) { fail(e); }
   });
 

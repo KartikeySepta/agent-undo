@@ -964,7 +964,7 @@ var require_command = __commonJS({
     var EventEmitter = require("node:events").EventEmitter;
     var childProcess = require("node:child_process");
     var path6 = require("node:path");
-    var fs6 = require("node:fs");
+    var fs7 = require("node:fs");
     var process2 = require("node:process");
     var { Argument: Argument2, humanReadableArgName } = require_argument();
     var { CommanderError: CommanderError2 } = require_error();
@@ -1897,10 +1897,10 @@ Expecting one of '${allowedValues.join("', '")}'`);
         const sourceExt = [".js", ".ts", ".tsx", ".mjs", ".cjs"];
         function findFile(baseDir, baseName) {
           const localBin = path6.resolve(baseDir, baseName);
-          if (fs6.existsSync(localBin)) return localBin;
+          if (fs7.existsSync(localBin)) return localBin;
           if (sourceExt.includes(path6.extname(baseName))) return void 0;
           const foundExt = sourceExt.find(
-            (ext) => fs6.existsSync(`${localBin}${ext}`)
+            (ext) => fs7.existsSync(`${localBin}${ext}`)
           );
           if (foundExt) return `${localBin}${foundExt}`;
           return void 0;
@@ -1912,7 +1912,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
         if (this._scriptPath) {
           let resolvedScriptPath;
           try {
-            resolvedScriptPath = fs6.realpathSync(this._scriptPath);
+            resolvedScriptPath = fs7.realpathSync(this._scriptPath);
           } catch (err) {
             resolvedScriptPath = this._scriptPath;
           }
@@ -4289,6 +4289,17 @@ function diffSnapshot(sourceDir, ref) {
   for (const file2 of before.keys()) if (!now.has(file2)) result.deleted.push(file2);
   return result;
 }
+function snapshotFilePath(sourceDir, rel, ref) {
+  const snapshot = resolveSnapshot(sourceDir, ref);
+  const inside = safeRelative(sourceDir, rel);
+  const p = import_path4.default.join(dataDir(snapshotBase(sourceDir), snapshot.id), inside);
+  let exists = false;
+  try {
+    exists = import_fs4.default.lstatSync(p).isFile();
+  } catch {
+  }
+  return { snapshot, path: exists ? p : null };
+}
 function moveSync(from, to) {
   import_fs4.default.mkdirSync(import_path4.default.dirname(to), { recursive: true });
   try {
@@ -4544,6 +4555,7 @@ function protectedBytes(projectDir) {
 }
 
 // src/cli.ts
+var import_fs6 = __toESM(require("fs"));
 var cwd = process.cwd();
 var MODE_LABEL = { clonefile: "clonefile", cow: "copy-on-write", copy: "full copy: no CoW on this filesystem", moved: "moved" };
 var fail = (e) => {
@@ -4572,6 +4584,15 @@ program.command("diff [snapshot]").description("Show what changed since a snapsh
     d.deleted.forEach((f) => console.log(`- ${f}`));
     console.log(`
 ${d.added.length} added, ${d.modified.length} modified, ${d.deleted.length} deleted`);
+  } catch (e) {
+    fail(e);
+  }
+});
+program.command("show <path> [snapshot]").description("Print a file as it was in a snapshot (default: latest), without reverting anything").action((file2, ref) => {
+  try {
+    const { snapshot, path: p } = snapshotFilePath(cwd, file2, ref);
+    if (!p) fail(new Error(`"${file2}" is not in snapshot ${snapshot.id}.`));
+    process.stdout.write(import_fs6.default.readFileSync(p));
   } catch (e) {
     fail(e);
   }
