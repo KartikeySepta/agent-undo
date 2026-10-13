@@ -1,5 +1,5 @@
 {
-  "description": "agent-undo: rules injection, baseline + auto snapshots, level switching",
+  "description": "agent-undo: rules injection, baseline + auto snapshots, level switching, turn-end checks at paranoid level",
   "hooks": {
     "SessionStart": [
       { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/hook-session-start.cjs\"", "timeout": 5, "statusMessage": "Loading agent-undo..." }] }

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Think before, not after
+- **Forks.** A snapshot you run commands in: `agent-undo path [snapshot]` prints a snapshot's directory, and the core gains `fork()`, `snapshotDir()` and `diffSnapshots()` (snapshot to snapshot).
+- **`agent-undo try "<command>" --check "<command>"`** and the **`try_in_fork`** MCP tool run a command in a fork and swap the result into the project only if the command and the check pass. A failure leaves the project untouched and keeps the fork for inspection. Edits made to the project while the command ran block the swap. Paths that tools baked into files they wrote (pip shebangs, venv configs) are rewritten from the fork to the project. A new core rule tells agents to prefer this for installs, upgrades, codegen and migrations that have a check.
+- **Green snapshots.** `agent-undo check --set "npm test"` saves the project's check; `agent-undo check` runs it and marks the matching snapshot green or red, taking one first if the tree moved. **`last-green`** names the newest green snapshot in every command and tool (`agent-undo revert last-green --yes`). `take_snapshot` accepts `green: true`. With `--auto` at level paranoid, a Claude Code Stop hook runs the check at the end of every turn.
+- **`agent-undo bisect`** and the **`bisect`** MCP tool binary-search the snapshot timeline (and the working tree) with the check, running it in a scratch copy of each candidate, and report the last green and first red snapshot, the files that changed between them and the revert that goes back. Results are stored as marks and reused.
+- **`agent-undo replay [--last n] [--file <path>]`** plays the session back: every snapshot, what changed since the one before, and the working tree. `--file` shows one file's diff at each step.
+- `stats` counts tries and how many were applied.
+
+### Fixes
+- Two snapshots taken in the same millisecond listed out of order when one was named; a later snapshot now takes the next millisecond.
+
 ### Inspect before you revert
 - **`read_snapshot_file(path, snapshot?)`** MCP tool and **`agent-undo show <path> [snapshot]`**: a file as it was in a snapshot, without reverting. An agent can read the old version, or copy one function back by hand, instead of undoing a whole file. Binary content is reported by size; text is capped at 200k characters over MCP.
 - **`agent-undo diff --file <path>`**: a unified diff of one file between the snapshot and now. Added and deleted files diff against nothing, so the whole content shows.

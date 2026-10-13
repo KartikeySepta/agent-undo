@@ -35,6 +35,26 @@ agent  ▸ Reverted the dependency upgrade (your src/utils fix kept). Build pass
          Undo this revert: revert_environment("…-pre-revert"). Next: react-dom first.
 ```
 
+## Or make sure it never happens
+
+```
+you    ▸ upgrade us to React 19
+agent  ▸ try_in_fork("npm install react@19", check: "npm test")
+         fork cloned 0.4s · npm install in the fork · npm test in the fork: 3 failures
+         → Try failed. Project unchanged; the fork is kept for a look.
+agent  ▸ React 19 breaks 3 tests (listed). Nothing to undo. Next: react-dom first.
+```
+
+A **fork** is a snapshot you run commands in. It is a copy-on-write clone, so it costs what a snapshot costs and holds the whole project, `node_modules` included. The command and its check run there, and the project changes only if both pass; that swap is an ordinary revert with a pre-revert backup, so even a passed try is undoable. From a terminal: `agent-undo try "npm install react@19" --check "npm test"`.
+
+Three more questions a fork answers:
+
+| Question | Command |
+|---|---|
+| **Which step broke it?** | `agent-undo bisect --check "npm test"` binary-searches the snapshot timeline, running the check in a scratch copy of each candidate, and reports the last green and first red snapshot, the files that differ, and the revert that goes back. Git bisect cannot do this: it never sees `node_modules` or untracked files. |
+| **Back to when it worked?** | `agent-undo check --set "npm test"` saves the project's check; `agent-undo check` marks the current state green. `agent-undo revert last-green --yes` then returns to the newest state that actually passed. `--auto` plus level paranoid runs the check at the end of every agent turn. |
+| **What did the agent do?** | `agent-undo replay` plays the session as a flipbook: each snapshot, why it was taken, what changed. `--file src/db.ts` shows one file's diff at every step. |
+
 ## Get started
 
 ### 1. Try it in 30 seconds (no agent needed)
@@ -157,7 +177,9 @@ The level is shared by every agent and the CLI (`agent-undo mode <level>`). Auto
 
 ### MCP tools
 
-`take_snapshot(name?)` · `list_snapshots` · `diff_snapshot(snapshot?)` · `read_snapshot_file(path, snapshot?)` · `revert_environment(snapshot?, paths?, confirm?)` · `undo_status`. Every tool takes an optional `project_dir`.
+`take_snapshot(name?, green?)` · `list_snapshots` · `diff_snapshot(snapshot?)` · `read_snapshot_file(path, snapshot?)` · `try_in_fork(command, check?, timeout_s?)` · `bisect(check?, good?, bad?)` · `revert_environment(snapshot?, paths?, confirm?)` · `undo_status`. Every tool takes an optional `project_dir`; `snapshot` accepts an id, a name, `latest` or `last-green`.
+
+`try_in_fork` runs a command in a fork of the project and swaps the result in only if the command and `check` pass. `bisect` finds the snapshot where the check started failing. `take_snapshot(green: true)` marks a state the agent has just verified.
 
 `read_snapshot_file` returns a file as it was in a snapshot, so the agent can look at (or hand-copy one function from) the old version instead of reverting the whole file.
 
@@ -172,10 +194,17 @@ agent-undo list                         # trigger (manual / hook / session / tur
 agent-undo diff [snapshot]              # +added ~modified -deleted
 agent-undo diff --file src/db.ts        # unified diff of one file, snapshot vs now
 agent-undo show src/db.ts [snapshot]    # print a file as it was, no revert
+agent-undo path [snapshot]              # the snapshot's directory: cd into the past
+agent-undo try "npm i react@19" --check "npm test"   # in a fork; applied only if both pass
+agent-undo check --set "npm test"       # save the project's check (--auto: every turn at paranoid)
+agent-undo check                        # run it; mark the current state green or red
+agent-undo bisect                       # which snapshot broke the check, and what changed
+agent-undo replay [--file src/db.ts]    # the session as a flipbook
 agent-undo revert [snapshot]            # preview only
 agent-undo revert --yes                 # restore (saves a pre-revert backup first)
 agent-undo revert --only src/db.ts      # restore just these paths
 agent-undo revert pre-revert --yes      # undo the revert
+agent-undo revert last-green --yes      # back to the newest state that passed the check
 agent-undo mode paranoid                # lite | full | paranoid | off
 agent-undo stats                        # lifetime scoreboard + MB protected
 agent-undo doctor                       # engine, store volume, project checks
