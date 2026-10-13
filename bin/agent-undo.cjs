@@ -5034,11 +5034,17 @@ program.command("try <command>").description("Run a command in a copy-on-write f
     fail(e);
   }
 });
-program.command("check [command]").description(`Run the project's check (e.g. the tests) and mark the matching snapshot green or red; "last-green" then names the newest green one`).option("--set <cmd>", "save this as the project's check command instead of running one").option("--auto", "with --set: at paranoid level, run the check at the end of every agent turn").action((command, o) => {
+program.command("check [command]").description(`Run the project's check (e.g. the tests) and mark the matching snapshot green or red; "last-green" then names the newest green one`).option("--set <cmd>", "save this as the project's check command instead of running one").option("--auto", "at paranoid level, run the saved check at the end of every agent turn (with --set, or alone to switch it on)").option("--no-auto", "switch the turn-end check off").action((command, o) => {
   try {
     if (o.set) {
-      writeCheckConfig(cwd, { command: o.set, auto: !!o.auto });
+      writeCheckConfig(cwd, { command: o.set, auto: o.auto === true });
       return console.log(`Saved check "${o.set}" (auto: ${o.auto ? "on" : "off"}). Run it with: agent-undo check`);
+    }
+    if (o.auto !== void 0 && !command) {
+      const cfg = readCheckConfig(cwd);
+      if (!cfg) fail(new Error('No check command saved. Run `agent-undo check --set "<command>"` first.'));
+      writeCheckConfig(cwd, { ...cfg, auto: o.auto });
+      return console.log(`Check "${cfg.command}" (auto: ${o.auto ? "on" : "off"}).`);
     }
     const r = runCheck(cwd, command);
     if (!r.ok) fail(new Error(`Check "${r.command}" failed (${r.run.timedOut ? "timed out" : "exit " + (r.run.status ?? r.run.signal)}).${r.snapshot ? ` ${r.snapshot.id} is red.` : ""}`));

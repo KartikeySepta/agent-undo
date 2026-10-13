@@ -151,3 +151,13 @@ test('doctor and undo_status report the saved check and the last green snapshot'
   assert.deepStrictEqual(st.check, { command: 'test -f a.txt', auto: true });
   assert.strictEqual(st.lastGreen, r.snapshot.id);
 });
+
+test('cli: check --auto and --no-auto toggle the saved check without retyping it', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  assert.match(fails(s, 'check', '--auto'), /No check command saved/);
+  cli(s, 'check', '--set', 'true');
+  assert.match(cli(s, 'check', '--auto'), /auto: on/);
+  assert.deepStrictEqual(core.readCheckConfig(s.project), { command: 'true', auto: true });
+  assert.match(cli(s, 'check', '--no-auto'), /auto: off/);
+  assert.strictEqual(core.readCheckConfig(s.project).auto, false);
+});
