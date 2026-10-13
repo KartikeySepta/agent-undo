@@ -2,7 +2,7 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import { takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot, previewRevert, snapshotFilePath, RevertPreview } from "./snapshot";
+import { takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot, previewRevert, snapshotFilePath, markSnapshot, RevertPreview, SnapshotMeta } from "./snapshot";
 import { readLevel } from "./config";
 import { tryInFork, describeTry, RunResult } from "./try";
 import { VERSION } from "./version";
@@ -17,7 +17,8 @@ const server = new Server(
   { capabilities: { tools: {} } },
 );
 
-const snapshotProp = { type: "string", description: "Snapshot id, name, or 'latest' (default)." };
+const snapshotProp = { type: "string", description: "Snapshot id, name, 'latest' (default), or 'last-green' (the newest snapshot whose check passed)." };
+const markText = (s: SnapshotMeta) => (s.check ? (s.check.ok ? " ✓ green" : " ✗ red") : "");
 const projectProp = { type: "string", description: "Absolute path of the project. Defaults to the session's project directory." };
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
@@ -25,7 +26,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "take_snapshot",
       description: "Take an instant copy-on-write snapshot of the working directory. Call BEFORE risky changes (installs, migrations, bulk deletes).",
-      inputSchema: { type: "object", properties: { name: { type: "string", description: "Optional label, e.g. 'before-migration'. Named snapshots are never auto-pruned." }, project_dir: projectProp } },
+      inputSchema: { type: "object", properties: { name: { type: "string", description: "Optional label, e.g. 'before-migration'. Named snapshots are never auto-pruned." }, green: { type: "boolean", description: "Set true right after you ran the project's checks (tests, build) and they passed: the snapshot is marked green and becomes 'last-green'." }, project_dir: projectProp } },
     },
     {
       name: "list_snapshots",
@@ -122,7 +123,7 @@ function previewText(p: RevertPreview, staleToken?: string): string {
 }
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const args = (request.params.arguments ?? {}) as { name?: string; snapshot?: string; paths?: unknown; project_dir?: string; confirm?: string; path?: unknown; command?: unknown; check?: unknown; timeout_s?: unknown };
+  const args = (request.params.arguments ?? {}) as { name?: string; snapshot?: string; paths?: unknown; project_dir?: string; confirm?: string; path?: unknown; command?: unknown; check?: unknown; timeout_s?: unknown; green?: unknown };
   const cwd = args.project_dir || process.env.CLAUDE_PROJECT_DIR || process.cwd();
   // Some hosts (Codex plugins, Gemini extensions) start the server inside the plugin's own
   // directory. Never silently snapshot or revert agent-undo itself: ask for project_dir instead.
@@ -133,11 +134,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     switch (request.params.name) {
       case "take_snapshot": {
         const m = takeSnapshot(cwd, { name: args.name, trigger: "manual" });
-        return text(`Snapshot ${m.id} taken (${m.mode}, ${m.elapsedMs}ms).`);
+        if (args.green === true) markSnapshot(cwd, m.id, { ok: true, command: "reported by the agent" });
+        return text(`Snapshot ${m.id} taken (${m.mode}, ${m.elapsedMs}ms)${args.green === true ? ", marked green" : ""}.`);
       }
       case "list_snapshots": {
         const all = listSnapshots(cwd);
-        return text(all.length ? all.map((s) => `${s.id} [${s.trigger ?? "manual"}, ${s.mode}]${s.reason ? " " + s.reason : ""}`).join("\n") : "No snapshots.");
+        return text(all.length ? all.map((s) => `${s.id} [${s.trigger ?? "manual"}, ${s.mode}]${markText(s)}${s.reason ? " " + s.reason : ""}`).join("\n") : "No snapshots.");
       }
       case "diff_snapshot": {
         const d = diffSnapshot(cwd, args.snapshot);

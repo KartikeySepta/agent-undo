@@ -21,9 +21,15 @@ export interface SnapshotMeta {
     reason?: string;
     /** What took it: a person/agent (manual), the PreToolUse hook, session start, or a paranoid turn checkpoint. */
     trigger?: Trigger;
+    /** Result of the project's check command against this exact state: green (ok) or red. */
+    check?: CheckMark;
 }
 
-export type Trigger = 'manual' | 'hook' | 'session' | 'turn' | 'pre-revert' | 'fork';
+export interface CheckMark { ok: boolean; command: string; at: string }
+
+export interface CheckConfig { command: string; auto: boolean }
+
+export type Trigger = 'manual' | 'hook' | 'session' | 'turn' | 'pre-revert' | 'fork' | 'check';
 
 export interface SnapshotOptions {
     name?: string;
@@ -216,6 +222,11 @@ export function resolveSnapshot(sourceDir: string, ref?: string): SnapshotMeta {
     const all = listSnapshots(sourceDir);
     if (all.length === 0) throw new Error('[Agent-Undo] No snapshots found. Take one first.');
     if (!ref || ref === 'latest') return all[all.length - 1];
+    if (ref === 'last-green') {
+        const green = all.filter((s) => s.check?.ok).at(-1);
+        if (!green) throw new Error('[Agent-Undo] No green snapshot yet. Run `agent-undo check` when the project works, or take_snapshot with green: true.');
+        return green;
+    }
     // An exact id or name beats a fragment match, which could otherwise pick a newer, different snapshot.
     const exact = all.filter((s) => s.id === ref || s.name === ref);
     const matches = exact.length ? exact : all.filter((s) => s.id.includes(ref));
@@ -246,6 +257,29 @@ function prunableSnapshots(sourceDir: string): SnapshotMeta[] {
     const all = listSnapshots(sourceDir);
     const baseline = all.filter((s) => s.trigger === 'session').at(-1);
     return all.filter((s) => !s.name && s !== baseline);
+}
+
+/** Record a check result (green or red) on a snapshot. */
+export function markSnapshot(sourceDir: string, ref: string, mark: { ok: boolean; command: string }): SnapshotMeta {
+    const snap = resolveSnapshot(sourceDir, ref);
+    snap.check = { ok: mark.ok, command: mark.command, at: new Date().toISOString() };
+    fs.writeFileSync(metaFile(snapshotBase(sourceDir), snap.id), JSON.stringify(snap, null, 2));
+    return snap;
+}
+
+const checkFile = (sourceDir: string) => path.join(snapshotBase(sourceDir), 'check.json');
+
+/** The project's saved check command, or null. Lives in the store, not the project, so it is never committed. */
+export function readCheckConfig(sourceDir: string): CheckConfig | null {
+    try {
+        const c = JSON.parse(fs.readFileSync(checkFile(sourceDir), 'utf8'));
+        return typeof c.command === 'string' && c.command ? { command: c.command, auto: c.auto === true } : null;
+    } catch { return null; }
+}
+
+export function writeCheckConfig(sourceDir: string, cfg: CheckConfig): void {
+    fs.mkdirSync(snapshotBase(sourceDir), { recursive: true });
+    fs.writeFileSync(checkFile(sourceDir), JSON.stringify(cfg, null, 2));
 }
 
 /** Delete one snapshot by exact id or name. Refuses an implicit "latest": deleting is deliberate, name the snapshot. */

@@ -11,6 +11,7 @@ const entries = {
   'hook-session-start': 'src/hooks/session-start.ts',
   'hook-prompt': 'src/hooks/prompt.ts',
   'hook-subagent-start': 'src/hooks/subagent-start.ts',
+  'hook-stop': 'src/hooks/stop.ts',
   statusline: 'src/statusline.ts',
   core: 'src/core.ts',
   'core-rules': 'src/instructions.ts',

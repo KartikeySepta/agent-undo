@@ -10,6 +10,9 @@
     "PreToolUse": [
       { "matcher": "Bash|Write|Edit|MultiEdit", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/hook-pretooluse.cjs\"", "timeout": 60, "statusMessage": "agent-undo: checking command..." }] }
     ],
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/hook-stop.cjs\"", "timeout": 90 }] }
+    ],
     "SubagentStart": [
       { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/hook-subagent-start.cjs\"", "timeout": 5 }] }
     ]

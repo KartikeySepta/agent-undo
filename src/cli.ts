@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 import { program } from 'commander';
 import {
-  takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot, pruneSnapshots, repairInterruptedRevert, snapshotFilePath, deleteSnapshot, pruneOlderThan, snapshotDir,
+  takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot, pruneSnapshots, repairInterruptedRevert, snapshotFilePath, deleteSnapshot, pruneOlderThan, snapshotDir, readCheckConfig, writeCheckConfig, SnapshotMeta,
 } from './snapshot';
 import { VERSION } from './version';
 import { LEVELS, isLevel, readLevel, writeLevel } from './config';
 import { doctor, status, protectedBytes } from './status';
 import { tryInFork, describeTry } from './try';
+import { runCheck } from './check';
 import fs from 'fs';
 import path from 'path';
 import { spawnSync } from 'child_process';
@@ -19,6 +20,8 @@ const fail = (e: unknown): never => {
 };
 
 program.name('agent-undo').description('The Time Machine for AI Coding Agents').version(VERSION);
+
+const mark = (s: SnapshotMeta) => (s.check ? (s.check.ok ? '  ✓ green' : '  ✗ red') : '');
 
 /** "just now", "3m ago", "2h ago", "5d ago". */
 function ago(iso: string): string {
@@ -54,7 +57,7 @@ program
     const all = listSnapshots(cwd);
     if (o.json) return console.log(JSON.stringify(all, null, 2));
     if (!all.length) return console.log('No snapshots.');
-    for (const s of all) console.log(`${s.id}  [${s.trigger ?? 'manual'}, ${s.mode}]  ${ago(s.createdAt)}${s.reason ? '  ' + s.reason : ''}`);
+    for (const s of all) console.log(`${s.id}  [${s.trigger ?? 'manual'}, ${s.mode}]${mark(s)}  ${ago(s.createdAt)}${s.reason ? '  ' + s.reason : ''}`);
   });
 
 /** Unified diff of one file between the snapshot and the working tree, via the system `diff`. */
@@ -108,6 +111,23 @@ program
       const r = tryInFork(cwd, command, { check: o.check, timeoutMs: o.timeout ? Number(o.timeout) * 1000 : undefined });
       if (!r.ok) fail(new Error(describeTry(r)));
       console.log(`✅ ${describeTry(r)}`);
+    } catch (e) { fail(e); }
+  });
+
+program
+  .command('check [command]')
+  .description('Run the project\'s check (e.g. the tests) and mark the matching snapshot green or red; "last-green" then names the newest green one')
+  .option('--set <cmd>', 'save this as the project\'s check command instead of running one')
+  .option('--auto', 'with --set: at paranoid level, run the check at the end of every agent turn')
+  .action((command: string | undefined, o: { set?: string; auto?: boolean }) => {
+    try {
+      if (o.set) {
+        writeCheckConfig(cwd, { command: o.set, auto: !!o.auto });
+        return console.log(`Saved check "${o.set}" (auto: ${o.auto ? 'on' : 'off'}). Run it with: agent-undo check`);
+      }
+      const r = runCheck(cwd, command);
+      if (!r.ok) fail(new Error(`Check "${r.command}" failed (${r.run.timedOut ? 'timed out' : 'exit ' + (r.run.status ?? r.run.signal)}).${r.snapshot ? ` ${r.snapshot.id} is red.` : ''}`));
+      console.log(`✅ Check passed: ${r.snapshot!.id} is green. Back to it any time with: agent-undo revert last-green --yes`);
     } catch (e) { fail(e); }
   });
 

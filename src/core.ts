@@ -1,2 +1,3 @@
 export * from './snapshot';
 export * from './try';
+export * from './check';

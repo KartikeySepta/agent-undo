@@ -3541,9 +3541,9 @@ var require_ignore = __commonJS({
     var checkPattern = (pattern) => pattern && isString(pattern) && !REGEX_INVALID_TRAILING_BACKSLASH.test(pattern);
     var splitPattern = (pattern) => pattern.split(REGEX_SPLITALL_CRLF).filter(Boolean);
     var IgnoreRule = class {
-      constructor(pattern, mark, body, ignoreCase, negative, prefix) {
+      constructor(pattern, mark2, body, ignoreCase, negative, prefix) {
         this.pattern = pattern;
-        this.mark = mark;
+        this.mark = mark2;
         this.negative = negative;
         define(this, "body", body);
         define(this, "ignoreCase", ignoreCase);
@@ -3600,7 +3600,7 @@ var require_ignore = __commonJS({
     };
     var createRule = ({
       pattern,
-      mark
+      mark: mark2
     }, ignoreCase) => {
       let body = pattern[0] === BOM ? pattern.slice(1) : pattern;
       if (body[0] === "#") {
@@ -3622,7 +3622,7 @@ var require_ignore = __commonJS({
       const regexPrefix = makeRegexPrefix(body);
       return new IgnoreRule(
         pattern,
-        mark,
+        mark2,
         body,
         ignoreCase,
         negative,
@@ -4215,6 +4215,11 @@ function resolveSnapshot(sourceDir, ref) {
   const all = listSnapshots(sourceDir);
   if (all.length === 0) throw new Error("[Agent-Undo] No snapshots found. Take one first.");
   if (!ref || ref === "latest") return all[all.length - 1];
+  if (ref === "last-green") {
+    const green = all.filter((s) => s.check?.ok).at(-1);
+    if (!green) throw new Error("[Agent-Undo] No green snapshot yet. Run `agent-undo check` when the project works, or take_snapshot with green: true.");
+    return green;
+  }
   const exact = all.filter((s) => s.id === ref || s.name === ref);
   const matches = exact.length ? exact : all.filter((s) => s.id.includes(ref));
   if (matches.length === 0) throw new Error(`[Agent-Undo] No snapshot matches "${ref}".`);
@@ -4238,6 +4243,25 @@ function prunableSnapshots(sourceDir) {
   const all = listSnapshots(sourceDir);
   const baseline = all.filter((s) => s.trigger === "session").at(-1);
   return all.filter((s) => !s.name && s !== baseline);
+}
+function markSnapshot(sourceDir, ref, mark2) {
+  const snap = resolveSnapshot(sourceDir, ref);
+  snap.check = { ok: mark2.ok, command: mark2.command, at: (/* @__PURE__ */ new Date()).toISOString() };
+  import_fs4.default.writeFileSync(metaFile(snapshotBase(sourceDir), snap.id), JSON.stringify(snap, null, 2));
+  return snap;
+}
+var checkFile = (sourceDir) => import_path4.default.join(snapshotBase(sourceDir), "check.json");
+function readCheckConfig(sourceDir) {
+  try {
+    const c = JSON.parse(import_fs4.default.readFileSync(checkFile(sourceDir), "utf8"));
+    return typeof c.command === "string" && c.command ? { command: c.command, auto: c.auto === true } : null;
+  } catch {
+    return null;
+  }
+}
+function writeCheckConfig(sourceDir, cfg) {
+  import_fs4.default.mkdirSync(snapshotBase(sourceDir), { recursive: true });
+  import_fs4.default.writeFileSync(checkFile(sourceDir), JSON.stringify(cfg, null, 2));
 }
 function deleteSnapshot(sourceDir, ref) {
   if (!ref || ref === "latest") throw new Error('[Agent-Undo] Name the snapshot to delete (id or name); "latest" is not accepted.');
@@ -4479,27 +4503,27 @@ function revertSnapshot(sourceDir, ref, opts = {}) {
       const ignored = findIgnored(sourceDir, loadIgnore(sourceDir));
       const marker = { phase: "stashing", snap: snap.id, stash, ignored, backup: null, backupMode: null, at: Date.now() };
       writeMarker(base, marker);
-      const mark = (patch) => writeMarker(base, Object.assign(marker, patch));
+      const mark2 = (patch) => writeMarker(base, Object.assign(marker, patch));
       for (const r of ignored) moveSync(import_path4.default.join(sourceDir, r), import_path4.default.join(stash, r));
       try {
-        backup = moveTreeToBackup(sourceDir, reason, (id) => mark({ phase: "moving", backup: id, backupMode: "moved" })) ?? (() => {
+        backup = moveTreeToBackup(sourceDir, reason, (id) => mark2({ phase: "moving", backup: id, backupMode: "moved" })) ?? (() => {
           const b = snapshotUnlocked(sourceDir, { name: "pre-revert", reason, trigger: "pre-revert" });
-          mark({ phase: "restoring", backup: b.id, backupMode: b.mode });
+          mark2({ phase: "restoring", backup: b.id, backupMode: b.mode });
           for (const item of import_fs4.default.readdirSync(sourceDir)) {
             if (item !== ".git") import_fs4.default.rmSync(import_path4.default.join(sourceDir, item), { recursive: true, force: true });
           }
           return b;
         })();
-        mark({ phase: "restoring", backup: backup.id, backupMode: backup.mode });
+        mark2({ phase: "restoring", backup: backup.id, backupMode: backup.mode });
         try {
           cloneEntries(snapRoot, sourceDir, import_fs4.default.readdirSync(snapRoot));
-          mark({ phase: "stash" });
+          mark2({ phase: "stash" });
         } catch (e) {
           const backupData = dataDir(base, backup.id);
           for (const item of import_fs4.default.readdirSync(sourceDir)) {
             if (item !== ".git") forceRemove(import_path4.default.join(sourceDir, item));
           }
-          mark({ phase: "rollback" });
+          mark2({ phase: "rollback" });
           if (backup.mode === "moved") {
             for (const item of import_fs4.default.readdirSync(backupData)) moveSync(import_path4.default.join(backupData, item), import_path4.default.join(sourceDir, item));
             import_fs4.default.rmSync(import_path4.default.join(base, backup.id), { recursive: true, force: true });
@@ -4702,6 +4726,24 @@ The fork is kept as ${id}; to apply it anyway: ${undo(id)}`;
   }
 }
 
+// src/check.ts
+var isEmpty2 = (d) => !d.added.length && !d.modified.length && !d.deleted.length;
+function runCheck(sourceDir, command, opts = {}) {
+  const cmd = command ?? readCheckConfig(sourceDir)?.command;
+  if (!cmd) throw new Error('[Agent-Undo] No check command saved. Run `agent-undo check --set "<command>"` once, or pass the command.');
+  const run = runIn(sourceDir, cmd, { stdio: opts.stdio ?? "inherit", timeoutMs: opts.timeoutMs });
+  const ok = run.status === 0;
+  const latest = listSnapshots(sourceDir).at(-1);
+  let snapshot = null;
+  if (latest && isEmpty2(diffSnapshot(sourceDir, latest.id))) {
+    snapshot = markSnapshot(sourceDir, latest.id, { ok, command: cmd });
+  } else if (ok) {
+    const taken = takeSnapshot(sourceDir, { reason: `check passed: ${cmd.replace(/\s+/g, " ").slice(0, 60)}`, trigger: "check" });
+    snapshot = markSnapshot(sourceDir, taken.id, { ok, command: cmd });
+  }
+  return { ok, command: cmd, run, snapshot };
+}
+
 // src/cli.ts
 var import_fs7 = __toESM(require("fs"));
 var import_path7 = __toESM(require("path"));
@@ -4713,6 +4755,7 @@ var fail = (e) => {
   process.exit(1);
 };
 program.name("agent-undo").description("The Time Machine for AI Coding Agents").version(VERSION);
+var mark = (s) => s.check ? s.check.ok ? "  \u2713 green" : "  \u2717 red" : "";
 function ago(iso) {
   const s = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1e3));
   if (s < 60) return "just now";
@@ -4738,7 +4781,7 @@ program.command("list").description("List snapshots for this directory").option(
   const all = listSnapshots(cwd);
   if (o.json) return console.log(JSON.stringify(all, null, 2));
   if (!all.length) return console.log("No snapshots.");
-  for (const s of all) console.log(`${s.id}  [${s.trigger ?? "manual"}, ${s.mode}]  ${ago(s.createdAt)}${s.reason ? "  " + s.reason : ""}`);
+  for (const s of all) console.log(`${s.id}  [${s.trigger ?? "manual"}, ${s.mode}]${mark(s)}  ${ago(s.createdAt)}${s.reason ? "  " + s.reason : ""}`);
 });
 function fileDiff(file2, ref) {
   const { snapshot, path: before } = snapshotFilePath(cwd, file2, ref);
@@ -4779,6 +4822,19 @@ program.command("try <command>").description("Run a command in a copy-on-write f
     const r = tryInFork(cwd, command, { check: o.check, timeoutMs: o.timeout ? Number(o.timeout) * 1e3 : void 0 });
     if (!r.ok) fail(new Error(describeTry(r)));
     console.log(`\u2705 ${describeTry(r)}`);
+  } catch (e) {
+    fail(e);
+  }
+});
+program.command("check [command]").description(`Run the project's check (e.g. the tests) and mark the matching snapshot green or red; "last-green" then names the newest green one`).option("--set <cmd>", "save this as the project's check command instead of running one").option("--auto", "with --set: at paranoid level, run the check at the end of every agent turn").action((command, o) => {
+  try {
+    if (o.set) {
+      writeCheckConfig(cwd, { command: o.set, auto: !!o.auto });
+      return console.log(`Saved check "${o.set}" (auto: ${o.auto ? "on" : "off"}). Run it with: agent-undo check`);
+    }
+    const r = runCheck(cwd, command);
+    if (!r.ok) fail(new Error(`Check "${r.command}" failed (${r.run.timedOut ? "timed out" : "exit " + (r.run.status ?? r.run.signal)}).${r.snapshot ? ` ${r.snapshot.id} is red.` : ""}`));
+    console.log(`\u2705 Check passed: ${r.snapshot.id} is green. Back to it any time with: agent-undo revert last-green --yes`);
   } catch (e) {
     fail(e);
   }

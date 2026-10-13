@@ -18118,6 +18118,11 @@ function resolveSnapshot(sourceDir, ref) {
   const all = listSnapshots(sourceDir);
   if (all.length === 0) throw new Error("[Agent-Undo] No snapshots found. Take one first.");
   if (!ref || ref === "latest") return all[all.length - 1];
+  if (ref === "last-green") {
+    const green = all.filter((s) => s.check?.ok).at(-1);
+    if (!green) throw new Error("[Agent-Undo] No green snapshot yet. Run `agent-undo check` when the project works, or take_snapshot with green: true.");
+    return green;
+  }
   const exact = all.filter((s) => s.id === ref || s.name === ref);
   const matches = exact.length ? exact : all.filter((s) => s.id.includes(ref));
   if (matches.length === 0) throw new Error(`[Agent-Undo] No snapshot matches "${ref}".`);
@@ -18134,6 +18139,12 @@ function prunableSnapshots(sourceDir) {
   const all = listSnapshots(sourceDir);
   const baseline = all.filter((s) => s.trigger === "session").at(-1);
   return all.filter((s) => !s.name && s !== baseline);
+}
+function markSnapshot(sourceDir, ref, mark) {
+  const snap = resolveSnapshot(sourceDir, ref);
+  snap.check = { ok: mark.ok, command: mark.command, at: (/* @__PURE__ */ new Date()).toISOString() };
+  import_fs4.default.writeFileSync(metaFile(snapshotBase(sourceDir), snap.id), JSON.stringify(snap, null, 2));
+  return snap;
 }
 function deleteSnapshot(sourceDir, ref) {
   if (!ref || ref === "latest") throw new Error('[Agent-Undo] Name the snapshot to delete (id or name); "latest" is not accepted.');
@@ -18601,14 +18612,15 @@ var server = new Server(
   { name: "agent-undo-mcp", version: VERSION },
   { capabilities: { tools: {} } }
 );
-var snapshotProp = { type: "string", description: "Snapshot id, name, or 'latest' (default)." };
+var snapshotProp = { type: "string", description: "Snapshot id, name, 'latest' (default), or 'last-green' (the newest snapshot whose check passed)." };
+var markText = (s) => s.check ? s.check.ok ? " \u2713 green" : " \u2717 red" : "";
 var projectProp = { type: "string", description: "Absolute path of the project. Defaults to the session's project directory." };
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     {
       name: "take_snapshot",
       description: "Take an instant copy-on-write snapshot of the working directory. Call BEFORE risky changes (installs, migrations, bulk deletes).",
-      inputSchema: { type: "object", properties: { name: { type: "string", description: "Optional label, e.g. 'before-migration'. Named snapshots are never auto-pruned." }, project_dir: projectProp } }
+      inputSchema: { type: "object", properties: { name: { type: "string", description: "Optional label, e.g. 'before-migration'. Named snapshots are never auto-pruned." }, green: { type: "boolean", description: "Set true right after you ran the project's checks (tests, build) and they passed: the snapshot is marked green and becomes 'last-green'." }, project_dir: projectProp } }
     },
     {
       name: "list_snapshots",
@@ -18705,11 +18717,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     switch (request.params.name) {
       case "take_snapshot": {
         const m = takeSnapshot(cwd, { name: args.name, trigger: "manual" });
-        return text(`Snapshot ${m.id} taken (${m.mode}, ${m.elapsedMs}ms).`);
+        if (args.green === true) markSnapshot(cwd, m.id, { ok: true, command: "reported by the agent" });
+        return text(`Snapshot ${m.id} taken (${m.mode}, ${m.elapsedMs}ms)${args.green === true ? ", marked green" : ""}.`);
       }
       case "list_snapshots": {
         const all = listSnapshots(cwd);
-        return text(all.length ? all.map((s) => `${s.id} [${s.trigger ?? "manual"}, ${s.mode}]${s.reason ? " " + s.reason : ""}`).join("\n") : "No snapshots.");
+        return text(all.length ? all.map((s) => `${s.id} [${s.trigger ?? "manual"}, ${s.mode}]${markText(s)}${s.reason ? " " + s.reason : ""}`).join("\n") : "No snapshots.");
       }
       case "diff_snapshot": {
         const d = diffSnapshot(cwd, args.snapshot);

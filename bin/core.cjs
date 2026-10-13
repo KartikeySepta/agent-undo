@@ -889,18 +889,22 @@ __export(core_exports, {
   fork: () => fork,
   interruptedRevert: () => interruptedRevert,
   listSnapshots: () => listSnapshots,
+  markSnapshot: () => markSnapshot,
   previewRevert: () => previewRevert,
   pruneOlderThan: () => pruneOlderThan,
   pruneSnapshots: () => pruneSnapshots,
+  readCheckConfig: () => readCheckConfig,
   repairInterruptedRevert: () => repairInterruptedRevert,
   resolveSnapshot: () => resolveSnapshot,
   revertSnapshot: () => revertSnapshot,
+  runCheck: () => runCheck,
   runIn: () => runIn,
   snapshotBase: () => snapshotBase,
   snapshotDir: () => snapshotDir,
   snapshotFilePath: () => snapshotFilePath,
   takeSnapshot: () => takeSnapshot,
-  tryInFork: () => tryInFork
+  tryInFork: () => tryInFork,
+  writeCheckConfig: () => writeCheckConfig
 });
 module.exports = __toCommonJS(core_exports);
 
@@ -1207,6 +1211,11 @@ function resolveSnapshot(sourceDir, ref) {
   const all = listSnapshots(sourceDir);
   if (all.length === 0) throw new Error("[Agent-Undo] No snapshots found. Take one first.");
   if (!ref || ref === "latest") return all[all.length - 1];
+  if (ref === "last-green") {
+    const green = all.filter((s) => s.check?.ok).at(-1);
+    if (!green) throw new Error("[Agent-Undo] No green snapshot yet. Run `agent-undo check` when the project works, or take_snapshot with green: true.");
+    return green;
+  }
   const exact = all.filter((s) => s.id === ref || s.name === ref);
   const matches = exact.length ? exact : all.filter((s) => s.id.includes(ref));
   if (matches.length === 0) throw new Error(`[Agent-Undo] No snapshot matches "${ref}".`);
@@ -1230,6 +1239,25 @@ function prunableSnapshots(sourceDir) {
   const all = listSnapshots(sourceDir);
   const baseline = all.filter((s) => s.trigger === "session").at(-1);
   return all.filter((s) => !s.name && s !== baseline);
+}
+function markSnapshot(sourceDir, ref, mark) {
+  const snap = resolveSnapshot(sourceDir, ref);
+  snap.check = { ok: mark.ok, command: mark.command, at: (/* @__PURE__ */ new Date()).toISOString() };
+  import_fs3.default.writeFileSync(metaFile(snapshotBase(sourceDir), snap.id), JSON.stringify(snap, null, 2));
+  return snap;
+}
+var checkFile = (sourceDir) => import_path4.default.join(snapshotBase(sourceDir), "check.json");
+function readCheckConfig(sourceDir) {
+  try {
+    const c = JSON.parse(import_fs3.default.readFileSync(checkFile(sourceDir), "utf8"));
+    return typeof c.command === "string" && c.command ? { command: c.command, auto: c.auto === true } : null;
+  } catch {
+    return null;
+  }
+}
+function writeCheckConfig(sourceDir, cfg) {
+  import_fs3.default.mkdirSync(snapshotBase(sourceDir), { recursive: true });
+  import_fs3.default.writeFileSync(checkFile(sourceDir), JSON.stringify(cfg, null, 2));
 }
 function deleteSnapshot(sourceDir, ref) {
   if (!ref || ref === "latest") throw new Error('[Agent-Undo] Name the snapshot to delete (id or name); "latest" is not accepted.');
@@ -1658,6 +1686,24 @@ The fork is kept as ${id}; to apply it anyway: ${undo(id)}`;
     }
   }
 }
+
+// src/check.ts
+var isEmpty2 = (d) => !d.added.length && !d.modified.length && !d.deleted.length;
+function runCheck(sourceDir, command, opts = {}) {
+  const cmd = command ?? readCheckConfig(sourceDir)?.command;
+  if (!cmd) throw new Error('[Agent-Undo] No check command saved. Run `agent-undo check --set "<command>"` once, or pass the command.');
+  const run = runIn(sourceDir, cmd, { stdio: opts.stdio ?? "inherit", timeoutMs: opts.timeoutMs });
+  const ok = run.status === 0;
+  const latest = listSnapshots(sourceDir).at(-1);
+  let snapshot = null;
+  if (latest && isEmpty2(diffSnapshot(sourceDir, latest.id))) {
+    snapshot = markSnapshot(sourceDir, latest.id, { ok, command: cmd });
+  } else if (ok) {
+    const taken = takeSnapshot(sourceDir, { reason: `check passed: ${cmd.replace(/\s+/g, " ").slice(0, 60)}`, trigger: "check" });
+    snapshot = markSnapshot(sourceDir, taken.id, { ok, command: cmd });
+  }
+  return { ok, command: cmd, run, snapshot };
+}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   BusyError,
@@ -1670,16 +1716,20 @@ The fork is kept as ${id}; to apply it anyway: ${undo(id)}`;
   fork,
   interruptedRevert,
   listSnapshots,
+  markSnapshot,
   previewRevert,
   pruneOlderThan,
   pruneSnapshots,
+  readCheckConfig,
   repairInterruptedRevert,
   resolveSnapshot,
   revertSnapshot,
+  runCheck,
   runIn,
   snapshotBase,
   snapshotDir,
   snapshotFilePath,
   takeSnapshot,
-  tryInFork
+  tryInFork,
+  writeCheckConfig
 });
