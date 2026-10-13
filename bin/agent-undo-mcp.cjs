@@ -18414,7 +18414,7 @@ function revertSnapshot(sourceDir, ref, opts = {}) {
         })();
         mark({ phase: "restoring", backup: backup.id, backupMode: backup.mode });
         try {
-          cloneEntries(snapRoot, sourceDir, import_fs4.default.readdirSync(snapRoot));
+          cloneEntries(snapRoot, sourceDir, import_fs4.default.readdirSync(snapRoot).filter((e) => e !== ".git"));
           mark({ phase: "stash" });
         } catch (e) {
           const backupData = dataDir(base, backup.id);

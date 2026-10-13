@@ -639,7 +639,8 @@ export function revertSnapshot(
                 })();
                 mark({ phase: 'restoring', backup: backup.id, backupMode: backup.mode });
                 try {
-                    cloneEntries(snapRoot, sourceDir, fs.readdirSync(snapRoot));
+                    // Snapshot data never holds .git; should anything have planted one there, it must not replace the repository.
+                    cloneEntries(snapRoot, sourceDir, fs.readdirSync(snapRoot).filter((e) => e !== '.git'));
                     mark({ phase: 'stash' });
                 } catch (e: any) {
                     // Restore failed halfway: put the pre-revert state back so the project is never left empty.
