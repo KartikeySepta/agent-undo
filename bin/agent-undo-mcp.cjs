@@ -18507,11 +18507,33 @@ var discardQuiet = (sourceDir, id) => {
   } catch {
   }
 };
+function linkGit(projectDir, forkDir) {
+  const gitPath = import_path5.default.join(projectDir, ".git");
+  let st;
+  try {
+    st = import_fs5.default.statSync(gitPath);
+  } catch {
+    return () => {
+    };
+  }
+  let gitdir = realDir2(gitPath);
+  if (st.isFile()) {
+    const m = /^gitdir:\s*(.+?)\s*$/m.exec(import_fs5.default.readFileSync(gitPath, "utf8"));
+    if (!m) return () => {
+    };
+    gitdir = import_path5.default.resolve(projectDir, m[1]);
+  }
+  const file2 = import_path5.default.join(forkDir, ".git");
+  import_fs5.default.writeFileSync(file2, `gitdir: ${gitdir}
+`);
+  return () => import_fs5.default.rmSync(file2, { force: true });
+}
 function tryInFork(sourceDir, command, opts = {}) {
   const label2 = short(command);
   const base = takeSnapshot(sourceDir, { reason: `try base: ${label2}`, trigger: "fork" });
   const f = fork(sourceDir, `try: ${label2}`);
-  const env = { ...opts.env ?? process.env, AGENT_UNDO_FORK: f.dir, AGENT_UNDO_PROJECT: realDir2(sourceDir) };
+  opts.onEvent?.({ type: "fork", meta: f.meta });
+  const env = { ...opts.env ?? process.env, AGENT_UNDO_FORK: f.dir, AGENT_UNDO_PROJECT: realDir2(sourceDir), GIT_CEILING_DIRECTORIES: import_path5.default.dirname(f.dir) };
   const run = (cmd2) => runIn(f.dir, cmd2, { ...opts, env });
   const input = { command, check: opts.check };
   const fail = (stage, r) => {
@@ -18521,12 +18543,25 @@ function tryInFork(sourceDir, command, opts = {}) {
     });
     return { ok: false, stage, input, fork: f.meta, ...r };
   };
-  const cmd = run(command);
+  let cmd;
+  let check;
+  const unlinkGit = opts.git ? linkGit(sourceDir, f.dir) : () => {
+  };
+  try {
+    opts.onEvent?.({ type: "run", command });
+    cmd = run(command);
+    if (cmd.status === 0 && opts.check) {
+      opts.onEvent?.({ type: "check", command: opts.check });
+      check = run(opts.check);
+    }
+  } finally {
+    unlinkGit();
+  }
   if (cmd.status !== 0) return fail("command", { command: cmd });
-  const check = opts.check ? run(opts.check) : void 0;
   if (check && check.status !== 0) return fail("check", { command: cmd, check });
   const drift = diffSnapshot(sourceDir, base.id);
   if (!isEmpty(drift)) return fail("drift", { command: cmd, check, drift });
+  opts.onEvent?.({ type: "apply" });
   const changed = diffSnapshots(sourceDir, base.id, f.meta.id);
   const { backup } = revertSnapshot(sourceDir, f.meta.id);
   const fixedPaths = fixForkPaths(sourceDir, f.dir, [...changed.added, ...changed.modified]);
@@ -18570,12 +18605,36 @@ The fork is kept as ${id}; to apply it anyway: ${undo(id)}`;
 var import_fs6 = __toESM(require("fs"));
 var import_path6 = __toESM(require("path"));
 var isEmpty2 = (d) => !d.added.length && !d.modified.length && !d.deleted.length;
+function sweepScratch(base) {
+  let entries = [];
+  try {
+    entries = import_fs6.default.readdirSync(base);
+  } catch {
+    return;
+  }
+  for (const e of entries) {
+    const m = /^\.bisect-(\d+)$/.exec(e);
+    if (!m) continue;
+    const pid = Number(m[1]);
+    let alive = false;
+    if (pid !== process.pid) {
+      try {
+        process.kill(pid, 0);
+        alive = true;
+      } catch (err) {
+        alive = err.code === "EPERM";
+      }
+    }
+    if (!alive) forceRemove(import_path6.default.join(base, e));
+  }
+}
 var candidateId = (c) => c === "now" ? "now" : c.id;
 function bisect(sourceDir, opts = {}) {
   const command = opts.check ?? readCheckConfig(sourceDir)?.command;
   if (!command) throw new Error('[Agent-Undo] No check command saved. Run `agent-undo check --set "<command>"` once, or pass --check.');
   const tested = [];
   const base = snapshotBase(sourceDir);
+  sweepScratch(base);
   const none = { command, outcome: "nothing", tested, lastGreen: null, firstRed: null, changed: null };
   let snaps = listSnapshots(sourceDir).filter((s) => s.trigger !== "fork");
   if (opts.good) {
@@ -18595,7 +18654,7 @@ function bisect(sourceDir, opts = {}) {
     if (c === "now") {
       const f = fork(sourceDir, "bisect: working tree");
       try {
-        ok = runIn(f.dir, command, { stdio: opts.stdio ?? "pipe", timeoutMs: opts.timeoutMs }).status === 0;
+        ok = runIn(f.dir, command, { stdio: opts.stdio ?? "pipe", timeoutMs: opts.timeoutMs, env: { ...process.env, GIT_CEILING_DIRECTORIES: import_path6.default.dirname(f.dir) } }).status === 0;
       } finally {
         try {
           deleteSnapshot(sourceDir, f.meta.id);
@@ -18609,7 +18668,7 @@ function bisect(sourceDir, opts = {}) {
       const data = snapshotDir(sourceDir, c.id);
       try {
         cloneEntries(data, scratch, import_fs6.default.readdirSync(data));
-        ok = runIn(scratch, command, { stdio: opts.stdio ?? "pipe", timeoutMs: opts.timeoutMs }).status === 0;
+        ok = runIn(scratch, command, { stdio: opts.stdio ?? "pipe", timeoutMs: opts.timeoutMs, env: { ...process.env, GIT_CEILING_DIRECTORIES: base } }).status === 0;
       } finally {
         forceRemove(scratch);
       }
@@ -18689,6 +18748,13 @@ function doctor(projectDir) {
   const cut = interruptedRevert(projectDir);
   if (cut) checks.push({ ok: false, label: "interrupted", detail: `a revert to ${cut.snapshot} stopped at "${cut.phase}" (${cut.at}): the project may be empty or half restored. Run \`agent-undo doctor --repair\`` });
   checks.push({ ok: true, label: "level", detail: readLevel() });
+  const cfg = readCheckConfig(projectDir);
+  const lastGreen = listSnapshots(projectDir).filter((s) => s.check?.ok).at(-1);
+  checks.push({
+    ok: true,
+    label: "check",
+    detail: cfg ? `"${cfg.command}" (auto ${cfg.auto ? "on" : "off"}), ${lastGreen ? `last green ${lastGreen.id}` : "no green snapshot yet"}` : 'none saved: agent-undo check --set "<command>"'
+  });
   const hookError = lastHookError();
   checks.push({ ok: hookError ? "warn" : true, label: "hooks", detail: hookError ? `last failure: ${hookError} (see ${import_path7.default.join(storeHome(), "hooks.log")})` : "no failures logged" });
   return checks;
@@ -18702,6 +18768,8 @@ function status(projectDir) {
     store: snapshotBase(projectDir),
     snapshots: snaps.length,
     latest: snaps.at(-1)?.id ?? null,
+    lastGreen: snaps.filter((s) => s.check?.ok).at(-1)?.id ?? null,
+    check: readCheckConfig(projectDir),
     stats: readStats()
   };
 }
@@ -18765,7 +18833,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         type: "object",
         properties: {
           command: { type: "string", description: 'Shell command to run inside the fork, e.g. "npm install react@19".' },
-          check: { type: "string", description: `Command that must exit 0 inside the fork before the result is applied, e.g. "npm test". Without it, the command's own exit code decides.` },
+          check: { type: "string", description: `Command that must exit 0 inside the fork before the result is applied, e.g. "npm test". Default: the project's saved check (agent-undo check --set); with none saved, the command's own exit code decides.` },
+          no_check: { type: "boolean", description: "Run without a check even if one is saved." },
+          git: { type: "boolean", description: "Link the fork to the project's git repository for the run (needed for husky, git describe, version scripts). Git writes made in the fork reach the real repository." },
           timeout_s: { type: "number", description: "Kill the command or the check after this many seconds (default 600)." },
           project_dir: projectProp
         },
@@ -18886,8 +18956,8 @@ ${clipped}`);
       case "try_in_fork": {
         if (typeof args.command !== "string" || !args.command.trim()) return text("Error: `command` must be a non-empty shell command string.", true);
         const timeoutMs = (typeof args.timeout_s === "number" && args.timeout_s > 0 ? args.timeout_s : 600) * 1e3;
-        const check = typeof args.check === "string" && args.check.trim() ? args.check : void 0;
-        const r = tryInFork(cwd, args.command, { check, timeoutMs, stdio: "pipe" });
+        const check = args.no_check === true ? void 0 : typeof args.check === "string" && args.check.trim() ? args.check : readCheckConfig(cwd)?.command;
+        const r = tryInFork(cwd, args.command, { check, git: args.git === true, timeoutMs, stdio: "pipe" });
         const lines = [describeTry(r, "mcp"), ...outputBlock("command output", r.command), ...r.check ? outputBlock("check output", r.check) : []];
         return text(lines.join("\n"), !r.ok);
       }

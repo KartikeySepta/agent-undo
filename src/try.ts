@@ -25,7 +25,16 @@ export interface TryOptions {
     /** 'inherit' streams the command's output (CLI); 'pipe' captures it (MCP). */
     stdio?: 'inherit' | 'pipe';
     env?: NodeJS.ProcessEnv;
+    /** Link the fork to the project's git repository for the run (a gitfile), so husky, `git describe` and friends work. Git writes made in the fork reach the real repository. */
+    git?: boolean;
+    onEvent?: (e: TryEvent) => void;
 }
+
+export type TryEvent =
+    | { type: 'fork'; meta: SnapshotMeta }
+    | { type: 'run'; command: string }
+    | { type: 'check'; command: string }
+    | { type: 'apply' };
 
 export type TryStage = 'command' | 'check' | 'drift' | 'applied';
 
@@ -86,12 +95,35 @@ function fixForkPaths(projectDir: string, forkDir: string, files: string[]): num
 
 const discardQuiet = (sourceDir: string, id: string) => { try { deleteSnapshot(sourceDir, id); } catch { /* best effort */ } };
 
+/**
+ * Make the fork a worktree of the project's repository for the duration of a run: a gitfile pointing
+ * at the real .git. Returns the function that removes it; a gitfile must never stay in snapshot data.
+ */
+function linkGit(projectDir: string, forkDir: string): () => void {
+    const gitPath = path.join(projectDir, '.git');
+    let st: fs.Stats;
+    try { st = fs.statSync(gitPath); } catch { return () => {}; }
+    let gitdir = realDir(gitPath);
+    if (st.isFile()) {
+        // The project is itself a linked worktree: follow its gitfile rather than chaining them.
+        const m = /^gitdir:\s*(.+?)\s*$/m.exec(fs.readFileSync(gitPath, 'utf8'));
+        if (!m) return () => {};
+        gitdir = path.resolve(projectDir, m[1]);
+    }
+    const file = path.join(forkDir, '.git');
+    fs.writeFileSync(file, `gitdir: ${gitdir}\n`);
+    return () => fs.rmSync(file, { force: true });
+}
+
 export function tryInFork(sourceDir: string, command: string, opts: TryOptions = {}): TryResult {
     const label = short(command);
     // The frozen base exists only to detect edits made to the project while the command ran.
     const base = takeSnapshot(sourceDir, { reason: `try base: ${label}`, trigger: 'fork' });
     const f = fork(sourceDir, `try: ${label}`);
-    const env = { ...(opts.env ?? process.env), AGENT_UNDO_FORK: f.dir, AGENT_UNDO_PROJECT: realDir(sourceDir) };
+    opts.onEvent?.({ type: 'fork', meta: f.meta });
+    // GIT_CEILING_DIRECTORIES: git inside the fork must never climb out of it and find, say, a dotfiles
+    // repository in the home directory that holds the snapshot store.
+    const env = { ...(opts.env ?? process.env), AGENT_UNDO_FORK: f.dir, AGENT_UNDO_PROJECT: realDir(sourceDir), GIT_CEILING_DIRECTORIES: path.dirname(f.dir) };
     const run = (cmd: string) => runIn(f.dir, cmd, { ...opts, env });
     const input = { command, check: opts.check };
     const fail = (stage: TryStage, r: Omit<TryResult, 'ok' | 'stage' | 'input' | 'fork'>): TryResult => {
@@ -100,13 +132,23 @@ export function tryInFork(sourceDir: string, command: string, opts: TryOptions =
         return { ok: false, stage, input, fork: f.meta, ...r };
     };
 
-    const cmd = run(command);
+    let cmd: RunResult;
+    let check: RunResult | undefined;
+    const unlinkGit = opts.git ? linkGit(sourceDir, f.dir) : () => {};
+    try {
+        opts.onEvent?.({ type: 'run', command });
+        cmd = run(command);
+        if (cmd.status === 0 && opts.check) {
+            opts.onEvent?.({ type: 'check', command: opts.check });
+            check = run(opts.check);
+        }
+    } finally { unlinkGit(); }
     if (cmd.status !== 0) return fail('command', { command: cmd });
-    const check = opts.check ? run(opts.check) : undefined;
     if (check && check.status !== 0) return fail('check', { command: cmd, check });
     const drift = diffSnapshot(sourceDir, base.id);
     if (!isEmpty(drift)) return fail('drift', { command: cmd, check, drift });
 
+    opts.onEvent?.({ type: 'apply' });
     const changed = diffSnapshots(sourceDir, base.id, f.meta.id);
     const { backup } = revertSnapshot(sourceDir, f.meta.id);
     const fixedPaths = fixForkPaths(sourceDir, f.dir, [...changed.added, ...changed.modified]);

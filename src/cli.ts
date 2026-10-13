@@ -6,7 +6,7 @@ import {
 import { VERSION } from './version';
 import { LEVELS, isLevel, readLevel, writeLevel } from './config';
 import { doctor, status, protectedBytes } from './status';
-import { tryInFork, describeTry } from './try';
+import { tryInFork, describeTry, TryEvent } from './try';
 import { runCheck } from './check';
 import { bisect, describeBisect, candidateId, Candidate } from './bisect';
 import { replay, fileAt, timeline } from './replay';
@@ -113,11 +113,20 @@ program
 program
   .command('try <command>')
   .description('Run a command in a copy-on-write fork of the project; swap the result in only if it (and --check) succeed')
-  .option('-c, --check <cmd>', 'must pass inside the fork before the result is applied, e.g. "npm test"')
+  .option('-c, --check <cmd>', 'must pass inside the fork before the result is applied (default: the saved check, see agent-undo check --set)')
+  .option('--no-check', 'run without a check even if one is saved')
+  .option('--git', 'link the fork to the repository for the run (husky, git describe); git writes made in the fork reach the real repository')
   .option('-t, --timeout <seconds>', 'kill the command or the check after this long')
-  .action((command: string, o: { check?: string; timeout?: string }) => {
+  .action((command: string, o: { check?: string | false; git?: boolean; timeout?: string }) => {
     try {
-      const r = tryInFork(cwd, command, { check: o.check, timeoutMs: o.timeout ? Number(o.timeout) * 1000 : undefined });
+      const check = o.check === false ? undefined : (o.check ?? readCheckConfig(cwd)?.command);
+      const progress = (e: TryEvent) => {
+        if (e.type === 'fork') console.error(`⏳ fork ${e.meta.id} ready (${MODE_LABEL[e.meta.mode]}, ${e.meta.elapsedMs}ms)`);
+        else if (e.type === 'run') console.error(`▶ running: ${e.command}`);
+        else if (e.type === 'check') console.error(`▶ check: ${e.command}`);
+        else console.error('⏳ applying the fork to the project');
+      };
+      const r = tryInFork(cwd, command, { check, git: o.git, onEvent: progress, timeoutMs: o.timeout ? Number(o.timeout) * 1000 : undefined });
       if (!r.ok) fail(new Error(describeTry(r)));
       console.log(`✅ ${describeTry(r)}`);
     } catch (e) { fail(e); }

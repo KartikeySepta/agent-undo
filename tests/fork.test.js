@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawnSync } = require('node:child_process');
 const { BIN, sandbox } = require('./helpers');
 const core = require('../bin/core.cjs');
 
@@ -163,4 +163,47 @@ test('a full revert never clones a .git entry out of snapshot data over the real
   assert.strictEqual(s.read('a.txt'), 'one');
   assert.ok(fs.statSync(s.p('.git')).isDirectory(), 'real .git directory untouched');
   assert.strictEqual(s.read('.git/HEAD'), 'ref: refs/heads/main\n');
+});
+
+// ---------- try: defaults, --git, progress ----------
+
+test('try uses the saved check by default, and --no-check skips it', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  s.write('a.txt', 'one');
+  core.writeCheckConfig(s.project, { command: 'test -f must-exist', auto: false });
+  assert.match(fails(s, 'try', 'printf two > a.txt'), /Check "test -f must-exist" failed/);
+  assert.strictEqual(s.read('a.txt'), 'one');
+  assert.match(cli(s, 'try', '--no-check', 'printf two > a.txt'), /Try passed/);
+  assert.strictEqual(s.read('a.txt'), 'two');
+});
+
+test('try prints progress on stderr while the command output streams', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  s.write('a.txt', 'one');
+  const r = spawnSync(process.execPath, [BIN('agent-undo.cjs'), 'try', 'echo building', '--check', 'echo checking'], { cwd: s.project, env: s.env, encoding: 'utf8' });
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.match(r.stdout, /building[\s\S]*checking/, 'command and check output stream through');
+  assert.match(r.stderr, /fork .* ready/i);
+  assert.match(r.stderr, /running: echo building/);
+  assert.match(r.stderr, /check: echo checking/);
+});
+
+test('try --git links the fork to the repository for the run, and no gitfile survives into the fork or the project', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  const git = (...args) => execFileSync('git', args, { cwd: s.project, encoding: 'utf8', env: { ...s.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } });
+  git('init', '-q'); s.write('a.txt', 'one'); git('add', '.'); git('commit', '-qm', 'init');
+  // Without --git the fork is not a repository, even with a repository above the store (a dotfiles repo in $HOME).
+  execFileSync('git', ['init', '-q'], { cwd: s.tmp });
+  const plain = core.tryInFork(s.project, 'git rev-parse --show-toplevel > top.txt', { stdio: 'pipe' });
+  assert.strictEqual(plain.ok, false);
+  // With it, git inside the fork sees the fork as the worktree of the real repository.
+  const linked = core.tryInFork(s.project, 'git rev-parse --show-toplevel > top.txt && git log --oneline | wc -l | tr -d " " > commits.txt', { stdio: 'pipe', git: true });
+  assert.strictEqual(linked.ok, true, linked.command.stderr);
+  assert.strictEqual(s.read('top.txt').trim(), s.project, 'fork path was rewritten to the project path');
+  assert.strictEqual(s.read('commits.txt').trim(), '1');
+  assert.ok(fs.statSync(s.p('.git')).isDirectory(), 'the real .git is still a directory');
+  // A failed linked try keeps the fork, minus the gitfile.
+  const failed = core.tryInFork(s.project, 'git status >/dev/null && exit 9', { stdio: 'pipe', git: true });
+  assert.strictEqual(failed.stage, 'command');
+  assert.ok(!fs.existsSync(path.join(core.snapshotDir(s.project, failed.fork.id), '.git')), 'no gitfile left in the kept fork');
 });

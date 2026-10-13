@@ -147,3 +147,13 @@ test('cli: replay prints a numbered flipbook; --file shows that file\'s diff at 
   assert.doesNotMatch(file, /b\.txt/, 'only the asked file');
   assert.match(cli(s, 'replay', '--file', 'b.txt'), /@@ -0,0 \+1 @@\n\+new/, 'an added file diffs against nothing');
 });
+
+test('bisect sweeps scratch directories left by a killed earlier bisect', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  brokenTimeline(s);
+  const stale = `${core.snapshotBase(s.project)}/.bisect-999999`;
+  fs.mkdirSync(stale); fs.writeFileSync(`${stale}/junk`, 'x');
+  core.bisect(s.project, { check: CHECK, stdio: 'pipe' });
+  assert.ok(!fs.existsSync(stale), 'stale scratch removed');
+  assert.strictEqual(fs.readdirSync(core.snapshotBase(s.project)).filter((e) => e.startsWith('.bisect-')).length, 0, 'own scratch removed too');
+});

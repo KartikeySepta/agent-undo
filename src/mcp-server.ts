@@ -2,7 +2,7 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import { takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot, previewRevert, snapshotFilePath, markSnapshot, RevertPreview, SnapshotMeta } from "./snapshot";
+import { takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot, previewRevert, snapshotFilePath, markSnapshot, readCheckConfig, RevertPreview, SnapshotMeta } from "./snapshot";
 import { readLevel } from "./config";
 import { tryInFork, describeTry, RunResult } from "./try";
 import { bisect, describeBisect } from "./bisect";
@@ -64,7 +64,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         type: "object",
         properties: {
           command: { type: "string", description: "Shell command to run inside the fork, e.g. \"npm install react@19\"." },
-          check: { type: "string", description: "Command that must exit 0 inside the fork before the result is applied, e.g. \"npm test\". Without it, the command's own exit code decides." },
+          check: { type: "string", description: "Command that must exit 0 inside the fork before the result is applied, e.g. \"npm test\". Default: the project's saved check (agent-undo check --set); with none saved, the command's own exit code decides." },
+          no_check: { type: "boolean", description: "Run without a check even if one is saved." },
+          git: { type: "boolean", description: "Link the fork to the project's git repository for the run (needed for husky, git describe, version scripts). Git writes made in the fork reach the real repository." },
           timeout_s: { type: "number", description: "Kill the command or the check after this many seconds (default 600)." },
           project_dir: projectProp,
         },
@@ -137,7 +139,7 @@ function previewText(p: RevertPreview, staleToken?: string): string {
 }
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const args = (request.params.arguments ?? {}) as { name?: string; snapshot?: string; paths?: unknown; project_dir?: string; confirm?: string; path?: unknown; command?: unknown; check?: unknown; timeout_s?: unknown; green?: unknown; good?: unknown; bad?: unknown; fresh?: unknown };
+  const args = (request.params.arguments ?? {}) as { name?: string; snapshot?: string; paths?: unknown; project_dir?: string; confirm?: string; path?: unknown; command?: unknown; check?: unknown; timeout_s?: unknown; green?: unknown; good?: unknown; bad?: unknown; fresh?: unknown; no_check?: unknown; git?: unknown };
   const cwd = args.project_dir || process.env.CLAUDE_PROJECT_DIR || process.cwd();
   // Some hosts (Codex plugins, Gemini extensions) start the server inside the plugin's own
   // directory. Never silently snapshot or revert agent-undo itself: ask for project_dir instead.
@@ -187,8 +189,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "try_in_fork": {
         if (typeof args.command !== "string" || !args.command.trim()) return text("Error: `command` must be a non-empty shell command string.", true);
         const timeoutMs = (typeof args.timeout_s === "number" && args.timeout_s > 0 ? args.timeout_s : 600) * 1000;
-        const check = typeof args.check === "string" && args.check.trim() ? args.check : undefined;
-        const r = tryInFork(cwd, args.command, { check, timeoutMs, stdio: "pipe" });
+        const check = args.no_check === true ? undefined : (typeof args.check === "string" && args.check.trim() ? args.check : readCheckConfig(cwd)?.command);
+        const r = tryInFork(cwd, args.command, { check, git: args.git === true, timeoutMs, stdio: "pipe" });
         const lines = [describeTry(r, "mcp"), ...outputBlock("command output", r.command), ...(r.check ? outputBlock("check output", r.check) : [])];
         return text(lines.join("\n"), !r.ok);
       }

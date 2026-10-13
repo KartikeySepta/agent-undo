@@ -2,7 +2,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { listSnapshots, snapshotBase, interruptedRevert } from './snapshot';
+import { listSnapshots, snapshotBase, interruptedRevert, readCheckConfig } from './snapshot';
 import { hasNativeClonefile, sizeOf } from './clone';
 import { readLevel, storeHome, isProjectDir, lastHookError } from './config';
 import { readStats } from './stats';
@@ -38,6 +38,14 @@ export function doctor(projectDir: string): Check[] {
     const cut = interruptedRevert(projectDir);
     if (cut) checks.push({ ok: false, label: 'interrupted', detail: `a revert to ${cut.snapshot} stopped at "${cut.phase}" (${cut.at}): the project may be empty or half restored. Run \`agent-undo doctor --repair\`` });
     checks.push({ ok: true, label: 'level', detail: readLevel() });
+    const cfg = readCheckConfig(projectDir);
+    const lastGreen = listSnapshots(projectDir).filter((s) => s.check?.ok).at(-1);
+    checks.push({
+        ok: true, label: 'check',
+        detail: cfg
+            ? `"${cfg.command}" (auto ${cfg.auto ? 'on' : 'off'}), ${lastGreen ? `last green ${lastGreen.id}` : 'no green snapshot yet'}`
+            : 'none saved: agent-undo check --set "<command>"',
+    });
     const hookError = lastHookError();
     checks.push({ ok: hookError ? 'warn' : true, label: 'hooks', detail: hookError ? `last failure: ${hookError} (see ${path.join(storeHome(), 'hooks.log')})` : 'no failures logged' });
     return checks;
@@ -52,6 +60,8 @@ export function status(projectDir: string) {
         store: snapshotBase(projectDir),
         snapshots: snaps.length,
         latest: snaps.at(-1)?.id ?? null,
+        lastGreen: snaps.filter((s) => s.check?.ok).at(-1)?.id ?? null,
+        check: readCheckConfig(projectDir),
         stats: readStats(),
     };
 }

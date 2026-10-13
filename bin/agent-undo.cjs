@@ -4587,6 +4587,13 @@ function doctor(projectDir) {
   const cut = interruptedRevert(projectDir);
   if (cut) checks.push({ ok: false, label: "interrupted", detail: `a revert to ${cut.snapshot} stopped at "${cut.phase}" (${cut.at}): the project may be empty or half restored. Run \`agent-undo doctor --repair\`` });
   checks.push({ ok: true, label: "level", detail: readLevel() });
+  const cfg = readCheckConfig(projectDir);
+  const lastGreen = listSnapshots(projectDir).filter((s) => s.check?.ok).at(-1);
+  checks.push({
+    ok: true,
+    label: "check",
+    detail: cfg ? `"${cfg.command}" (auto ${cfg.auto ? "on" : "off"}), ${lastGreen ? `last green ${lastGreen.id}` : "no green snapshot yet"}` : 'none saved: agent-undo check --set "<command>"'
+  });
   const hookError = lastHookError();
   checks.push({ ok: hookError ? "warn" : true, label: "hooks", detail: hookError ? `last failure: ${hookError} (see ${import_path5.default.join(storeHome(), "hooks.log")})` : "no failures logged" });
   return checks;
@@ -4600,6 +4607,8 @@ function status(projectDir) {
     store: snapshotBase(projectDir),
     snapshots: snaps.length,
     latest: snaps.at(-1)?.id ?? null,
+    lastGreen: snaps.filter((s) => s.check?.ok).at(-1)?.id ?? null,
+    check: readCheckConfig(projectDir),
     stats: readStats()
   };
 }
@@ -4674,11 +4683,33 @@ var discardQuiet = (sourceDir, id) => {
   } catch {
   }
 };
+function linkGit(projectDir, forkDir) {
+  const gitPath = import_path6.default.join(projectDir, ".git");
+  let st;
+  try {
+    st = import_fs6.default.statSync(gitPath);
+  } catch {
+    return () => {
+    };
+  }
+  let gitdir = realDir2(gitPath);
+  if (st.isFile()) {
+    const m = /^gitdir:\s*(.+?)\s*$/m.exec(import_fs6.default.readFileSync(gitPath, "utf8"));
+    if (!m) return () => {
+    };
+    gitdir = import_path6.default.resolve(projectDir, m[1]);
+  }
+  const file2 = import_path6.default.join(forkDir, ".git");
+  import_fs6.default.writeFileSync(file2, `gitdir: ${gitdir}
+`);
+  return () => import_fs6.default.rmSync(file2, { force: true });
+}
 function tryInFork(sourceDir, command, opts = {}) {
   const label2 = short(command);
   const base = takeSnapshot(sourceDir, { reason: `try base: ${label2}`, trigger: "fork" });
   const f = fork(sourceDir, `try: ${label2}`);
-  const env = { ...opts.env ?? process.env, AGENT_UNDO_FORK: f.dir, AGENT_UNDO_PROJECT: realDir2(sourceDir) };
+  opts.onEvent?.({ type: "fork", meta: f.meta });
+  const env = { ...opts.env ?? process.env, AGENT_UNDO_FORK: f.dir, AGENT_UNDO_PROJECT: realDir2(sourceDir), GIT_CEILING_DIRECTORIES: import_path6.default.dirname(f.dir) };
   const run = (cmd2) => runIn(f.dir, cmd2, { ...opts, env });
   const input = { command, check: opts.check };
   const fail2 = (stage, r) => {
@@ -4688,12 +4719,25 @@ function tryInFork(sourceDir, command, opts = {}) {
     });
     return { ok: false, stage, input, fork: f.meta, ...r };
   };
-  const cmd = run(command);
+  let cmd;
+  let check;
+  const unlinkGit = opts.git ? linkGit(sourceDir, f.dir) : () => {
+  };
+  try {
+    opts.onEvent?.({ type: "run", command });
+    cmd = run(command);
+    if (cmd.status === 0 && opts.check) {
+      opts.onEvent?.({ type: "check", command: opts.check });
+      check = run(opts.check);
+    }
+  } finally {
+    unlinkGit();
+  }
   if (cmd.status !== 0) return fail2("command", { command: cmd });
-  const check = opts.check ? run(opts.check) : void 0;
   if (check && check.status !== 0) return fail2("check", { command: cmd, check });
   const drift = diffSnapshot(sourceDir, base.id);
   if (!isEmpty(drift)) return fail2("drift", { command: cmd, check, drift });
+  opts.onEvent?.({ type: "apply" });
   const changed = diffSnapshots(sourceDir, base.id, f.meta.id);
   const { backup } = revertSnapshot(sourceDir, f.meta.id);
   const fixedPaths = fixForkPaths(sourceDir, f.dir, [...changed.added, ...changed.modified]);
@@ -4755,12 +4799,36 @@ function runCheck(sourceDir, command, opts = {}) {
 var import_fs7 = __toESM(require("fs"));
 var import_path7 = __toESM(require("path"));
 var isEmpty3 = (d) => !d.added.length && !d.modified.length && !d.deleted.length;
+function sweepScratch(base) {
+  let entries = [];
+  try {
+    entries = import_fs7.default.readdirSync(base);
+  } catch {
+    return;
+  }
+  for (const e of entries) {
+    const m = /^\.bisect-(\d+)$/.exec(e);
+    if (!m) continue;
+    const pid = Number(m[1]);
+    let alive = false;
+    if (pid !== process.pid) {
+      try {
+        process.kill(pid, 0);
+        alive = true;
+      } catch (err) {
+        alive = err.code === "EPERM";
+      }
+    }
+    if (!alive) forceRemove(import_path7.default.join(base, e));
+  }
+}
 var candidateId = (c) => c === "now" ? "now" : c.id;
 function bisect(sourceDir, opts = {}) {
   const command = opts.check ?? readCheckConfig(sourceDir)?.command;
   if (!command) throw new Error('[Agent-Undo] No check command saved. Run `agent-undo check --set "<command>"` once, or pass --check.');
   const tested = [];
   const base = snapshotBase(sourceDir);
+  sweepScratch(base);
   const none = { command, outcome: "nothing", tested, lastGreen: null, firstRed: null, changed: null };
   let snaps = listSnapshots(sourceDir).filter((s) => s.trigger !== "fork");
   if (opts.good) {
@@ -4780,7 +4848,7 @@ function bisect(sourceDir, opts = {}) {
     if (c === "now") {
       const f = fork(sourceDir, "bisect: working tree");
       try {
-        ok = runIn(f.dir, command, { stdio: opts.stdio ?? "pipe", timeoutMs: opts.timeoutMs }).status === 0;
+        ok = runIn(f.dir, command, { stdio: opts.stdio ?? "pipe", timeoutMs: opts.timeoutMs, env: { ...process.env, GIT_CEILING_DIRECTORIES: import_path7.default.dirname(f.dir) } }).status === 0;
       } finally {
         try {
           deleteSnapshot(sourceDir, f.meta.id);
@@ -4794,7 +4862,7 @@ function bisect(sourceDir, opts = {}) {
       const data = snapshotDir(sourceDir, c.id);
       try {
         cloneEntries(data, scratch, import_fs7.default.readdirSync(data));
-        ok = runIn(scratch, command, { stdio: opts.stdio ?? "pipe", timeoutMs: opts.timeoutMs }).status === 0;
+        ok = runIn(scratch, command, { stdio: opts.stdio ?? "pipe", timeoutMs: opts.timeoutMs, env: { ...process.env, GIT_CEILING_DIRECTORIES: base } }).status === 0;
       } finally {
         forceRemove(scratch);
       }
@@ -4950,9 +5018,16 @@ program.command("show <path> [snapshot]").description("Print a file as it was in
     fail(e);
   }
 });
-program.command("try <command>").description("Run a command in a copy-on-write fork of the project; swap the result in only if it (and --check) succeed").option("-c, --check <cmd>", 'must pass inside the fork before the result is applied, e.g. "npm test"').option("-t, --timeout <seconds>", "kill the command or the check after this long").action((command, o) => {
+program.command("try <command>").description("Run a command in a copy-on-write fork of the project; swap the result in only if it (and --check) succeed").option("-c, --check <cmd>", "must pass inside the fork before the result is applied (default: the saved check, see agent-undo check --set)").option("--no-check", "run without a check even if one is saved").option("--git", "link the fork to the repository for the run (husky, git describe); git writes made in the fork reach the real repository").option("-t, --timeout <seconds>", "kill the command or the check after this long").action((command, o) => {
   try {
-    const r = tryInFork(cwd, command, { check: o.check, timeoutMs: o.timeout ? Number(o.timeout) * 1e3 : void 0 });
+    const check = o.check === false ? void 0 : o.check ?? readCheckConfig(cwd)?.command;
+    const progress = (e) => {
+      if (e.type === "fork") console.error(`\u23F3 fork ${e.meta.id} ready (${MODE_LABEL[e.meta.mode]}, ${e.meta.elapsedMs}ms)`);
+      else if (e.type === "run") console.error(`\u25B6 running: ${e.command}`);
+      else if (e.type === "check") console.error(`\u25B6 check: ${e.command}`);
+      else console.error("\u23F3 applying the fork to the project");
+    };
+    const r = tryInFork(cwd, command, { check, git: o.git, onEvent: progress, timeoutMs: o.timeout ? Number(o.timeout) * 1e3 : void 0 });
     if (!r.ok) fail(new Error(describeTry(r)));
     console.log(`\u2705 ${describeTry(r)}`);
   } catch (e) {

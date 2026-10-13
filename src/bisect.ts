@@ -38,6 +38,22 @@ export interface BisectResult {
 }
 
 const isEmpty = (d: DiffResult) => !d.added.length && !d.modified.length && !d.deleted.length;
+
+/** Remove scratch clones left by a bisect that was killed (its process is gone). */
+function sweepScratch(base: string): void {
+    let entries: string[] = [];
+    try { entries = fs.readdirSync(base); } catch { return; }
+    for (const e of entries) {
+        const m = /^\.bisect-(\d+)$/.exec(e);
+        if (!m) continue;
+        const pid = Number(m[1]);
+        let alive = false;
+        if (pid !== process.pid) {
+            try { process.kill(pid, 0); alive = true; } catch (err: any) { alive = err.code === 'EPERM'; }
+        }
+        if (!alive) forceRemove(path.join(base, e));
+    }
+}
 export const candidateId = (c: Candidate) => (c === 'now' ? 'now' : c.id);
 
 export function bisect(sourceDir: string, opts: BisectOptions = {}): BisectResult {
@@ -45,6 +61,7 @@ export function bisect(sourceDir: string, opts: BisectOptions = {}): BisectResul
     if (!command) throw new Error('[Agent-Undo] No check command saved. Run `agent-undo check --set "<command>"` once, or pass --check.');
     const tested: BisectResult['tested'] = [];
     const base = snapshotBase(sourceDir);
+    sweepScratch(base);
     const none: BisectResult = { command, outcome: 'nothing', tested, lastGreen: null, firstRed: null, changed: null };
 
     // Forks are states of a copy, not of the project; everything else is a point on the timeline.
@@ -60,7 +77,7 @@ export function bisect(sourceDir: string, opts: BisectOptions = {}): BisectResul
         let ok: boolean;
         if (c === 'now') {
             const f = fork(sourceDir, 'bisect: working tree');
-            try { ok = runIn(f.dir, command, { stdio: opts.stdio ?? 'pipe', timeoutMs: opts.timeoutMs }).status === 0; }
+            try { ok = runIn(f.dir, command, { stdio: opts.stdio ?? 'pipe', timeoutMs: opts.timeoutMs, env: { ...process.env, GIT_CEILING_DIRECTORIES: path.dirname(f.dir) } }).status === 0; }
             finally { try { deleteSnapshot(sourceDir, f.meta.id); } catch { /* best effort */ } }
         } else {
             // A stored mark is evidence only for the same question: a mark from another check command is re-run.
@@ -70,7 +87,7 @@ export function bisect(sourceDir: string, opts: BisectOptions = {}): BisectResul
             const data = snapshotDir(sourceDir, c.id);
             try {
                 cloneEntries(data, scratch, fs.readdirSync(data));
-                ok = runIn(scratch, command, { stdio: opts.stdio ?? 'pipe', timeoutMs: opts.timeoutMs }).status === 0;
+                ok = runIn(scratch, command, { stdio: opts.stdio ?? 'pipe', timeoutMs: opts.timeoutMs, env: { ...process.env, GIT_CEILING_DIRECTORIES: base } }).status === 0;
             } finally { forceRemove(scratch); }
             markSnapshot(sourceDir, c.id, { ok, command });
         }
