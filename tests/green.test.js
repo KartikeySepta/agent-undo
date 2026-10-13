@@ -129,7 +129,7 @@ test('prune keeps the newest green snapshot, so last-green survives a busy sessi
   const green = core.takeSnapshot(s.project, { keep: 100 });
   core.markSnapshot(s.project, green.id, { ok: true, command: 'x' });
   for (let i = 0; i < 12; i++) { s.write('a.txt', `v${i}`); core.takeSnapshot(s.project, { keep: 100 }); }
-  assert.strictEqual(core.pruneSnapshots(s.project, 3), 10, 'everything unnamed beyond the newest 3 goes, except the green one');
+  assert.strictEqual(core.pruneSnapshots(s.project, 3), 9, '13 unnamed, the green one exempt, keep 3: 9 go');
   assert.strictEqual(core.resolveSnapshot(s.project, 'last-green').id, green.id);
   // An older green gives way once a newer green exists.
   const newer = core.resolveSnapshot(s.project, 'latest');
@@ -137,4 +137,17 @@ test('prune keeps the newest green snapshot, so last-green survives a busy sessi
   core.pruneSnapshots(s.project, 1);
   assert.strictEqual(core.resolveSnapshot(s.project, 'last-green').id, newer.id);
   assert.ok(!core.listSnapshots(s.project).some((m) => m.id === green.id), 'the older green is prunable again');
+});
+
+test('doctor and undo_status report the saved check and the last green snapshot', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  s.write('a.txt', 'one');
+  assert.match(cli(s, 'doctor'), /check\s+none saved: agent-undo check --set "<command>"/);
+  core.writeCheckConfig(s.project, { command: 'test -f a.txt', auto: true });
+  assert.match(cli(s, 'doctor'), /check\s+"test -f a.txt" \(auto on\), no green snapshot yet/);
+  const r = core.runCheck(s.project, undefined, { stdio: 'pipe' });
+  assert.match(cli(s, 'doctor'), new RegExp(`check\\s+"test -f a.txt" \\(auto on\\), last green ${r.snapshot.id}`));
+  const st = JSON.parse(cli(s, 'stats', '--json'));
+  assert.deepStrictEqual(st.check, { command: 'test -f a.txt', auto: true });
+  assert.strictEqual(st.lastGreen, r.snapshot.id);
 });
