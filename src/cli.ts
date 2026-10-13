@@ -169,7 +169,7 @@ program
       if (!steps.length) return console.log('Nothing to replay yet: it takes two states (two snapshots, or one snapshot and a changed working tree).');
       const points = timeline(cwd);
       const row = (c: Candidate) => {
-        const n = points.indexOf(c) + 1;
+        const n = points.findIndex((p) => candidateId(p) === candidateId(c)) + 1;
         if (c === 'now') return `#${n}  now (working tree)`;
         return `#${n}  ${c.id}  [${c.trigger ?? 'manual'}, ${ago(c.createdAt)}]${mark(c)}${c.reason ? '  ' + c.reason : ''}`;
       };
