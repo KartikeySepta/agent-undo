@@ -23,7 +23,7 @@ export interface SnapshotMeta {
     trigger?: Trigger;
 }
 
-export type Trigger = 'manual' | 'hook' | 'session' | 'turn' | 'pre-revert';
+export type Trigger = 'manual' | 'hook' | 'session' | 'turn' | 'pre-revert' | 'fork';
 
 export interface SnapshotOptions {
     name?: string;
@@ -305,24 +305,46 @@ function sameContent(a: string, b: string): boolean {
     } finally { fs.closeSync(fdA); }
 }
 
-/** What changed in sourceDir since the snapshot, i.e. what a revert would undo. */
-export function diffSnapshot(sourceDir: string, ref?: string): DiffResult {
-    const snap = resolveSnapshot(sourceDir, ref);
-    const snapRoot = dataDir(snapshotBase(sourceDir), snap.id);
-    const ig = loadIgnore(sourceDir);
-    const before = walk(snapRoot, ig);
-    const now = walk(sourceDir, ig);
+/** Files in `afterRoot` that differ from `beforeRoot`: what going from before to after added, changed and removed. */
+function diffTrees(beforeRoot: string, afterRoot: string, ig: Ignore | null): DiffResult {
+    const before = walk(beforeRoot, ig);
+    const after = walk(afterRoot, ig);
     const result: DiffResult = { added: [], modified: [], deleted: [] };
-
-    for (const [file, size] of now) {
+    for (const [file, size] of after) {
         if (!before.has(file)) result.added.push(file);
         else if (before.get(file) !== size) result.modified.push(file);
-        else if (typeof size === 'number' && size > 0 && !sameContent(path.join(sourceDir, file), path.join(snapRoot, file))) {
+        else if (typeof size === 'number' && size > 0 && !sameContent(path.join(afterRoot, file), path.join(beforeRoot, file))) {
             result.modified.push(file);
         }
     }
-    for (const file of before.keys()) if (!now.has(file)) result.deleted.push(file);
+    for (const file of before.keys()) if (!after.has(file)) result.deleted.push(file);
     return result;
+}
+
+/** What changed in sourceDir since the snapshot, i.e. what a revert would undo. */
+export function diffSnapshot(sourceDir: string, ref?: string): DiffResult {
+    return diffTrees(snapshotDir(sourceDir, ref), sourceDir, loadIgnore(sourceDir));
+}
+
+/** What changed between snapshot `from` and snapshot `to`, or between `from` and the working tree when `to` is omitted. */
+export function diffSnapshots(sourceDir: string, from: string, to?: string): DiffResult {
+    const after = to === undefined ? sourceDir : snapshotDir(sourceDir, to);
+    return diffTrees(snapshotDir(sourceDir, from), after, loadIgnore(sourceDir));
+}
+
+/** The directory holding a snapshot's copy of the project. Read-only by convention: edit a fork instead. */
+export function snapshotDir(sourceDir: string, ref?: string): string {
+    return dataDir(snapshotBase(sourceDir), resolveSnapshot(sourceDir, ref).id);
+}
+
+// ---------- fork ----------
+// A fork is a snapshot you work in. Its data directory is a complete copy-on-write clone, so a
+// command can run there without the project noticing; swapping it in is an ordinary revert to it.
+
+/** Clone the project into a new snapshot meant to be worked in, and return where. */
+export function fork(sourceDir: string, reason: string): { meta: SnapshotMeta; dir: string } {
+    const meta = takeSnapshot(sourceDir, { reason, trigger: 'fork' });
+    return { meta, dir: dataDir(snapshotBase(sourceDir), meta.id) };
 }
 
 // ---------- inspect ----------

@@ -4290,22 +4290,25 @@ function sameContent(a, b) {
     import_fs4.default.closeSync(fdA);
   }
 }
-function diffSnapshot(sourceDir, ref) {
-  const snap = resolveSnapshot(sourceDir, ref);
-  const snapRoot = dataDir(snapshotBase(sourceDir), snap.id);
-  const ig = loadIgnore(sourceDir);
-  const before = walk(snapRoot, ig);
-  const now = walk(sourceDir, ig);
+function diffTrees(beforeRoot, afterRoot, ig) {
+  const before = walk(beforeRoot, ig);
+  const after = walk(afterRoot, ig);
   const result = { added: [], modified: [], deleted: [] };
-  for (const [file2, size] of now) {
+  for (const [file2, size] of after) {
     if (!before.has(file2)) result.added.push(file2);
     else if (before.get(file2) !== size) result.modified.push(file2);
-    else if (typeof size === "number" && size > 0 && !sameContent(import_path4.default.join(sourceDir, file2), import_path4.default.join(snapRoot, file2))) {
+    else if (typeof size === "number" && size > 0 && !sameContent(import_path4.default.join(afterRoot, file2), import_path4.default.join(beforeRoot, file2))) {
       result.modified.push(file2);
     }
   }
-  for (const file2 of before.keys()) if (!now.has(file2)) result.deleted.push(file2);
+  for (const file2 of before.keys()) if (!after.has(file2)) result.deleted.push(file2);
   return result;
+}
+function diffSnapshot(sourceDir, ref) {
+  return diffTrees(snapshotDir(sourceDir, ref), sourceDir, loadIgnore(sourceDir));
+}
+function snapshotDir(sourceDir, ref) {
+  return dataDir(snapshotBase(sourceDir), resolveSnapshot(sourceDir, ref).id);
 }
 function snapshotFilePath(sourceDir, rel, ref) {
   const snapshot = resolveSnapshot(sourceDir, ref);
@@ -4640,6 +4643,13 @@ program.command("show <path> [snapshot]").description("Print a file as it was in
     const { snapshot, path: p } = snapshotFilePath(cwd, file2, ref);
     if (!p) fail(new Error(`"${file2}" is not in snapshot ${snapshot.id}.`));
     process.stdout.write(import_fs6.default.readFileSync(p));
+  } catch (e) {
+    fail(e);
+  }
+});
+program.command("path [snapshot]").description("Print the directory holding a snapshot's copy of the project (default: latest), to cd into the past").action((ref) => {
+  try {
+    console.log(snapshotDir(cwd, ref));
   } catch (e) {
     fail(e);
   }

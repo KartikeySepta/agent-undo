@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { program } from 'commander';
 import {
-  takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot, pruneSnapshots, repairInterruptedRevert, snapshotFilePath, deleteSnapshot, pruneOlderThan,
+  takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot, pruneSnapshots, repairInterruptedRevert, snapshotFilePath, deleteSnapshot, pruneOlderThan, snapshotDir,
 } from './snapshot';
 import { VERSION } from './version';
 import { LEVELS, isLevel, readLevel, writeLevel } from './config';
@@ -95,6 +95,13 @@ program
       if (!p) fail(new Error(`"${file}" is not in snapshot ${snapshot.id}.`));
       process.stdout.write(fs.readFileSync(p!));
     } catch (e) { fail(e); }
+  });
+
+program
+  .command('path [snapshot]')
+  .description('Print the directory holding a snapshot\'s copy of the project (default: latest), to cd into the past')
+  .action((ref?: string) => {
+    try { console.log(snapshotDir(cwd, ref)); } catch (e) { fail(e); }
   });
 
 program
