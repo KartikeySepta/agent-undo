@@ -963,8 +963,8 @@ var require_command = __commonJS({
   "node_modules/commander/lib/command.js"(exports2) {
     var EventEmitter = require("node:events").EventEmitter;
     var childProcess = require("node:child_process");
-    var path8 = require("node:path");
-    var fs8 = require("node:fs");
+    var path9 = require("node:path");
+    var fs9 = require("node:fs");
     var process2 = require("node:process");
     var { Argument: Argument2, humanReadableArgName } = require_argument();
     var { CommanderError: CommanderError2 } = require_error();
@@ -1896,11 +1896,11 @@ Expecting one of '${allowedValues.join("', '")}'`);
         let launchWithNode = false;
         const sourceExt = [".js", ".ts", ".tsx", ".mjs", ".cjs"];
         function findFile(baseDir, baseName) {
-          const localBin = path8.resolve(baseDir, baseName);
-          if (fs8.existsSync(localBin)) return localBin;
-          if (sourceExt.includes(path8.extname(baseName))) return void 0;
+          const localBin = path9.resolve(baseDir, baseName);
+          if (fs9.existsSync(localBin)) return localBin;
+          if (sourceExt.includes(path9.extname(baseName))) return void 0;
           const foundExt = sourceExt.find(
-            (ext) => fs8.existsSync(`${localBin}${ext}`)
+            (ext) => fs9.existsSync(`${localBin}${ext}`)
           );
           if (foundExt) return `${localBin}${foundExt}`;
           return void 0;
@@ -1912,21 +1912,21 @@ Expecting one of '${allowedValues.join("', '")}'`);
         if (this._scriptPath) {
           let resolvedScriptPath;
           try {
-            resolvedScriptPath = fs8.realpathSync(this._scriptPath);
+            resolvedScriptPath = fs9.realpathSync(this._scriptPath);
           } catch (err) {
             resolvedScriptPath = this._scriptPath;
           }
-          executableDir = path8.resolve(
-            path8.dirname(resolvedScriptPath),
+          executableDir = path9.resolve(
+            path9.dirname(resolvedScriptPath),
             executableDir
           );
         }
         if (executableDir) {
           let localFile = findFile(executableDir, executableFile);
           if (!localFile && !subcommand._executableFile && this._scriptPath) {
-            const legacyName = path8.basename(
+            const legacyName = path9.basename(
               this._scriptPath,
-              path8.extname(this._scriptPath)
+              path9.extname(this._scriptPath)
             );
             if (legacyName !== this._name) {
               localFile = findFile(
@@ -1937,7 +1937,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
           }
           executableFile = localFile || executableFile;
         }
-        launchWithNode = sourceExt.includes(path8.extname(executableFile));
+        launchWithNode = sourceExt.includes(path9.extname(executableFile));
         let proc;
         if (process2.platform !== "win32") {
           if (launchWithNode) {
@@ -2777,7 +2777,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @return {Command}
        */
       nameFromFilename(filename) {
-        this._name = path8.basename(filename, path8.extname(filename));
+        this._name = path9.basename(filename, path9.extname(filename));
         return this;
       }
       /**
@@ -2791,9 +2791,9 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {string} [path]
        * @return {(string|null|Command)}
        */
-      executableDir(path9) {
-        if (path9 === void 0) return this._executableDir;
-        this._executableDir = path9;
+      executableDir(path10) {
+        if (path10 === void 0) return this._executableDir;
+        this._executableDir = path10;
         return this;
       }
       /**
@@ -3516,26 +3516,26 @@ var require_ignore = __commonJS({
       const index = body.indexOf(SLASH);
       return index < 0 || index === body.length - 1;
     };
-    var basenameOf = (path8) => {
-      const end = path8.length - 1;
-      const index = path8.lastIndexOf(
+    var basenameOf = (path9) => {
+      const end = path9.length - 1;
+      const index = path9.lastIndexOf(
         SLASH,
-        path8[end] === SLASH ? end - 1 : end
+        path9[end] === SLASH ? end - 1 : end
       );
-      return index < 0 ? path8 : path8.slice(index + 1);
+      return index < 0 ? path9 : path9.slice(index + 1);
     };
-    var parentOf = (path8) => {
-      if (path8.charCodeAt(0) === SLASH_CODE || path8.indexOf(DOUBLE_SLASH) >= 0) {
-        const slices = path8.split(SLASH).filter(Boolean);
+    var parentOf = (path9) => {
+      if (path9.charCodeAt(0) === SLASH_CODE || path9.indexOf(DOUBLE_SLASH) >= 0) {
+        const slices = path9.split(SLASH).filter(Boolean);
         slices.pop();
         return slices.length ? slices.join(SLASH) + SLASH : EMPTY;
       }
-      const end = path8.length - 1;
-      const cut = path8.lastIndexOf(
+      const end = path9.length - 1;
+      const cut = path9.lastIndexOf(
         SLASH,
-        path8.charCodeAt(end) === SLASH_CODE ? end - 1 : end
+        path9.charCodeAt(end) === SLASH_CODE ? end - 1 : end
       );
-      return cut < 0 ? EMPTY : path8.slice(0, cut + 1);
+      return cut < 0 ? EMPTY : path9.slice(0, cut + 1);
     };
     var isString = (subject) => typeof subject === "string";
     var checkPattern = (pattern) => pattern && isString(pattern) && !REGEX_INVALID_TRAILING_BACKSLASH.test(pattern);
@@ -3670,7 +3670,7 @@ var require_ignore = __commonJS({
       // Match the literal 'abc/' for `checkIgnore`, last rule wins. Only a rule
       //   ending in a wildcard can match it (see `checkSourceOf`), so the rest
       //   are left out once, rather than tested or compiled for every path.
-      testLiteral(path8) {
+      testLiteral(path9) {
         const rules = this._literalRules || (this._literalRules = this._rules.filter(
           ({ body }) => body[body.length - (body[body.length - 1] === SLASH ? 2 : 1)] === "*"
         ));
@@ -3679,7 +3679,7 @@ var require_ignore = __commonJS({
         let matchedRule;
         for (let index = rules.length - 1; index >= 0; index--) {
           const rule = rules[index];
-          if (rule.checkRegex.test(path8)) {
+          if (rule.checkRegex.test(path9)) {
             ignored = !rule.negative;
             unignored = rule.negative;
             matchedRule = rule.negative ? UNDEFINED : rule;
@@ -3702,20 +3702,20 @@ var require_ignore = __commonJS({
       //   path matching.
       // - check `string` either `MODE_IGNORE` or `MODE_CHECK_IGNORE`
       // @returns {TestResult} true if a file is ignored
-      test(path8, checkUnignored, mode) {
+      test(path9, checkUnignored, mode) {
         let ignored = false;
         let unignored = false;
         let matchedRule;
         const rules = this._rules;
         const { length } = rules;
         const shortcut = this._basenameCount * 2 >= length;
-        const basename = shortcut ? basenameOf(path8) : path8;
+        const basename = shortcut ? basenameOf(path9) : path9;
         for (let index = 0; index < length; index++) {
           const rule = rules[index];
           const { negative } = rule;
           const skip = unignored === negative && ignored !== unignored || negative && !ignored && !unignored && !checkUnignored;
           if (!skip && rule[mode].test(
-            shortcut && rule._basenameOnly ? basename : path8
+            shortcut && rule._basenameOnly ? basename : path9
           )) {
             ignored = !negative;
             unignored = negative;
@@ -3735,17 +3735,17 @@ var require_ignore = __commonJS({
     var throwError = (message, Ctor) => {
       throw new Ctor(message);
     };
-    var checkPath = (path8, originalPath, doThrow) => {
-      if (!isString(path8)) {
+    var checkPath = (path9, originalPath, doThrow) => {
+      if (!isString(path9)) {
         return doThrow(
           `path must be a string, but got \`${originalPath}\``,
           TypeError
         );
       }
-      if (!path8) {
+      if (!path9) {
         return doThrow(`path must not be empty`, TypeError);
       }
-      if (checkPath.isNotRelative(path8)) {
+      if (checkPath.isNotRelative(path9)) {
         const r = "`path.relative()`d";
         return doThrow(
           `path should be a ${r} string, but got "${originalPath}"`,
@@ -3754,25 +3754,25 @@ var require_ignore = __commonJS({
       }
       return true;
     };
-    var isNotRelative = (path8) => {
-      const first = path8.charCodeAt(0);
+    var isNotRelative = (path9) => {
+      const first = path9.charCodeAt(0);
       if (first === SLASH_CODE) {
         return true;
       }
       if (first !== DOT_CODE) {
         return false;
       }
-      if (path8.length === 1) {
+      if (path9.length === 1) {
         return true;
       }
-      const second = path8.charCodeAt(1);
+      const second = path9.charCodeAt(1);
       if (second === SLASH_CODE) {
         return true;
       }
       if (second !== DOT_CODE) {
         return false;
       }
-      return path8.length === 2 || path8.charCodeAt(2) === SLASH_CODE;
+      return path9.length === 2 || path9.charCodeAt(2) === SLASH_CODE;
     };
     checkPath.isNotRelative = isNotRelative;
     checkPath.convert = (p) => p;
@@ -3803,54 +3803,54 @@ var require_ignore = __commonJS({
       }
       // @returns {TestResult}
       _test(originalPath, cache, checkUnignored) {
-        const path8 = originalPath && checkPath.convert(originalPath);
+        const path9 = originalPath && checkPath.convert(originalPath);
         checkPath(
-          path8,
+          path9,
           originalPath,
           this._strictPathCheck ? throwError : RETURN_FALSE
         );
-        return this._t(path8, cache, checkUnignored);
+        return this._t(path9, cache, checkUnignored);
       }
-      checkIgnore(path8) {
-        if (path8.charCodeAt(path8.length - 1) !== SLASH_CODE) {
-          return this.test(path8);
+      checkIgnore(path9) {
+        if (path9.charCodeAt(path9.length - 1) !== SLASH_CODE) {
+          return this.test(path9);
         }
-        const dir = this._t(path8, this._testCache, true);
+        const dir = this._t(path9, this._testCache, true);
         if (dir.ignored) {
           return dir;
         }
-        const literal = this._rules.testLiteral(path8);
+        const literal = this._rules.testLiteral(path9);
         return literal.ignored || literal.unignored ? literal : dir;
       }
-      _t(path8, cache, checkUnignored) {
-        if (path8 in cache) {
-          return cache[path8];
+      _t(path9, cache, checkUnignored) {
+        if (path9 in cache) {
+          return cache[path9];
         }
-        const parentPath = parentOf(path8);
+        const parentPath = parentOf(path9);
         const parent = parentPath ? this._t(parentPath, cache, checkUnignored) : UNDEFINED;
-        return cache[path8] = parent && parent.ignored ? parent : this._rules.test(path8, checkUnignored, MODE_IGNORE);
+        return cache[path9] = parent && parent.ignored ? parent : this._rules.test(path9, checkUnignored, MODE_IGNORE);
       }
-      ignores(path8) {
-        return this._test(path8, this._ignoreCache, false).ignored;
+      ignores(path9) {
+        return this._test(path9, this._ignoreCache, false).ignored;
       }
       createFilter() {
-        return (path8) => !this.ignores(path8);
+        return (path9) => !this.ignores(path9);
       }
       filter(paths) {
         return makeArray(paths).filter(this.createFilter());
       }
       // @returns {TestResult}
-      test(path8) {
-        return this._test(path8, this._testCache, true);
+      test(path9) {
+        return this._test(path9, this._testCache, true);
       }
     };
     var factory = (options) => new Ignore2(options);
-    var isPathValid = (path8) => checkPath(path8 && checkPath.convert(path8), path8, RETURN_FALSE);
+    var isPathValid = (path9) => checkPath(path9 && checkPath.convert(path9), path9, RETURN_FALSE);
     var setupWindows = () => {
       const makePosix = (str) => /^\\\\\?\\/.test(str) || /["<>|\u0000-\u001F]+/u.test(str) ? str : str.replace(/\\/g, "/");
       checkPath.convert = makePosix;
       const REGEX_TEST_WINDOWS_PATH_ABSOLUTE = /^[a-z]:\//i;
-      checkPath.isNotRelative = (path8) => REGEX_TEST_WINDOWS_PATH_ABSOLUTE.test(path8) || isNotRelative(path8);
+      checkPath.isNotRelative = (path9) => REGEX_TEST_WINDOWS_PATH_ABSOLUTE.test(path9) || isNotRelative(path9);
     };
     if (
       // Detect `process` so that it can run in browsers.
@@ -4668,9 +4668,9 @@ var discardQuiet = (sourceDir, id) => {
   }
 };
 function tryInFork(sourceDir, command, opts = {}) {
-  const label = short(command);
-  const base = takeSnapshot(sourceDir, { reason: `try base: ${label}`, trigger: "fork" });
-  const f = fork(sourceDir, `try: ${label}`);
+  const label2 = short(command);
+  const base = takeSnapshot(sourceDir, { reason: `try base: ${label2}`, trigger: "fork" });
+  const f = fork(sourceDir, `try: ${label2}`);
   const env = { ...opts.env ?? process.env, AGENT_UNDO_FORK: f.dir, AGENT_UNDO_PROJECT: realDir2(sourceDir) };
   const run = (cmd2) => runIn(f.dir, cmd2, { ...opts, env });
   const input = { command, check: opts.check };
@@ -4744,9 +4744,101 @@ function runCheck(sourceDir, command, opts = {}) {
   return { ok, command: cmd, run, snapshot };
 }
 
-// src/cli.ts
+// src/bisect.ts
 var import_fs7 = __toESM(require("fs"));
 var import_path7 = __toESM(require("path"));
+var isEmpty3 = (d) => !d.added.length && !d.modified.length && !d.deleted.length;
+var candidateId = (c) => c === "now" ? "now" : c.id;
+function bisect(sourceDir, opts = {}) {
+  const command = opts.check ?? readCheckConfig(sourceDir)?.command;
+  if (!command) throw new Error('[Agent-Undo] No check command saved. Run `agent-undo check --set "<command>"` once, or pass --check.');
+  const tested = [];
+  const base = snapshotBase(sourceDir);
+  const none = { command, outcome: "nothing", tested, lastGreen: null, firstRed: null, changed: null };
+  let snaps = listSnapshots(sourceDir).filter((s) => s.trigger !== "fork");
+  if (opts.good) {
+    const g = resolveSnapshot(sourceDir, opts.good);
+    snaps = snaps.filter((s) => s.createdAt >= g.createdAt);
+  }
+  if (opts.bad) {
+    const b = resolveSnapshot(sourceDir, opts.bad);
+    snaps = snaps.filter((s) => s.createdAt <= b.createdAt);
+  }
+  const candidates = [...snaps];
+  const newest = snaps.at(-1);
+  if (!opts.bad && (!newest || !isEmpty3(diffSnapshot(sourceDir, newest.id)))) candidates.push("now");
+  if (candidates.length === 0 || candidates.length === 1 && candidates[0] === "now") return none;
+  const evaluate = (c) => {
+    let ok;
+    if (c === "now") {
+      const f = fork(sourceDir, "bisect: working tree");
+      try {
+        ok = runIn(f.dir, command, { stdio: opts.stdio ?? "pipe", timeoutMs: opts.timeoutMs }).status === 0;
+      } finally {
+        try {
+          deleteSnapshot(sourceDir, f.meta.id);
+        } catch {
+        }
+      }
+    } else {
+      if (!opts.fresh && c.check?.command === command) return c.check.ok;
+      const scratch = import_path7.default.join(base, `.bisect-${process.pid}`);
+      forceRemove(scratch);
+      const data = snapshotDir(sourceDir, c.id);
+      try {
+        cloneEntries(data, scratch, import_fs7.default.readdirSync(data));
+        ok = runIn(scratch, command, { stdio: opts.stdio ?? "pipe", timeoutMs: opts.timeoutMs }).status === 0;
+      } finally {
+        forceRemove(scratch);
+      }
+      markSnapshot(sourceDir, c.id, { ok, command });
+    }
+    tested.push({ id: candidateId(c), ok, trigger: c === "now" ? void 0 : c.trigger });
+    opts.onTest?.(c, ok);
+    return ok;
+  };
+  let hi = candidates.length - 1;
+  if (evaluate(candidates[hi])) return { ...none, outcome: "all-green", lastGreen: candidates[hi] === "now" ? null : candidates[hi] };
+  let lo = 0;
+  if (hi === 0 || !evaluate(candidates[lo])) return { ...none, outcome: "all-red", firstRed: candidates[lo] };
+  while (hi - lo > 1) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (evaluate(candidates[mid])) lo = mid;
+    else hi = mid;
+  }
+  const lastGreen = candidates[lo];
+  const firstRed = candidates[hi];
+  const changed = firstRed === "now" ? diffSnapshots(sourceDir, lastGreen.id) : diffSnapshots(sourceDir, lastGreen.id, firstRed.id);
+  return { command, outcome: "found", tested, lastGreen, firstRed, changed };
+}
+var label = (c) => c === "now" ? "now (working tree)" : `${c.id}  [${c.trigger ?? "manual"}]${c.reason ? "  " + c.reason : ""}`;
+var LIST_CAP = 20;
+function describeBisect(r, voice = "cli") {
+  switch (r.outcome) {
+    case "nothing":
+      return "Nothing to bisect: no snapshots of this project yet.";
+    case "all-green":
+      return `Every candidate passes "${r.command}", the newest included. Nothing is broken along this timeline.`;
+    case "all-red":
+      return `The oldest candidate (${label(r.firstRed)}) already fails "${r.command}": no green state in range. Widen the range with --good, or fix forward.`;
+  }
+  const { lastGreen, firstRed, changed } = r;
+  const files = [...changed.added.map((f) => `+ ${f}`), ...changed.modified.map((f) => `~ ${f}`), ...changed.deleted.map((f) => `- ${f}`)];
+  const paths = [...changed.added, ...changed.modified, ...changed.deleted];
+  const back = voice === "cli" ? [`To go back: agent-undo revert ${lastGreen.id} --yes`, ...paths.length && paths.length <= 5 ? [`   or only those paths: agent-undo revert ${lastGreen.id} --only ${paths.join(" ")}`] : []] : [`To go back: revert_environment with snapshot "${lastGreen.id}"${paths.length && paths.length <= 5 ? `, or only those paths with paths: ${JSON.stringify(paths)}` : ""} (preview first, as always).`];
+  return [
+    `Last green: ${label(lastGreen)}`,
+    `First red:  ${label(firstRed)}`,
+    `Between them ${files.length} file(s) changed:`,
+    ...files.slice(0, LIST_CAP),
+    ...files.length > LIST_CAP ? [`... and ${files.length - LIST_CAP} more`] : [],
+    ...back
+  ].join("\n");
+}
+
+// src/cli.ts
+var import_fs8 = __toESM(require("fs"));
+var import_path8 = __toESM(require("path"));
 var import_child_process4 = require("child_process");
 var cwd = process.cwd();
 var MODE_LABEL = { clonefile: "clonefile", cow: "copy-on-write", copy: "full copy: no CoW on this filesystem", moved: "moved" };
@@ -4785,8 +4877,8 @@ program.command("list").description("List snapshots for this directory").option(
 });
 function fileDiff(file2, ref) {
   const { snapshot, path: before } = snapshotFilePath(cwd, file2, ref);
-  const live = import_path7.default.join(cwd, file2);
-  const now = import_fs7.default.existsSync(live) && import_fs7.default.statSync(live).isFile() ? live : null;
+  const live = import_path8.default.join(cwd, file2);
+  const now = import_fs8.default.existsSync(live) && import_fs8.default.statSync(live).isFile() ? live : null;
   if (!before && !now) fail(new Error(`"${file2}" is neither in snapshot ${snapshot.id} nor in the project.`));
   const r = (0, import_child_process4.spawnSync)("diff", ["-u", "--label", `${file2} (${snapshot.id})`, "--label", `${file2} (now)`, before ?? "/dev/null", now ?? "/dev/null"], { encoding: "utf8" });
   if (r.error) fail(new Error(`could not run \`diff\`: ${r.error.message}. Use \`agent-undo show ${file2}\` to print the snapshot copy.`));
@@ -4812,7 +4904,7 @@ program.command("show <path> [snapshot]").description("Print a file as it was in
   try {
     const { snapshot, path: p } = snapshotFilePath(cwd, file2, ref);
     if (!p) fail(new Error(`"${file2}" is not in snapshot ${snapshot.id}.`));
-    process.stdout.write(import_fs7.default.readFileSync(p));
+    process.stdout.write(import_fs8.default.readFileSync(p));
   } catch (e) {
     fail(e);
   }
@@ -4835,6 +4927,21 @@ program.command("check [command]").description(`Run the project's check (e.g. th
     const r = runCheck(cwd, command);
     if (!r.ok) fail(new Error(`Check "${r.command}" failed (${r.run.timedOut ? "timed out" : "exit " + (r.run.status ?? r.run.signal)}).${r.snapshot ? ` ${r.snapshot.id} is red.` : ""}`));
     console.log(`\u2705 Check passed: ${r.snapshot.id} is green. Back to it any time with: agent-undo revert last-green --yes`);
+  } catch (e) {
+    fail(e);
+  }
+});
+program.command("bisect").description("Find the last snapshot that passes the check and the first that fails, and what changed between them").option("-c, --check <cmd>", "the check to run in a scratch copy of each candidate (default: the saved check)").option("--good <snapshot>", "oldest candidate to consider").option("--bad <snapshot>", "newest candidate to consider (default: the working tree)").option("--fresh", "re-run the check where a green/red mark is already stored").option("-t, --timeout <seconds>", "kill a check that runs longer than this").action((o) => {
+  try {
+    const r = bisect(cwd, {
+      check: o.check,
+      good: o.good,
+      bad: o.bad,
+      fresh: o.fresh,
+      timeoutMs: o.timeout ? Number(o.timeout) * 1e3 : void 0,
+      onTest: (c, ok) => console.log(`  testing ${candidateId(c)} \u2026 ${ok ? "\u2713 green" : "\u2717 red"}`)
+    });
+    console.log(describeBisect(r));
   } catch (e) {
     fail(e);
   }

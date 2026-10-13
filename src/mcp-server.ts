@@ -5,6 +5,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprot
 import { takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot, previewRevert, snapshotFilePath, markSnapshot, RevertPreview, SnapshotMeta } from "./snapshot";
 import { readLevel } from "./config";
 import { tryInFork, describeTry, RunResult } from "./try";
+import { bisect, describeBisect } from "./bisect";
 import { VERSION } from "./version";
 import { status, doctor } from "./status";
 import fs from "fs";
@@ -71,6 +72,19 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: "bisect",
+      description: "Find which step broke the project: binary-search the snapshot timeline (and the working tree) with a check command, running it in a scratch copy of each candidate. Returns the last green and first red snapshot, the files that changed between them, and the revert that goes back. Results are stored as green/red marks on the snapshots.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          check: { type: "string", description: "Command that exits 0 when the project is healthy, e.g. \"npm test\". Default: the project's saved check." },
+          good: snapshotProp, bad: snapshotProp,
+          fresh: { type: "boolean", description: "Re-run the check even where a mark is stored." },
+          project_dir: projectProp,
+        },
+      },
+    },
+    {
       name: "undo_status",
       description: "agent-undo level, snapshot count, lifetime stats, and environment checks (clone engine, store volume).",
       inputSchema: { type: "object", properties: { project_dir: projectProp } },
@@ -123,7 +137,7 @@ function previewText(p: RevertPreview, staleToken?: string): string {
 }
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const args = (request.params.arguments ?? {}) as { name?: string; snapshot?: string; paths?: unknown; project_dir?: string; confirm?: string; path?: unknown; command?: unknown; check?: unknown; timeout_s?: unknown; green?: unknown };
+  const args = (request.params.arguments ?? {}) as { name?: string; snapshot?: string; paths?: unknown; project_dir?: string; confirm?: string; path?: unknown; command?: unknown; check?: unknown; timeout_s?: unknown; green?: unknown; good?: unknown; bad?: unknown; fresh?: unknown };
   const cwd = args.project_dir || process.env.CLAUDE_PROJECT_DIR || process.cwd();
   // Some hosts (Codex plugins, Gemini extensions) start the server inside the plugin's own
   // directory. Never silently snapshot or revert agent-undo itself: ask for project_dir instead.
@@ -177,6 +191,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const r = tryInFork(cwd, args.command, { check, timeoutMs, stdio: "pipe" });
         const lines = [describeTry(r, "mcp"), ...outputBlock("command output", r.command), ...(r.check ? outputBlock("check output", r.check) : [])];
         return text(lines.join("\n"), !r.ok);
+      }
+      case "bisect": {
+        const check = typeof args.check === "string" && args.check.trim() ? args.check : undefined;
+        const r = bisect(cwd, { check, good: typeof args.good === "string" ? args.good : undefined, bad: typeof args.bad === "string" ? args.bad : undefined, fresh: args.fresh === true, stdio: "pipe", timeoutMs: 600_000 });
+        return text(describeBisect(r, "mcp"));
       }
       case "undo_status": {
         const checks = doctor(cwd).map((c) => `${c.ok === true ? "ok" : c.ok === false ? "FAIL" : "warn"}  ${c.label}: ${c.detail}`);

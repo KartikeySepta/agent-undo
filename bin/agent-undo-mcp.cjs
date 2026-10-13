@@ -453,9 +453,9 @@ var require_codegen = __commonJS({
       }
     };
     var Label = class extends Node {
-      constructor(label) {
+      constructor(label2) {
         super();
-        this.label = label;
+        this.label = label2;
         this.names = {};
       }
       render({ _n }) {
@@ -463,14 +463,14 @@ var require_codegen = __commonJS({
       }
     };
     var Break = class extends Node {
-      constructor(label) {
+      constructor(label2) {
         super();
-        this.label = label;
+        this.label = label2;
         this.names = {};
       }
       render({ _n }) {
-        const label = this.label ? ` ${this.label}` : "";
-        return `break${label};` + _n;
+        const label2 = this.label ? ` ${this.label}` : "";
+        return `break${label2};` + _n;
       }
     };
     var Throw = class extends Node {
@@ -882,12 +882,12 @@ var require_codegen = __commonJS({
         return this._endBlockNode(For);
       }
       // `label` statement
-      label(label) {
-        return this._leafNode(new Label(label));
+      label(label2) {
+        return this._leafNode(new Label(label2));
       }
       // `break` statement
-      break(label) {
-        return this._leafNode(new Break(label));
+      break(label2) {
+        return this._leafNode(new Break(label2));
       }
       // `return` statement
       return(value) {
@@ -3263,8 +3263,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path8) {
-      let input = path8;
+    function removeDotSegments(path9) {
+      let input = path9;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3673,8 +3673,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path8 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path8 && path8 !== "/" ? path8 : void 0;
+        const path9 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path9 && path9 !== "/" ? path9 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -7187,12 +7187,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs8, exportName) {
+    function addFormats(ajv, list, fs9, exportName) {
       var _a3;
       var _b;
       (_a3 = (_b = ajv.opts.code).formats) !== null && _a3 !== void 0 ? _a3 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs8[f]);
+        ajv.addFormat(f, fs9[f]);
     }
     module2.exports = exports2 = formatsPlugin;
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -7693,26 +7693,26 @@ var require_ignore = __commonJS({
       const index = body.indexOf(SLASH);
       return index < 0 || index === body.length - 1;
     };
-    var basenameOf = (path8) => {
-      const end = path8.length - 1;
-      const index = path8.lastIndexOf(
+    var basenameOf = (path9) => {
+      const end = path9.length - 1;
+      const index = path9.lastIndexOf(
         SLASH,
-        path8[end] === SLASH ? end - 1 : end
+        path9[end] === SLASH ? end - 1 : end
       );
-      return index < 0 ? path8 : path8.slice(index + 1);
+      return index < 0 ? path9 : path9.slice(index + 1);
     };
-    var parentOf = (path8) => {
-      if (path8.charCodeAt(0) === SLASH_CODE || path8.indexOf(DOUBLE_SLASH) >= 0) {
-        const slices = path8.split(SLASH).filter(Boolean);
+    var parentOf = (path9) => {
+      if (path9.charCodeAt(0) === SLASH_CODE || path9.indexOf(DOUBLE_SLASH) >= 0) {
+        const slices = path9.split(SLASH).filter(Boolean);
         slices.pop();
         return slices.length ? slices.join(SLASH) + SLASH : EMPTY;
       }
-      const end = path8.length - 1;
-      const cut = path8.lastIndexOf(
+      const end = path9.length - 1;
+      const cut = path9.lastIndexOf(
         SLASH,
-        path8.charCodeAt(end) === SLASH_CODE ? end - 1 : end
+        path9.charCodeAt(end) === SLASH_CODE ? end - 1 : end
       );
-      return cut < 0 ? EMPTY : path8.slice(0, cut + 1);
+      return cut < 0 ? EMPTY : path9.slice(0, cut + 1);
     };
     var isString = (subject) => typeof subject === "string";
     var checkPattern = (pattern) => pattern && isString(pattern) && !REGEX_INVALID_TRAILING_BACKSLASH.test(pattern);
@@ -7847,7 +7847,7 @@ var require_ignore = __commonJS({
       // Match the literal 'abc/' for `checkIgnore`, last rule wins. Only a rule
       //   ending in a wildcard can match it (see `checkSourceOf`), so the rest
       //   are left out once, rather than tested or compiled for every path.
-      testLiteral(path8) {
+      testLiteral(path9) {
         const rules = this._literalRules || (this._literalRules = this._rules.filter(
           ({ body }) => body[body.length - (body[body.length - 1] === SLASH ? 2 : 1)] === "*"
         ));
@@ -7856,7 +7856,7 @@ var require_ignore = __commonJS({
         let matchedRule;
         for (let index = rules.length - 1; index >= 0; index--) {
           const rule = rules[index];
-          if (rule.checkRegex.test(path8)) {
+          if (rule.checkRegex.test(path9)) {
             ignored = !rule.negative;
             unignored = rule.negative;
             matchedRule = rule.negative ? UNDEFINED : rule;
@@ -7879,20 +7879,20 @@ var require_ignore = __commonJS({
       //   path matching.
       // - check `string` either `MODE_IGNORE` or `MODE_CHECK_IGNORE`
       // @returns {TestResult} true if a file is ignored
-      test(path8, checkUnignored, mode) {
+      test(path9, checkUnignored, mode) {
         let ignored = false;
         let unignored = false;
         let matchedRule;
         const rules = this._rules;
         const { length } = rules;
         const shortcut = this._basenameCount * 2 >= length;
-        const basename = shortcut ? basenameOf(path8) : path8;
+        const basename = shortcut ? basenameOf(path9) : path9;
         for (let index = 0; index < length; index++) {
           const rule = rules[index];
           const { negative } = rule;
           const skip = unignored === negative && ignored !== unignored || negative && !ignored && !unignored && !checkUnignored;
           if (!skip && rule[mode].test(
-            shortcut && rule._basenameOnly ? basename : path8
+            shortcut && rule._basenameOnly ? basename : path9
           )) {
             ignored = !negative;
             unignored = negative;
@@ -7912,17 +7912,17 @@ var require_ignore = __commonJS({
     var throwError = (message, Ctor) => {
       throw new Ctor(message);
     };
-    var checkPath = (path8, originalPath, doThrow) => {
-      if (!isString(path8)) {
+    var checkPath = (path9, originalPath, doThrow) => {
+      if (!isString(path9)) {
         return doThrow(
           `path must be a string, but got \`${originalPath}\``,
           TypeError
         );
       }
-      if (!path8) {
+      if (!path9) {
         return doThrow(`path must not be empty`, TypeError);
       }
-      if (checkPath.isNotRelative(path8)) {
+      if (checkPath.isNotRelative(path9)) {
         const r = "`path.relative()`d";
         return doThrow(
           `path should be a ${r} string, but got "${originalPath}"`,
@@ -7931,25 +7931,25 @@ var require_ignore = __commonJS({
       }
       return true;
     };
-    var isNotRelative = (path8) => {
-      const first = path8.charCodeAt(0);
+    var isNotRelative = (path9) => {
+      const first = path9.charCodeAt(0);
       if (first === SLASH_CODE) {
         return true;
       }
       if (first !== DOT_CODE) {
         return false;
       }
-      if (path8.length === 1) {
+      if (path9.length === 1) {
         return true;
       }
-      const second = path8.charCodeAt(1);
+      const second = path9.charCodeAt(1);
       if (second === SLASH_CODE) {
         return true;
       }
       if (second !== DOT_CODE) {
         return false;
       }
-      return path8.length === 2 || path8.charCodeAt(2) === SLASH_CODE;
+      return path9.length === 2 || path9.charCodeAt(2) === SLASH_CODE;
     };
     checkPath.isNotRelative = isNotRelative;
     checkPath.convert = (p) => p;
@@ -7980,54 +7980,54 @@ var require_ignore = __commonJS({
       }
       // @returns {TestResult}
       _test(originalPath, cache, checkUnignored) {
-        const path8 = originalPath && checkPath.convert(originalPath);
+        const path9 = originalPath && checkPath.convert(originalPath);
         checkPath(
-          path8,
+          path9,
           originalPath,
           this._strictPathCheck ? throwError : RETURN_FALSE
         );
-        return this._t(path8, cache, checkUnignored);
+        return this._t(path9, cache, checkUnignored);
       }
-      checkIgnore(path8) {
-        if (path8.charCodeAt(path8.length - 1) !== SLASH_CODE) {
-          return this.test(path8);
+      checkIgnore(path9) {
+        if (path9.charCodeAt(path9.length - 1) !== SLASH_CODE) {
+          return this.test(path9);
         }
-        const dir = this._t(path8, this._testCache, true);
+        const dir = this._t(path9, this._testCache, true);
         if (dir.ignored) {
           return dir;
         }
-        const literal2 = this._rules.testLiteral(path8);
+        const literal2 = this._rules.testLiteral(path9);
         return literal2.ignored || literal2.unignored ? literal2 : dir;
       }
-      _t(path8, cache, checkUnignored) {
-        if (path8 in cache) {
-          return cache[path8];
+      _t(path9, cache, checkUnignored) {
+        if (path9 in cache) {
+          return cache[path9];
         }
-        const parentPath = parentOf(path8);
+        const parentPath = parentOf(path9);
         const parent = parentPath ? this._t(parentPath, cache, checkUnignored) : UNDEFINED;
-        return cache[path8] = parent && parent.ignored ? parent : this._rules.test(path8, checkUnignored, MODE_IGNORE);
+        return cache[path9] = parent && parent.ignored ? parent : this._rules.test(path9, checkUnignored, MODE_IGNORE);
       }
-      ignores(path8) {
-        return this._test(path8, this._ignoreCache, false).ignored;
+      ignores(path9) {
+        return this._test(path9, this._ignoreCache, false).ignored;
       }
       createFilter() {
-        return (path8) => !this.ignores(path8);
+        return (path9) => !this.ignores(path9);
       }
       filter(paths) {
         return makeArray(paths).filter(this.createFilter());
       }
       // @returns {TestResult}
-      test(path8) {
-        return this._test(path8, this._testCache, true);
+      test(path9) {
+        return this._test(path9, this._testCache, true);
       }
     };
     var factory = (options) => new Ignore2(options);
-    var isPathValid = (path8) => checkPath(path8 && checkPath.convert(path8), path8, RETURN_FALSE);
+    var isPathValid = (path9) => checkPath(path9 && checkPath.convert(path9), path9, RETURN_FALSE);
     var setupWindows = () => {
       const makePosix = (str) => /^\\\\\?\\/.test(str) || /["<>|\u0000-\u001F]+/u.test(str) ? str : str.replace(/\\/g, "/");
       checkPath.convert = makePosix;
       const REGEX_TEST_WINDOWS_PATH_ABSOLUTE = /^[a-z]:\//i;
-      checkPath.isNotRelative = (path8) => REGEX_TEST_WINDOWS_PATH_ABSOLUTE.test(path8) || isNotRelative(path8);
+      checkPath.isNotRelative = (path9) => REGEX_TEST_WINDOWS_PATH_ABSOLUTE.test(path9) || isNotRelative(path9);
     };
     if (
       // Detect `process` so that it can run in browsers.
@@ -8278,10 +8278,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path8) {
-  if (!path8)
+function getElementAtPath(obj, path9) {
+  if (!path9)
     return obj;
-  return path8.reduce((acc, key) => acc?.[key], obj);
+  return path9.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -8621,11 +8621,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path8, issues) {
+function prefixIssues(path9, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path8);
+    iss.path.unshift(path9);
     return iss;
   });
 }
@@ -9071,16 +9071,16 @@ function flattenError(error2, mapper = (issue2) => issue2.message) {
 }
 function formatError(error2, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error3, path8 = []) => {
+  const processError = (error3, path9 = []) => {
     for (const issue2 of error3.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path8, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path9, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path8, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path9, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path8, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path9, ...issue2.path]);
       } else {
-        const fullpath = [...path8, ...issue2.path];
+        const fullpath = [...path9, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -18146,6 +18146,15 @@ function markSnapshot(sourceDir, ref, mark) {
   import_fs4.default.writeFileSync(metaFile(snapshotBase(sourceDir), snap.id), JSON.stringify(snap, null, 2));
   return snap;
 }
+var checkFile = (sourceDir) => import_path4.default.join(snapshotBase(sourceDir), "check.json");
+function readCheckConfig(sourceDir) {
+  try {
+    const c = JSON.parse(import_fs4.default.readFileSync(checkFile(sourceDir), "utf8"));
+    return typeof c.command === "string" && c.command ? { command: c.command, auto: c.auto === true } : null;
+  } catch {
+    return null;
+  }
+}
 function deleteSnapshot(sourceDir, ref) {
   if (!ref || ref === "latest") throw new Error('[Agent-Undo] Name the snapshot to delete (id or name); "latest" is not accepted.');
   return withLock(sourceDir, () => {
@@ -18492,9 +18501,9 @@ var discardQuiet = (sourceDir, id) => {
   }
 };
 function tryInFork(sourceDir, command, opts = {}) {
-  const label = short(command);
-  const base = takeSnapshot(sourceDir, { reason: `try base: ${label}`, trigger: "fork" });
-  const f = fork(sourceDir, `try: ${label}`);
+  const label2 = short(command);
+  const base = takeSnapshot(sourceDir, { reason: `try base: ${label2}`, trigger: "fork" });
+  const f = fork(sourceDir, `try: ${label2}`);
   const env = { ...opts.env ?? process.env, AGENT_UNDO_FORK: f.dir, AGENT_UNDO_PROJECT: realDir2(sourceDir) };
   const run = (cmd2) => runIn(f.dir, cmd2, { ...opts, env });
   const input = { command, check: opts.check };
@@ -18550,13 +18559,105 @@ The fork is kept as ${id}; to apply it anyway: ${undo(id)}`;
   }
 }
 
+// src/bisect.ts
+var import_fs6 = __toESM(require("fs"));
+var import_path6 = __toESM(require("path"));
+var isEmpty2 = (d) => !d.added.length && !d.modified.length && !d.deleted.length;
+var candidateId = (c) => c === "now" ? "now" : c.id;
+function bisect(sourceDir, opts = {}) {
+  const command = opts.check ?? readCheckConfig(sourceDir)?.command;
+  if (!command) throw new Error('[Agent-Undo] No check command saved. Run `agent-undo check --set "<command>"` once, or pass --check.');
+  const tested = [];
+  const base = snapshotBase(sourceDir);
+  const none = { command, outcome: "nothing", tested, lastGreen: null, firstRed: null, changed: null };
+  let snaps = listSnapshots(sourceDir).filter((s) => s.trigger !== "fork");
+  if (opts.good) {
+    const g = resolveSnapshot(sourceDir, opts.good);
+    snaps = snaps.filter((s) => s.createdAt >= g.createdAt);
+  }
+  if (opts.bad) {
+    const b = resolveSnapshot(sourceDir, opts.bad);
+    snaps = snaps.filter((s) => s.createdAt <= b.createdAt);
+  }
+  const candidates = [...snaps];
+  const newest = snaps.at(-1);
+  if (!opts.bad && (!newest || !isEmpty2(diffSnapshot(sourceDir, newest.id)))) candidates.push("now");
+  if (candidates.length === 0 || candidates.length === 1 && candidates[0] === "now") return none;
+  const evaluate = (c) => {
+    let ok;
+    if (c === "now") {
+      const f = fork(sourceDir, "bisect: working tree");
+      try {
+        ok = runIn(f.dir, command, { stdio: opts.stdio ?? "pipe", timeoutMs: opts.timeoutMs }).status === 0;
+      } finally {
+        try {
+          deleteSnapshot(sourceDir, f.meta.id);
+        } catch {
+        }
+      }
+    } else {
+      if (!opts.fresh && c.check?.command === command) return c.check.ok;
+      const scratch = import_path6.default.join(base, `.bisect-${process.pid}`);
+      forceRemove(scratch);
+      const data = snapshotDir(sourceDir, c.id);
+      try {
+        cloneEntries(data, scratch, import_fs6.default.readdirSync(data));
+        ok = runIn(scratch, command, { stdio: opts.stdio ?? "pipe", timeoutMs: opts.timeoutMs }).status === 0;
+      } finally {
+        forceRemove(scratch);
+      }
+      markSnapshot(sourceDir, c.id, { ok, command });
+    }
+    tested.push({ id: candidateId(c), ok, trigger: c === "now" ? void 0 : c.trigger });
+    opts.onTest?.(c, ok);
+    return ok;
+  };
+  let hi = candidates.length - 1;
+  if (evaluate(candidates[hi])) return { ...none, outcome: "all-green", lastGreen: candidates[hi] === "now" ? null : candidates[hi] };
+  let lo = 0;
+  if (hi === 0 || !evaluate(candidates[lo])) return { ...none, outcome: "all-red", firstRed: candidates[lo] };
+  while (hi - lo > 1) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (evaluate(candidates[mid])) lo = mid;
+    else hi = mid;
+  }
+  const lastGreen = candidates[lo];
+  const firstRed = candidates[hi];
+  const changed = firstRed === "now" ? diffSnapshots(sourceDir, lastGreen.id) : diffSnapshots(sourceDir, lastGreen.id, firstRed.id);
+  return { command, outcome: "found", tested, lastGreen, firstRed, changed };
+}
+var label = (c) => c === "now" ? "now (working tree)" : `${c.id}  [${c.trigger ?? "manual"}]${c.reason ? "  " + c.reason : ""}`;
+var LIST_CAP = 20;
+function describeBisect(r, voice = "cli") {
+  switch (r.outcome) {
+    case "nothing":
+      return "Nothing to bisect: no snapshots of this project yet.";
+    case "all-green":
+      return `Every candidate passes "${r.command}", the newest included. Nothing is broken along this timeline.`;
+    case "all-red":
+      return `The oldest candidate (${label(r.firstRed)}) already fails "${r.command}": no green state in range. Widen the range with --good, or fix forward.`;
+  }
+  const { lastGreen, firstRed, changed } = r;
+  const files = [...changed.added.map((f) => `+ ${f}`), ...changed.modified.map((f) => `~ ${f}`), ...changed.deleted.map((f) => `- ${f}`)];
+  const paths = [...changed.added, ...changed.modified, ...changed.deleted];
+  const back = voice === "cli" ? [`To go back: agent-undo revert ${lastGreen.id} --yes`, ...paths.length && paths.length <= 5 ? [`   or only those paths: agent-undo revert ${lastGreen.id} --only ${paths.join(" ")}`] : []] : [`To go back: revert_environment with snapshot "${lastGreen.id}"${paths.length && paths.length <= 5 ? `, or only those paths with paths: ${JSON.stringify(paths)}` : ""} (preview first, as always).`];
+  return [
+    `Last green: ${label(lastGreen)}`,
+    `First red:  ${label(firstRed)}`,
+    `Between them ${files.length} file(s) changed:`,
+    ...files.slice(0, LIST_CAP),
+    ...files.length > LIST_CAP ? [`... and ${files.length - LIST_CAP} more`] : [],
+    ...back
+  ].join("\n");
+}
+
 // src/version.ts
 var VERSION = "1.3.2";
 
 // src/status.ts
-var import_fs6 = __toESM(require("fs"));
+var import_fs7 = __toESM(require("fs"));
 var import_os3 = __toESM(require("os"));
-var import_path6 = __toESM(require("path"));
+var import_path7 = __toESM(require("path"));
 function doctor(projectDir) {
   const checks = [];
   const major = Number(process.versions.node.split(".")[0]);
@@ -18570,8 +18671,8 @@ function doctor(projectDir) {
     checks.push({ ok: "warn", label: "clone engine", detail: "full copy (no CoW support on this platform)" });
   }
   try {
-    import_fs6.default.mkdirSync(storeHome(), { recursive: true });
-    const same = import_fs6.default.statSync(storeHome()).dev === import_fs6.default.statSync(projectDir).dev;
+    import_fs7.default.mkdirSync(storeHome(), { recursive: true });
+    const same = import_fs7.default.statSync(storeHome()).dev === import_fs7.default.statSync(projectDir).dev;
     checks.push({ ok: same || "warn", label: "same volume", detail: same ? `store ${storeHome()}` : `store ${storeHome()} is on another volume: snapshots will be full copies. Set AGENT_UNDO_HOME to a dir on the project's volume.` });
   } catch (e) {
     checks.push({ ok: false, label: "store", detail: e.message });
@@ -18582,7 +18683,7 @@ function doctor(projectDir) {
   if (cut) checks.push({ ok: false, label: "interrupted", detail: `a revert to ${cut.snapshot} stopped at "${cut.phase}" (${cut.at}): the project may be empty or half restored. Run \`agent-undo doctor --repair\`` });
   checks.push({ ok: true, label: "level", detail: readLevel() });
   const hookError = lastHookError();
-  checks.push({ ok: hookError ? "warn" : true, label: "hooks", detail: hookError ? `last failure: ${hookError} (see ${import_path6.default.join(storeHome(), "hooks.log")})` : "no failures logged" });
+  checks.push({ ok: hookError ? "warn" : true, label: "hooks", detail: hookError ? `last failure: ${hookError} (see ${import_path7.default.join(storeHome(), "hooks.log")})` : "no failures logged" });
   return checks;
 }
 function status(projectDir) {
@@ -18599,13 +18700,13 @@ function status(projectDir) {
 }
 
 // src/mcp-server.ts
-var import_fs7 = __toESM(require("fs"));
-var import_path7 = __toESM(require("path"));
+var import_fs8 = __toESM(require("fs"));
+var import_path8 = __toESM(require("path"));
 var realPath = (p) => {
   try {
-    return import_fs7.default.realpathSync(p);
+    return import_fs8.default.realpathSync(p);
   } catch {
-    return import_path7.default.resolve(p);
+    return import_path8.default.resolve(p);
   }
 };
 var server = new Server(
@@ -18665,6 +18766,20 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       }
     },
     {
+      name: "bisect",
+      description: "Find which step broke the project: binary-search the snapshot timeline (and the working tree) with a check command, running it in a scratch copy of each candidate. Returns the last green and first red snapshot, the files that changed between them, and the revert that goes back. Results are stored as green/red marks on the snapshots.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          check: { type: "string", description: `Command that exits 0 when the project is healthy, e.g. "npm test". Default: the project's saved check.` },
+          good: snapshotProp,
+          bad: snapshotProp,
+          fresh: { type: "boolean", description: "Re-run the check even where a mark is stored." },
+          project_dir: projectProp
+        }
+      }
+    },
+    {
       name: "undo_status",
       description: "agent-undo level, snapshot count, lifetime stats, and environment checks (clone engine, store volume).",
       inputSchema: { type: "object", properties: { project_dir: projectProp } }
@@ -18676,10 +18791,10 @@ var PREVIEW_CAP = 50;
 var OUTPUT_TAIL = 4e3;
 var tail = (s) => s.length > OUTPUT_TAIL ? `[... ${s.length - OUTPUT_TAIL} earlier characters omitted]
 ` + s.slice(-OUTPUT_TAIL) : s;
-function outputBlock(label, r) {
+function outputBlock(label2, r) {
   const status2 = r.timedOut ? "timed out" : `exit ${r.status ?? r.signal}`;
   const body = [r.stdout.trimEnd(), r.stderr.trimEnd()].filter(Boolean).map(tail).join("\n");
-  return [`--- ${label} (${status2}) ---`, body || "(no output)"];
+  return [`--- ${label2} (${status2}) ---`, body || "(no output)"];
 }
 var READ_CAP = 2e5;
 function parsePaths(raw) {
@@ -18710,7 +18825,7 @@ function previewText(p, staleToken) {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const args = request.params.arguments ?? {};
   const cwd = args.project_dir || process.env.CLAUDE_PROJECT_DIR || process.cwd();
-  if (!args.project_dir && !process.env.CLAUDE_PROJECT_DIR && realPath(cwd) === realPath(import_path7.default.join(__dirname, ".."))) {
+  if (!args.project_dir && !process.env.CLAUDE_PROJECT_DIR && realPath(cwd) === realPath(import_path8.default.join(__dirname, ".."))) {
     return text(`agent-undo: the MCP server is running in its own install directory (${cwd}), not your project. Call the tool again with project_dir set to the project's absolute path.`, true);
   }
   try {
@@ -18746,16 +18861,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (typeof args.path !== "string" || !args.path.trim()) return text("Error: `path` must be a project-relative path string.", true);
         const { snapshot, path: p } = snapshotFilePath(cwd, args.path, args.snapshot);
         if (!p) return text(`"${args.path}" is not in snapshot ${snapshot.id} (it was added after the snapshot, or is excluded by .agentundoignore).`, true);
-        const size = import_fs7.default.statSync(p).size;
+        const size = import_fs8.default.statSync(p).size;
         const head = Buffer.alloc(Math.min(size, 8192));
-        const fd = import_fs7.default.openSync(p, "r");
+        const fd = import_fs8.default.openSync(p, "r");
         try {
-          import_fs7.default.readSync(fd, head, 0, head.length, 0);
+          import_fs8.default.readSync(fd, head, 0, head.length, 0);
         } finally {
-          import_fs7.default.closeSync(fd);
+          import_fs8.default.closeSync(fd);
         }
         if (head.includes(0)) return text(`"${args.path}" in ${snapshot.id} is binary (${size} bytes); not shown. Revert that path to restore it.`);
-        const body = import_fs7.default.readFileSync(p, "utf8");
+        const body = import_fs8.default.readFileSync(p, "utf8");
         const clipped = body.length > READ_CAP ? body.slice(0, READ_CAP) + `
 ... [truncated, ${body.length - READ_CAP} more characters; revert the path to restore it in full]` : body;
         return text(`${args.path} as of ${snapshot.id}:
@@ -18768,6 +18883,11 @@ ${clipped}`);
         const r = tryInFork(cwd, args.command, { check, timeoutMs, stdio: "pipe" });
         const lines = [describeTry(r, "mcp"), ...outputBlock("command output", r.command), ...r.check ? outputBlock("check output", r.check) : []];
         return text(lines.join("\n"), !r.ok);
+      }
+      case "bisect": {
+        const check = typeof args.check === "string" && args.check.trim() ? args.check : void 0;
+        const r = bisect(cwd, { check, good: typeof args.good === "string" ? args.good : void 0, bad: typeof args.bad === "string" ? args.bad : void 0, fresh: args.fresh === true, stdio: "pipe", timeoutMs: 6e5 });
+        return text(describeBisect(r, "mcp"));
       }
       case "undo_status": {
         const checks = doctor(cwd).map((c) => `${c.ok === true ? "ok" : c.ok === false ? "FAIL" : "warn"}  ${c.label}: ${c.detail}`);

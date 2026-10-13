@@ -8,6 +8,7 @@ import { LEVELS, isLevel, readLevel, writeLevel } from './config';
 import { doctor, status, protectedBytes } from './status';
 import { tryInFork, describeTry } from './try';
 import { runCheck } from './check';
+import { bisect, describeBisect, candidateId } from './bisect';
 import fs from 'fs';
 import path from 'path';
 import { spawnSync } from 'child_process';
@@ -128,6 +129,24 @@ program
       const r = runCheck(cwd, command);
       if (!r.ok) fail(new Error(`Check "${r.command}" failed (${r.run.timedOut ? 'timed out' : 'exit ' + (r.run.status ?? r.run.signal)}).${r.snapshot ? ` ${r.snapshot.id} is red.` : ''}`));
       console.log(`✅ Check passed: ${r.snapshot!.id} is green. Back to it any time with: agent-undo revert last-green --yes`);
+    } catch (e) { fail(e); }
+  });
+
+program
+  .command('bisect')
+  .description('Find the last snapshot that passes the check and the first that fails, and what changed between them')
+  .option('-c, --check <cmd>', 'the check to run in a scratch copy of each candidate (default: the saved check)')
+  .option('--good <snapshot>', 'oldest candidate to consider')
+  .option('--bad <snapshot>', 'newest candidate to consider (default: the working tree)')
+  .option('--fresh', 're-run the check where a green/red mark is already stored')
+  .option('-t, --timeout <seconds>', 'kill a check that runs longer than this')
+  .action((o: { check?: string; good?: string; bad?: string; fresh?: boolean; timeout?: string }) => {
+    try {
+      const r = bisect(cwd, {
+        check: o.check, good: o.good, bad: o.bad, fresh: o.fresh, timeoutMs: o.timeout ? Number(o.timeout) * 1000 : undefined,
+        onTest: (c, ok) => console.log(`  testing ${candidateId(c)} … ${ok ? '✓ green' : '✗ red'}`),
+      });
+      console.log(describeBisect(r));
     } catch (e) { fail(e); }
   });
 

@@ -18,14 +18,14 @@ async function connect(s) {
   return { client, call, revert };
 }
 
-test('MCP server exposes the seven tools and they work end to end', async (t) => {
+test('MCP server exposes the eight tools and they work end to end', async (t) => {
   const s = sandbox(); t.after(s.cleanup);
   s.write('a.txt', 'one'); s.write('b.txt', 'one');
   const { client, call, revert } = await connect(s);
   t.after(() => client.close());
 
   const { tools } = await client.listTools();
-  assert.deepStrictEqual(tools.map((x) => x.name).sort(), ['diff_snapshot', 'list_snapshots', 'read_snapshot_file', 'revert_environment', 'take_snapshot', 'try_in_fork', 'undo_status']);
+  assert.deepStrictEqual(tools.map((x) => x.name).sort(), ['bisect', 'diff_snapshot', 'list_snapshots', 'read_snapshot_file', 'revert_environment', 'take_snapshot', 'try_in_fork', 'undo_status']);
 
   assert.match(await call('take_snapshot', { name: 'base' }), /Snapshot .*-base taken/);
   s.write('a.txt', 'two'); s.write('b.txt', 'two');
