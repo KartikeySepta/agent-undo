@@ -963,8 +963,8 @@ var require_command = __commonJS({
   "node_modules/commander/lib/command.js"(exports2) {
     var EventEmitter = require("node:events").EventEmitter;
     var childProcess = require("node:child_process");
-    var path9 = require("node:path");
-    var fs9 = require("node:fs");
+    var path10 = require("node:path");
+    var fs10 = require("node:fs");
     var process2 = require("node:process");
     var { Argument: Argument2, humanReadableArgName } = require_argument();
     var { CommanderError: CommanderError2 } = require_error();
@@ -1896,11 +1896,11 @@ Expecting one of '${allowedValues.join("', '")}'`);
         let launchWithNode = false;
         const sourceExt = [".js", ".ts", ".tsx", ".mjs", ".cjs"];
         function findFile(baseDir, baseName) {
-          const localBin = path9.resolve(baseDir, baseName);
-          if (fs9.existsSync(localBin)) return localBin;
-          if (sourceExt.includes(path9.extname(baseName))) return void 0;
+          const localBin = path10.resolve(baseDir, baseName);
+          if (fs10.existsSync(localBin)) return localBin;
+          if (sourceExt.includes(path10.extname(baseName))) return void 0;
           const foundExt = sourceExt.find(
-            (ext) => fs9.existsSync(`${localBin}${ext}`)
+            (ext) => fs10.existsSync(`${localBin}${ext}`)
           );
           if (foundExt) return `${localBin}${foundExt}`;
           return void 0;
@@ -1912,21 +1912,21 @@ Expecting one of '${allowedValues.join("', '")}'`);
         if (this._scriptPath) {
           let resolvedScriptPath;
           try {
-            resolvedScriptPath = fs9.realpathSync(this._scriptPath);
+            resolvedScriptPath = fs10.realpathSync(this._scriptPath);
           } catch (err) {
             resolvedScriptPath = this._scriptPath;
           }
-          executableDir = path9.resolve(
-            path9.dirname(resolvedScriptPath),
+          executableDir = path10.resolve(
+            path10.dirname(resolvedScriptPath),
             executableDir
           );
         }
         if (executableDir) {
           let localFile = findFile(executableDir, executableFile);
           if (!localFile && !subcommand._executableFile && this._scriptPath) {
-            const legacyName = path9.basename(
+            const legacyName = path10.basename(
               this._scriptPath,
-              path9.extname(this._scriptPath)
+              path10.extname(this._scriptPath)
             );
             if (legacyName !== this._name) {
               localFile = findFile(
@@ -1937,7 +1937,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
           }
           executableFile = localFile || executableFile;
         }
-        launchWithNode = sourceExt.includes(path9.extname(executableFile));
+        launchWithNode = sourceExt.includes(path10.extname(executableFile));
         let proc;
         if (process2.platform !== "win32") {
           if (launchWithNode) {
@@ -2777,7 +2777,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @return {Command}
        */
       nameFromFilename(filename) {
-        this._name = path9.basename(filename, path9.extname(filename));
+        this._name = path10.basename(filename, path10.extname(filename));
         return this;
       }
       /**
@@ -2791,9 +2791,9 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {string} [path]
        * @return {(string|null|Command)}
        */
-      executableDir(path10) {
-        if (path10 === void 0) return this._executableDir;
-        this._executableDir = path10;
+      executableDir(path11) {
+        if (path11 === void 0) return this._executableDir;
+        this._executableDir = path11;
         return this;
       }
       /**
@@ -3516,26 +3516,26 @@ var require_ignore = __commonJS({
       const index = body.indexOf(SLASH);
       return index < 0 || index === body.length - 1;
     };
-    var basenameOf = (path9) => {
-      const end = path9.length - 1;
-      const index = path9.lastIndexOf(
+    var basenameOf = (path10) => {
+      const end = path10.length - 1;
+      const index = path10.lastIndexOf(
         SLASH,
-        path9[end] === SLASH ? end - 1 : end
+        path10[end] === SLASH ? end - 1 : end
       );
-      return index < 0 ? path9 : path9.slice(index + 1);
+      return index < 0 ? path10 : path10.slice(index + 1);
     };
-    var parentOf = (path9) => {
-      if (path9.charCodeAt(0) === SLASH_CODE || path9.indexOf(DOUBLE_SLASH) >= 0) {
-        const slices = path9.split(SLASH).filter(Boolean);
+    var parentOf = (path10) => {
+      if (path10.charCodeAt(0) === SLASH_CODE || path10.indexOf(DOUBLE_SLASH) >= 0) {
+        const slices = path10.split(SLASH).filter(Boolean);
         slices.pop();
         return slices.length ? slices.join(SLASH) + SLASH : EMPTY;
       }
-      const end = path9.length - 1;
-      const cut = path9.lastIndexOf(
+      const end = path10.length - 1;
+      const cut = path10.lastIndexOf(
         SLASH,
-        path9.charCodeAt(end) === SLASH_CODE ? end - 1 : end
+        path10.charCodeAt(end) === SLASH_CODE ? end - 1 : end
       );
-      return cut < 0 ? EMPTY : path9.slice(0, cut + 1);
+      return cut < 0 ? EMPTY : path10.slice(0, cut + 1);
     };
     var isString = (subject) => typeof subject === "string";
     var checkPattern = (pattern) => pattern && isString(pattern) && !REGEX_INVALID_TRAILING_BACKSLASH.test(pattern);
@@ -3670,7 +3670,7 @@ var require_ignore = __commonJS({
       // Match the literal 'abc/' for `checkIgnore`, last rule wins. Only a rule
       //   ending in a wildcard can match it (see `checkSourceOf`), so the rest
       //   are left out once, rather than tested or compiled for every path.
-      testLiteral(path9) {
+      testLiteral(path10) {
         const rules = this._literalRules || (this._literalRules = this._rules.filter(
           ({ body }) => body[body.length - (body[body.length - 1] === SLASH ? 2 : 1)] === "*"
         ));
@@ -3679,7 +3679,7 @@ var require_ignore = __commonJS({
         let matchedRule;
         for (let index = rules.length - 1; index >= 0; index--) {
           const rule = rules[index];
-          if (rule.checkRegex.test(path9)) {
+          if (rule.checkRegex.test(path10)) {
             ignored = !rule.negative;
             unignored = rule.negative;
             matchedRule = rule.negative ? UNDEFINED : rule;
@@ -3702,20 +3702,20 @@ var require_ignore = __commonJS({
       //   path matching.
       // - check `string` either `MODE_IGNORE` or `MODE_CHECK_IGNORE`
       // @returns {TestResult} true if a file is ignored
-      test(path9, checkUnignored, mode) {
+      test(path10, checkUnignored, mode) {
         let ignored = false;
         let unignored = false;
         let matchedRule;
         const rules = this._rules;
         const { length } = rules;
         const shortcut = this._basenameCount * 2 >= length;
-        const basename = shortcut ? basenameOf(path9) : path9;
+        const basename = shortcut ? basenameOf(path10) : path10;
         for (let index = 0; index < length; index++) {
           const rule = rules[index];
           const { negative } = rule;
           const skip = unignored === negative && ignored !== unignored || negative && !ignored && !unignored && !checkUnignored;
           if (!skip && rule[mode].test(
-            shortcut && rule._basenameOnly ? basename : path9
+            shortcut && rule._basenameOnly ? basename : path10
           )) {
             ignored = !negative;
             unignored = negative;
@@ -3735,17 +3735,17 @@ var require_ignore = __commonJS({
     var throwError = (message, Ctor) => {
       throw new Ctor(message);
     };
-    var checkPath = (path9, originalPath, doThrow) => {
-      if (!isString(path9)) {
+    var checkPath = (path10, originalPath, doThrow) => {
+      if (!isString(path10)) {
         return doThrow(
           `path must be a string, but got \`${originalPath}\``,
           TypeError
         );
       }
-      if (!path9) {
+      if (!path10) {
         return doThrow(`path must not be empty`, TypeError);
       }
-      if (checkPath.isNotRelative(path9)) {
+      if (checkPath.isNotRelative(path10)) {
         const r = "`path.relative()`d";
         return doThrow(
           `path should be a ${r} string, but got "${originalPath}"`,
@@ -3754,25 +3754,25 @@ var require_ignore = __commonJS({
       }
       return true;
     };
-    var isNotRelative = (path9) => {
-      const first = path9.charCodeAt(0);
+    var isNotRelative = (path10) => {
+      const first = path10.charCodeAt(0);
       if (first === SLASH_CODE) {
         return true;
       }
       if (first !== DOT_CODE) {
         return false;
       }
-      if (path9.length === 1) {
+      if (path10.length === 1) {
         return true;
       }
-      const second = path9.charCodeAt(1);
+      const second = path10.charCodeAt(1);
       if (second === SLASH_CODE) {
         return true;
       }
       if (second !== DOT_CODE) {
         return false;
       }
-      return path9.length === 2 || path9.charCodeAt(2) === SLASH_CODE;
+      return path10.length === 2 || path10.charCodeAt(2) === SLASH_CODE;
     };
     checkPath.isNotRelative = isNotRelative;
     checkPath.convert = (p) => p;
@@ -3803,54 +3803,54 @@ var require_ignore = __commonJS({
       }
       // @returns {TestResult}
       _test(originalPath, cache, checkUnignored) {
-        const path9 = originalPath && checkPath.convert(originalPath);
+        const path10 = originalPath && checkPath.convert(originalPath);
         checkPath(
-          path9,
+          path10,
           originalPath,
           this._strictPathCheck ? throwError : RETURN_FALSE
         );
-        return this._t(path9, cache, checkUnignored);
+        return this._t(path10, cache, checkUnignored);
       }
-      checkIgnore(path9) {
-        if (path9.charCodeAt(path9.length - 1) !== SLASH_CODE) {
-          return this.test(path9);
+      checkIgnore(path10) {
+        if (path10.charCodeAt(path10.length - 1) !== SLASH_CODE) {
+          return this.test(path10);
         }
-        const dir = this._t(path9, this._testCache, true);
+        const dir = this._t(path10, this._testCache, true);
         if (dir.ignored) {
           return dir;
         }
-        const literal = this._rules.testLiteral(path9);
+        const literal = this._rules.testLiteral(path10);
         return literal.ignored || literal.unignored ? literal : dir;
       }
-      _t(path9, cache, checkUnignored) {
-        if (path9 in cache) {
-          return cache[path9];
+      _t(path10, cache, checkUnignored) {
+        if (path10 in cache) {
+          return cache[path10];
         }
-        const parentPath = parentOf(path9);
+        const parentPath = parentOf(path10);
         const parent = parentPath ? this._t(parentPath, cache, checkUnignored) : UNDEFINED;
-        return cache[path9] = parent && parent.ignored ? parent : this._rules.test(path9, checkUnignored, MODE_IGNORE);
+        return cache[path10] = parent && parent.ignored ? parent : this._rules.test(path10, checkUnignored, MODE_IGNORE);
       }
-      ignores(path9) {
-        return this._test(path9, this._ignoreCache, false).ignored;
+      ignores(path10) {
+        return this._test(path10, this._ignoreCache, false).ignored;
       }
       createFilter() {
-        return (path9) => !this.ignores(path9);
+        return (path10) => !this.ignores(path10);
       }
       filter(paths) {
         return makeArray(paths).filter(this.createFilter());
       }
       // @returns {TestResult}
-      test(path9) {
-        return this._test(path9, this._testCache, true);
+      test(path10) {
+        return this._test(path10, this._testCache, true);
       }
     };
     var factory = (options) => new Ignore2(options);
-    var isPathValid = (path9) => checkPath(path9 && checkPath.convert(path9), path9, RETURN_FALSE);
+    var isPathValid = (path10) => checkPath(path10 && checkPath.convert(path10), path10, RETURN_FALSE);
     var setupWindows = () => {
       const makePosix = (str) => /^\\\\\?\\/.test(str) || /["<>|\u0000-\u001F]+/u.test(str) ? str : str.replace(/\\/g, "/");
       checkPath.convert = makePosix;
       const REGEX_TEST_WINDOWS_PATH_ABSOLUTE = /^[a-z]:\//i;
-      checkPath.isNotRelative = (path9) => REGEX_TEST_WINDOWS_PATH_ABSOLUTE.test(path9) || isNotRelative(path9);
+      checkPath.isNotRelative = (path10) => REGEX_TEST_WINDOWS_PATH_ABSOLUTE.test(path10) || isNotRelative(path10);
     };
     if (
       // Detect `process` so that it can run in browsers.
@@ -4147,17 +4147,21 @@ function discard(base, ids) {
   }
 }
 function claimId(base, name) {
-  const createdAt = (/* @__PURE__ */ new Date()).toISOString();
   const slug = name ? "-" + name.replace(/[^\w-]+/g, "_").slice(0, MAX_SLUG) : "";
-  const stamp = createdAt.replace(/[:.]/g, "-");
-  let id = stamp + slug;
-  for (let n = 1; ; n++) {
+  for (let t = Date.now(); ; t++) {
+    const createdAt = new Date(t).toISOString();
+    const stamp = createdAt.replace(/[:.]/g, "-");
+    let existing = [];
     try {
-      import_fs4.default.mkdirSync(import_path4.default.join(base, id));
-      return { id, createdAt };
+      existing = import_fs4.default.readdirSync(base);
+    } catch {
+    }
+    if (existing.some((e) => e.startsWith(stamp))) continue;
+    try {
+      import_fs4.default.mkdirSync(import_path4.default.join(base, stamp + slug));
+      return { id: stamp + slug, createdAt };
     } catch (e) {
       if (e.code !== "EEXIST") throw e;
-      id = `${stamp}.${n}${slug}`;
     }
   }
 }
@@ -4836,9 +4840,38 @@ function describeBisect(r, voice = "cli") {
   ].join("\n");
 }
 
-// src/cli.ts
+// src/replay.ts
 var import_fs8 = __toESM(require("fs"));
 var import_path8 = __toESM(require("path"));
+var isEmpty4 = (d) => !d.added.length && !d.modified.length && !d.deleted.length;
+function timeline(sourceDir) {
+  const snaps = listSnapshots(sourceDir).filter((s) => s.trigger !== "fork");
+  const points = [...snaps];
+  const newest = snaps.at(-1);
+  if (newest && !isEmpty4(diffSnapshot(sourceDir, newest.id))) points.push("now");
+  return points;
+}
+function replay(sourceDir, opts = {}) {
+  const points = timeline(sourceDir);
+  let pairs = points.slice(1).map((to, i) => ({ from: points[i], to }));
+  if (opts.last !== void 0 && opts.last >= 0) pairs = pairs.slice(Math.max(0, pairs.length - opts.last));
+  return pairs.map((p) => ({
+    ...p,
+    changed: p.to === "now" ? diffSnapshots(sourceDir, p.from.id) : diffSnapshots(sourceDir, p.from.id, p.to.id)
+  }));
+}
+function fileAt(sourceDir, c, rel) {
+  const p = import_path8.default.join(c === "now" ? sourceDir : snapshotDir(sourceDir, c.id), rel);
+  try {
+    return import_fs8.default.lstatSync(p).isFile() ? p : null;
+  } catch {
+    return null;
+  }
+}
+
+// src/cli.ts
+var import_fs9 = __toESM(require("fs"));
+var import_path9 = __toESM(require("path"));
 var import_child_process4 = require("child_process");
 var cwd = process.cwd();
 var MODE_LABEL = { clonefile: "clonefile", cow: "copy-on-write", copy: "full copy: no CoW on this filesystem", moved: "moved" };
@@ -4875,16 +4908,21 @@ program.command("list").description("List snapshots for this directory").option(
   if (!all.length) return console.log("No snapshots.");
   for (const s of all) console.log(`${s.id}  [${s.trigger ?? "manual"}, ${s.mode}]${mark(s)}  ${ago(s.createdAt)}${s.reason ? "  " + s.reason : ""}`);
 });
+function unifiedDiff(before, after, labelBefore, labelAfter) {
+  const r = (0, import_child_process4.spawnSync)("diff", ["-u", "--label", labelBefore, "--label", labelAfter, before ?? "/dev/null", after ?? "/dev/null"], { encoding: "utf8" });
+  if (r.error) throw new Error(`could not run \`diff\`: ${r.error.message}. Use \`agent-undo show <path>\` to print a snapshot's copy instead.`);
+  if (r.status === 0) return null;
+  if (r.status !== 1) throw new Error(r.stderr.trim() || `diff exited with ${r.status}`);
+  return r.stdout;
+}
 function fileDiff(file2, ref) {
   const { snapshot, path: before } = snapshotFilePath(cwd, file2, ref);
-  const live = import_path8.default.join(cwd, file2);
-  const now = import_fs8.default.existsSync(live) && import_fs8.default.statSync(live).isFile() ? live : null;
+  const live = import_path9.default.join(cwd, file2);
+  const now = import_fs9.default.existsSync(live) && import_fs9.default.statSync(live).isFile() ? live : null;
   if (!before && !now) fail(new Error(`"${file2}" is neither in snapshot ${snapshot.id} nor in the project.`));
-  const r = (0, import_child_process4.spawnSync)("diff", ["-u", "--label", `${file2} (${snapshot.id})`, "--label", `${file2} (now)`, before ?? "/dev/null", now ?? "/dev/null"], { encoding: "utf8" });
-  if (r.error) fail(new Error(`could not run \`diff\`: ${r.error.message}. Use \`agent-undo show ${file2}\` to print the snapshot copy.`));
-  if (r.status === 0) return console.log(`${file2}: unchanged since ${snapshot.id}`);
-  if (r.status !== 1) fail(new Error(r.stderr.trim() || `diff exited with ${r.status}`));
-  process.stdout.write(r.stdout);
+  const out = unifiedDiff(before, now, `${file2} (${snapshot.id})`, `${file2} (now)`);
+  if (out === null) return console.log(`${file2}: unchanged since ${snapshot.id}`);
+  process.stdout.write(out);
 }
 program.command("diff [snapshot]").description("Show what changed since a snapshot (default: latest) \u2014 i.e. what revert would undo").option("-f, --file <path>", "unified diff of one file between the snapshot and now").option("--json", "machine-readable output").action((ref, o) => {
   try {
@@ -4904,7 +4942,7 @@ program.command("show <path> [snapshot]").description("Print a file as it was in
   try {
     const { snapshot, path: p } = snapshotFilePath(cwd, file2, ref);
     if (!p) fail(new Error(`"${file2}" is not in snapshot ${snapshot.id}.`));
-    process.stdout.write(import_fs8.default.readFileSync(p));
+    process.stdout.write(import_fs9.default.readFileSync(p));
   } catch (e) {
     fail(e);
   }
@@ -4942,6 +4980,35 @@ program.command("bisect").description("Find the last snapshot that passes the ch
       onTest: (c, ok) => console.log(`  testing ${candidateId(c)} \u2026 ${ok ? "\u2713 green" : "\u2717 red"}`)
     });
     console.log(describeBisect(r));
+  } catch (e) {
+    fail(e);
+  }
+});
+program.command("replay").description("Play the session back: every snapshot, what changed since the one before, and finally the working tree").option("-n, --last <n>", "only the last n steps").option("-f, --file <path>", "show this file's unified diff at each step where it changed, instead of the file counts").action((o) => {
+  try {
+    const steps = replay(cwd, { last: o.last ? Number(o.last) : void 0 });
+    if (!steps.length) return console.log("Nothing to replay yet: it takes two states (two snapshots, or one snapshot and a changed working tree).");
+    const points = timeline(cwd);
+    const row = (c) => {
+      const n = points.indexOf(c) + 1;
+      if (c === "now") return `#${n}  now (working tree)`;
+      return `#${n}  ${c.id}  [${c.trigger ?? "manual"}, ${ago(c.createdAt)}]${mark(c)}${c.reason ? "  " + c.reason : ""}`;
+    };
+    console.log(row(steps[0].from));
+    for (const step of steps) {
+      console.log(row(step.to));
+      const { added, modified, deleted } = step.changed;
+      if (o.file) {
+        const rel = import_path9.default.normalize(o.file);
+        if (![...added, ...modified, ...deleted].some((f) => import_path9.default.normalize(f) === rel)) continue;
+        const out = unifiedDiff(fileAt(cwd, step.from, o.file), fileAt(cwd, step.to, o.file), `${o.file} (${step.from.id})`, `${o.file} (${candidateId(step.to)})`);
+        if (out) process.stdout.write(out);
+        continue;
+      }
+      const files = [...added.map((f) => `+ ${f}`), ...modified.map((f) => `~ ${f}`), ...deleted.map((f) => `- ${f}`)];
+      const more = files.length > 6 ? `   \u2026 and ${files.length - 6} more` : "";
+      console.log(`      +${added.length} ~${modified.length} -${deleted.length}   ${files.slice(0, 6).join("   ")}${more}`);
+    }
   } catch (e) {
     fail(e);
   }

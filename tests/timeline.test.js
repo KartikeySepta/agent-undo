@@ -14,13 +14,13 @@ const CHECK = 'test -f ok.txt';
 
 /** Four snapshots: ok, ok, broken (ok.txt deleted), broken. Live tree equals the last one. */
 function brokenTimeline(s) {
-  s.write('ok.txt', ''); s.write('a.txt', '1');
+  s.write('ok.txt', ''); s.write('a.txt', '1\n');
   const s1 = core.takeSnapshot(s.project, { name: 's1' });
-  s.write('a.txt', '2');
+  s.write('a.txt', '2\n');
   const s2 = core.takeSnapshot(s.project, { name: 's2' });
-  fs.rmSync(s.p('ok.txt')); s.write('b.txt', 'new');
+  fs.rmSync(s.p('ok.txt')); s.write('b.txt', 'new\n');
   const s3 = core.takeSnapshot(s.project, { reason: 'hook: rm ok.txt', trigger: 'hook' });
-  s.write('a.txt', '3');
+  s.write('a.txt', '3\n');
   const s4 = core.takeSnapshot(s.project, { name: 's4' });
   return { s1, s2, s3, s4 };
 }
@@ -106,4 +106,44 @@ test('cli and mcp: bisect prints progress and a report with the revert command',
   const text = (await client.callTool({ name: 'bisect', arguments: { check: CHECK } })).content[0].text;
   assert.match(text, new RegExp(`Last green: ${s2.id}`));
   assert.match(text, /revert_environment with snapshot/);
+});
+
+// ---------- replay ----------
+
+test('replay lists each step of the timeline with what changed, ending at the working tree', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  const { s1, s2, s3, s4 } = brokenTimeline(s);
+  core.fork(s.project, 'try: ignored');
+  let steps = core.replay(s.project);
+  assert.strictEqual(steps.length, 3, 'live tree equals s4: three steps');
+  assert.deepStrictEqual(steps.map((x) => [x.from.id, x.to.id]), [[s1.id, s2.id], [s2.id, s3.id], [s3.id, s4.id]]);
+  assert.deepStrictEqual(steps[1].changed, { added: ['b.txt'], modified: [], deleted: ['ok.txt'] });
+  s.write('a.txt', 'live');
+  steps = core.replay(s.project);
+  assert.strictEqual(steps.length, 4);
+  assert.strictEqual(steps[3].to, 'now');
+  assert.deepStrictEqual(steps[3].changed, { added: [], modified: ['a.txt'], deleted: [] });
+  assert.strictEqual(core.replay(s.project, { last: 2 }).length, 2);
+  assert.deepStrictEqual(core.replay(sandbox().project), []);
+});
+
+test('cli: replay prints a numbered flipbook; --file shows that file\'s diff at each step it changed', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  const { s1, s3 } = brokenTimeline(s);
+  core.markSnapshot(s.project, s1.id, { ok: true, command: CHECK });
+  core.markSnapshot(s.project, s3.id, { ok: false, command: CHECK });
+  s.write('a.txt', 'live\n');
+  const out = cli(s, 'replay');
+  assert.match(out, new RegExp(`#1  ${s1.id}\\s+\\[manual, .*\\]\\s+✓ green`));
+  assert.match(out, new RegExp(`#3  ${s3.id}\\s+\\[hook, .*\\]\\s+✗ red\\s+hook: rm ok.txt`));
+  assert.match(out, /\+1 ~0 -1\s+\+ b\.txt\s+- ok\.txt/);
+  assert.match(out, /#5  now \(working tree\)\n\s+\+0 ~1 -0\s+~ a\.txt/);
+  const one = cli(s, 'replay', '--last', '1');
+  assert.doesNotMatch(one, /#2 /);
+  assert.match(one, /now \(working tree\)/);
+  const file = cli(s, 'replay', '--file', 'a.txt');
+  assert.match(file, /^-1\n\+2$/m, 's1 -> s2 changed a.txt from 1 to 2');
+  assert.match(file, /^-3\n\+live$/m, 's4 -> now');
+  assert.doesNotMatch(file, /b\.txt/, 'only the asked file');
+  assert.match(cli(s, 'replay', '--file', 'b.txt'), /@@ -0,0 \+1 @@\n\+new/, 'an added file diffs against nothing');
 });

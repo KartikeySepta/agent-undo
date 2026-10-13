@@ -1138,17 +1138,21 @@ function discard(base, ids) {
   }
 }
 function claimId(base, name) {
-  const createdAt = (/* @__PURE__ */ new Date()).toISOString();
   const slug = name ? "-" + name.replace(/[^\w-]+/g, "_").slice(0, MAX_SLUG) : "";
-  const stamp = createdAt.replace(/[:.]/g, "-");
-  let id = stamp + slug;
-  for (let n = 1; ; n++) {
+  for (let t = Date.now(); ; t++) {
+    const createdAt = new Date(t).toISOString();
+    const stamp = createdAt.replace(/[:.]/g, "-");
+    let existing = [];
     try {
-      import_fs4.default.mkdirSync(import_path4.default.join(base, id));
-      return { id, createdAt };
+      existing = import_fs4.default.readdirSync(base);
+    } catch {
+    }
+    if (existing.some((e) => e.startsWith(stamp))) continue;
+    try {
+      import_fs4.default.mkdirSync(import_path4.default.join(base, stamp + slug));
+      return { id: stamp + slug, createdAt };
     } catch (e) {
       if (e.code !== "EEXIST") throw e;
-      id = `${stamp}.${n}${slug}`;
     }
   }
 }

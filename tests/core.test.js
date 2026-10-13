@@ -322,3 +322,16 @@ test('pruning never drops the newest session baseline', (t) => {
   assert.ok(after.includes(next.id));
   assert.ok(!after.includes(baseline.id), 'the old baseline is prunable once a newer one exists');
 });
+
+test('snapshots taken within the same millisecond list in creation order, whatever their names', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  s.write('a.txt', 'x');
+  // Freeze the clock so every snapshot lands in the same millisecond.
+  const RealDate = Date;
+  const frozen = RealDate.now();
+  global.Date = class extends RealDate { constructor(...a) { a.length ? super(...a) : super(frozen); } static now() { return frozen; } };
+  t.after(() => { global.Date = RealDate; });
+  const ids = ['named-a', undefined, 'named-b', undefined, 'zz'].map((name) => core.takeSnapshot(s.project, { name }).id);
+  assert.deepStrictEqual(core.listSnapshots(s.project).map((m) => m.id), ids);
+  assert.strictEqual(core.resolveSnapshot(s.project).name, 'zz', 'latest is the last one taken');
+});

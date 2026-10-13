@@ -8,7 +8,8 @@ import { LEVELS, isLevel, readLevel, writeLevel } from './config';
 import { doctor, status, protectedBytes } from './status';
 import { tryInFork, describeTry } from './try';
 import { runCheck } from './check';
-import { bisect, describeBisect, candidateId } from './bisect';
+import { bisect, describeBisect, candidateId, Candidate } from './bisect';
+import { replay, fileAt, timeline } from './replay';
 import fs from 'fs';
 import path from 'path';
 import { spawnSync } from 'child_process';
@@ -61,17 +62,24 @@ program
     for (const s of all) console.log(`${s.id}  [${s.trigger ?? 'manual'}, ${s.mode}]${mark(s)}  ${ago(s.createdAt)}${s.reason ? '  ' + s.reason : ''}`);
   });
 
-/** Unified diff of one file between the snapshot and the working tree, via the system `diff`. */
+/** Unified diff of two files (null = absent) via the system `diff`; null when they are identical. */
+function unifiedDiff(before: string | null, after: string | null, labelBefore: string, labelAfter: string): string | null {
+  const r = spawnSync('diff', ['-u', '--label', labelBefore, '--label', labelAfter, before ?? '/dev/null', after ?? '/dev/null'], { encoding: 'utf8' });
+  if (r.error) throw new Error(`could not run \`diff\`: ${r.error.message}. Use \`agent-undo show <path>\` to print a snapshot's copy instead.`);
+  if (r.status === 0) return null;
+  if (r.status !== 1) throw new Error(r.stderr.trim() || `diff exited with ${r.status}`);
+  return r.stdout;
+}
+
+/** Unified diff of one file between the snapshot and the working tree. */
 function fileDiff(file: string, ref?: string): void {
   const { snapshot, path: before } = snapshotFilePath(cwd, file, ref);
   const live = path.join(cwd, file);
   const now = fs.existsSync(live) && fs.statSync(live).isFile() ? live : null;
   if (!before && !now) fail(new Error(`"${file}" is neither in snapshot ${snapshot.id} nor in the project.`));
-  const r = spawnSync('diff', ['-u', '--label', `${file} (${snapshot.id})`, '--label', `${file} (now)`, before ?? '/dev/null', now ?? '/dev/null'], { encoding: 'utf8' });
-  if (r.error) fail(new Error(`could not run \`diff\`: ${r.error.message}. Use \`agent-undo show ${file}\` to print the snapshot copy.`));
-  if (r.status === 0) return console.log(`${file}: unchanged since ${snapshot.id}`);
-  if (r.status !== 1) fail(new Error(r.stderr.trim() || `diff exited with ${r.status}`));
-  process.stdout.write(r.stdout);
+  const out = unifiedDiff(before, now, `${file} (${snapshot.id})`, `${file} (now)`);
+  if (out === null) return console.log(`${file}: unchanged since ${snapshot.id}`);
+  process.stdout.write(out);
 }
 
 program
@@ -147,6 +155,39 @@ program
         onTest: (c, ok) => console.log(`  testing ${candidateId(c)} … ${ok ? '✓ green' : '✗ red'}`),
       });
       console.log(describeBisect(r));
+    } catch (e) { fail(e); }
+  });
+
+program
+  .command('replay')
+  .description('Play the session back: every snapshot, what changed since the one before, and finally the working tree')
+  .option('-n, --last <n>', 'only the last n steps')
+  .option('-f, --file <path>', "show this file's unified diff at each step where it changed, instead of the file counts")
+  .action((o: { last?: string; file?: string }) => {
+    try {
+      const steps = replay(cwd, { last: o.last ? Number(o.last) : undefined });
+      if (!steps.length) return console.log('Nothing to replay yet: it takes two states (two snapshots, or one snapshot and a changed working tree).');
+      const points = timeline(cwd);
+      const row = (c: Candidate) => {
+        const n = points.indexOf(c) + 1;
+        if (c === 'now') return `#${n}  now (working tree)`;
+        return `#${n}  ${c.id}  [${c.trigger ?? 'manual'}, ${ago(c.createdAt)}]${mark(c)}${c.reason ? '  ' + c.reason : ''}`;
+      };
+      console.log(row(steps[0].from));
+      for (const step of steps) {
+        console.log(row(step.to));
+        const { added, modified, deleted } = step.changed;
+        if (o.file) {
+          const rel = path.normalize(o.file);
+          if (![...added, ...modified, ...deleted].some((f) => path.normalize(f) === rel)) continue;
+          const out = unifiedDiff(fileAt(cwd, step.from, o.file), fileAt(cwd, step.to, o.file), `${o.file} (${step.from.id})`, `${o.file} (${candidateId(step.to)})`);
+          if (out) process.stdout.write(out);
+          continue;
+        }
+        const files = [...added.map((f) => `+ ${f}`), ...modified.map((f) => `~ ${f}`), ...deleted.map((f) => `- ${f}`)];
+        const more = files.length > 6 ? `   … and ${files.length - 6} more` : '';
+        console.log(`      +${added.length} ~${modified.length} -${deleted.length}   ${files.slice(0, 6).join('   ')}${more}`);
+      }
     } catch (e) { fail(e); }
   });
 

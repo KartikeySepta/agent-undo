@@ -152,14 +152,18 @@ function discard(base: string, ids: string[]): void {
 
 /** Claim a snapshot id atomically; snapshots within the same millisecond get a .N suffix (sorts after). */
 function claimId(base: string, name?: string): { id: string; createdAt: string } {
-    const createdAt = new Date().toISOString();
     // The id is a directory name (255-byte limit); meta.name keeps the full text and still resolves the snapshot.
     const slug = name ? '-' + name.replace(/[^\w-]+/g, '_').slice(0, MAX_SLUG) : '';
-    const stamp = createdAt.replace(/[:.]/g, '-');
-    let id = stamp + slug;
-    for (let n = 1; ; n++) {
-        try { fs.mkdirSync(path.join(base, id)); return { id, createdAt }; }
-        catch (e: any) { if (e.code !== 'EEXIST') throw e; id = `${stamp}.${n}${slug}`; }
+    // Snapshots list in id order, so the timestamp must be unique by itself: a second snapshot in the
+    // same millisecond takes the next millisecond, whatever either is named.
+    for (let t = Date.now(); ; t++) {
+        const createdAt = new Date(t).toISOString();
+        const stamp = createdAt.replace(/[:.]/g, '-');
+        let existing: string[] = [];
+        try { existing = fs.readdirSync(base); } catch { /* base is created by withLock; be safe anyway */ }
+        if (existing.some((e) => e.startsWith(stamp))) continue;
+        try { fs.mkdirSync(path.join(base, stamp + slug)); return { id: stamp + slug, createdAt }; }
+        catch (e: any) { if (e.code !== 'EEXIST') throw e; }
     }
 }
 
