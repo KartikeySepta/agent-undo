@@ -122,3 +122,19 @@ test('hook: Stop runs the saved check at paranoid level when auto is on, and mar
   assert.strictEqual(r.status, 0, r.stderr);
   assert.strictEqual(core.listSnapshots(s.project)[0].check.ok, true);
 });
+
+test('prune keeps the newest green snapshot, so last-green survives a busy session', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  s.write('a.txt', 'one');
+  const green = core.takeSnapshot(s.project, { keep: 100 });
+  core.markSnapshot(s.project, green.id, { ok: true, command: 'x' });
+  for (let i = 0; i < 12; i++) { s.write('a.txt', `v${i}`); core.takeSnapshot(s.project, { keep: 100 }); }
+  assert.strictEqual(core.pruneSnapshots(s.project, 3), 10, 'everything unnamed beyond the newest 3 goes, except the green one');
+  assert.strictEqual(core.resolveSnapshot(s.project, 'last-green').id, green.id);
+  // An older green gives way once a newer green exists.
+  const newer = core.resolveSnapshot(s.project, 'latest');
+  core.markSnapshot(s.project, newer.id, { ok: true, command: 'x' });
+  core.pruneSnapshots(s.project, 1);
+  assert.strictEqual(core.resolveSnapshot(s.project, 'last-green').id, newer.id);
+  assert.ok(!core.listSnapshots(s.project).some((m) => m.id === green.id), 'the older green is prunable again');
+});

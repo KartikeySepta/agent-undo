@@ -255,12 +255,17 @@ export function pruneOlderThan(sourceDir: string, ageMs: number): number {
     return drop.length;
 }
 
-// Named snapshots are deliberate; only unnamed ones count against the limit. The newest session
-// baseline is also kept: it is what "roll back to the start" means, however busy the session got.
+const FORK_GRACE_MS = 60 * 60_000;
+
+// Named snapshots are deliberate; only unnamed ones count against the limit. Also kept: the newest
+// session baseline (what "roll back to the start" means), the newest green snapshot (what
+// "last-green" means), and any fork young enough that a try may still be running in it.
 function prunableSnapshots(sourceDir: string): SnapshotMeta[] {
     const all = listSnapshots(sourceDir);
     const baseline = all.filter((s) => s.trigger === 'session').at(-1);
-    return all.filter((s) => !s.name && s !== baseline);
+    const green = all.filter((s) => s.check?.ok).at(-1);
+    const inUse = (s: SnapshotMeta) => s.trigger === 'fork' && Date.now() - Date.parse(s.createdAt) < FORK_GRACE_MS;
+    return all.filter((s) => !s.name && s !== baseline && s !== green && !inUse(s));
 }
 
 /** Record a check result (green or red) on a snapshot. */

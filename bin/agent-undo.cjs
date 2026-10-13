@@ -4243,10 +4243,13 @@ function pruneOlderThan(sourceDir, ageMs) {
   discard(snapshotBase(sourceDir), drop.map((s) => s.id));
   return drop.length;
 }
+var FORK_GRACE_MS = 60 * 6e4;
 function prunableSnapshots(sourceDir) {
   const all = listSnapshots(sourceDir);
   const baseline = all.filter((s) => s.trigger === "session").at(-1);
-  return all.filter((s) => !s.name && s !== baseline);
+  const green = all.filter((s) => s.check?.ok).at(-1);
+  const inUse = (s) => s.trigger === "fork" && Date.now() - Date.parse(s.createdAt) < FORK_GRACE_MS;
+  return all.filter((s) => !s.name && s !== baseline && s !== green && !inUse(s));
 }
 function markSnapshot(sourceDir, ref, mark2) {
   const snap = resolveSnapshot(sourceDir, ref);

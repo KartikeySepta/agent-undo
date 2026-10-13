@@ -136,3 +136,31 @@ test('cli: try applies on success and reports the undo handle; fails loudly othe
   const err = fails(s, 'try', 'exit 2');
   assert.match(err, /❌ Command exited with 2[\s\S]*Project unchanged[\s\S]*agent-undo path /);
 });
+
+test('prune leaves a fork alone while a try could still be running in it', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  s.write('a.txt', 'one');
+  const { meta } = core.fork(s.project, 'try: slow install');
+  for (let i = 0; i < 12; i++) { s.write('a.txt', `v${i}`); core.takeSnapshot(s.project, { keep: 100 }); }
+  core.pruneSnapshots(s.project, 2);
+  assert.ok(core.listSnapshots(s.project).some((m) => m.id === meta.id), 'young fork kept');
+  // An abandoned fork from long ago is ordinary clutter.
+  const file = path.join(core.snapshotBase(s.project), meta.id, 'meta.json');
+  fs.writeFileSync(file, JSON.stringify({ ...meta, createdAt: new Date(Date.now() - 3 * 3600e3).toISOString() }));
+  core.pruneSnapshots(s.project, 2);
+  assert.ok(!core.listSnapshots(s.project).some((m) => m.id === meta.id), 'old fork pruned');
+});
+
+test('a full revert never clones a .git entry out of snapshot data over the real repository', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  s.write('a.txt', 'one');
+  fs.mkdirSync(s.p('.git')); s.write('.git/HEAD', 'ref: refs/heads/main\n');
+  const m = core.takeSnapshot(s.project, { name: 'base' });
+  // Something (a linked fork, a hand copy) left a gitfile inside the snapshot data.
+  fs.writeFileSync(path.join(core.snapshotDir(s.project, m.id), '.git'), 'gitdir: /elsewhere/.git\n');
+  s.write('a.txt', 'two');
+  core.revertSnapshot(s.project, m.id);
+  assert.strictEqual(s.read('a.txt'), 'one');
+  assert.ok(fs.statSync(s.p('.git')).isDirectory(), 'real .git directory untouched');
+  assert.strictEqual(s.read('.git/HEAD'), 'ref: refs/heads/main\n');
+});

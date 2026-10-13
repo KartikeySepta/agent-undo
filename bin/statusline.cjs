@@ -936,6 +936,7 @@ function listSnapshots(sourceDir) {
     }
   });
 }
+var FORK_GRACE_MS = 60 * 6e4;
 
 // src/hooks/common.ts
 var PLATFORMS = ["claude", "codex", "cursor", "gemini"];
