@@ -3192,8 +3192,8 @@ var require_utils = __commonJS({
       }
       if (bestLength < 2) return hextets.join(":");
       const head = hextets.slice(0, bestStart).join(":");
-      const tail = hextets.slice(bestStart + bestLength).join(":");
-      return head + "::" + tail;
+      const tail2 = hextets.slice(bestStart + bestLength).join(":");
+      return head + "::" + tail2;
     }
     function normalizeIPv6Address(input) {
       const compression = input.indexOf("::");
@@ -3263,8 +3263,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path7) {
-      let input = path7;
+    function removeDotSegments(path8) {
+      let input = path8;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3673,8 +3673,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path7 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path7 && path7 !== "/" ? path7 : void 0;
+        const path8 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path8 && path8 !== "/" ? path8 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -7187,12 +7187,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs7, exportName) {
+    function addFormats(ajv, list, fs8, exportName) {
       var _a3;
       var _b;
       (_a3 = (_b = ajv.opts.code).formats) !== null && _a3 !== void 0 ? _a3 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs7[f]);
+        ajv.addFormat(f, fs8[f]);
     }
     module2.exports = exports2 = formatsPlugin;
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -7693,26 +7693,26 @@ var require_ignore = __commonJS({
       const index = body.indexOf(SLASH);
       return index < 0 || index === body.length - 1;
     };
-    var basenameOf = (path7) => {
-      const end = path7.length - 1;
-      const index = path7.lastIndexOf(
+    var basenameOf = (path8) => {
+      const end = path8.length - 1;
+      const index = path8.lastIndexOf(
         SLASH,
-        path7[end] === SLASH ? end - 1 : end
+        path8[end] === SLASH ? end - 1 : end
       );
-      return index < 0 ? path7 : path7.slice(index + 1);
+      return index < 0 ? path8 : path8.slice(index + 1);
     };
-    var parentOf = (path7) => {
-      if (path7.charCodeAt(0) === SLASH_CODE || path7.indexOf(DOUBLE_SLASH) >= 0) {
-        const slices = path7.split(SLASH).filter(Boolean);
+    var parentOf = (path8) => {
+      if (path8.charCodeAt(0) === SLASH_CODE || path8.indexOf(DOUBLE_SLASH) >= 0) {
+        const slices = path8.split(SLASH).filter(Boolean);
         slices.pop();
         return slices.length ? slices.join(SLASH) + SLASH : EMPTY;
       }
-      const end = path7.length - 1;
-      const cut = path7.lastIndexOf(
+      const end = path8.length - 1;
+      const cut = path8.lastIndexOf(
         SLASH,
-        path7.charCodeAt(end) === SLASH_CODE ? end - 1 : end
+        path8.charCodeAt(end) === SLASH_CODE ? end - 1 : end
       );
-      return cut < 0 ? EMPTY : path7.slice(0, cut + 1);
+      return cut < 0 ? EMPTY : path8.slice(0, cut + 1);
     };
     var isString = (subject) => typeof subject === "string";
     var checkPattern = (pattern) => pattern && isString(pattern) && !REGEX_INVALID_TRAILING_BACKSLASH.test(pattern);
@@ -7847,7 +7847,7 @@ var require_ignore = __commonJS({
       // Match the literal 'abc/' for `checkIgnore`, last rule wins. Only a rule
       //   ending in a wildcard can match it (see `checkSourceOf`), so the rest
       //   are left out once, rather than tested or compiled for every path.
-      testLiteral(path7) {
+      testLiteral(path8) {
         const rules = this._literalRules || (this._literalRules = this._rules.filter(
           ({ body }) => body[body.length - (body[body.length - 1] === SLASH ? 2 : 1)] === "*"
         ));
@@ -7856,7 +7856,7 @@ var require_ignore = __commonJS({
         let matchedRule;
         for (let index = rules.length - 1; index >= 0; index--) {
           const rule = rules[index];
-          if (rule.checkRegex.test(path7)) {
+          if (rule.checkRegex.test(path8)) {
             ignored = !rule.negative;
             unignored = rule.negative;
             matchedRule = rule.negative ? UNDEFINED : rule;
@@ -7879,20 +7879,20 @@ var require_ignore = __commonJS({
       //   path matching.
       // - check `string` either `MODE_IGNORE` or `MODE_CHECK_IGNORE`
       // @returns {TestResult} true if a file is ignored
-      test(path7, checkUnignored, mode) {
+      test(path8, checkUnignored, mode) {
         let ignored = false;
         let unignored = false;
         let matchedRule;
         const rules = this._rules;
         const { length } = rules;
         const shortcut = this._basenameCount * 2 >= length;
-        const basename = shortcut ? basenameOf(path7) : path7;
+        const basename = shortcut ? basenameOf(path8) : path8;
         for (let index = 0; index < length; index++) {
           const rule = rules[index];
           const { negative } = rule;
           const skip = unignored === negative && ignored !== unignored || negative && !ignored && !unignored && !checkUnignored;
           if (!skip && rule[mode].test(
-            shortcut && rule._basenameOnly ? basename : path7
+            shortcut && rule._basenameOnly ? basename : path8
           )) {
             ignored = !negative;
             unignored = negative;
@@ -7912,17 +7912,17 @@ var require_ignore = __commonJS({
     var throwError = (message, Ctor) => {
       throw new Ctor(message);
     };
-    var checkPath = (path7, originalPath, doThrow) => {
-      if (!isString(path7)) {
+    var checkPath = (path8, originalPath, doThrow) => {
+      if (!isString(path8)) {
         return doThrow(
           `path must be a string, but got \`${originalPath}\``,
           TypeError
         );
       }
-      if (!path7) {
+      if (!path8) {
         return doThrow(`path must not be empty`, TypeError);
       }
-      if (checkPath.isNotRelative(path7)) {
+      if (checkPath.isNotRelative(path8)) {
         const r = "`path.relative()`d";
         return doThrow(
           `path should be a ${r} string, but got "${originalPath}"`,
@@ -7931,25 +7931,25 @@ var require_ignore = __commonJS({
       }
       return true;
     };
-    var isNotRelative = (path7) => {
-      const first = path7.charCodeAt(0);
+    var isNotRelative = (path8) => {
+      const first = path8.charCodeAt(0);
       if (first === SLASH_CODE) {
         return true;
       }
       if (first !== DOT_CODE) {
         return false;
       }
-      if (path7.length === 1) {
+      if (path8.length === 1) {
         return true;
       }
-      const second = path7.charCodeAt(1);
+      const second = path8.charCodeAt(1);
       if (second === SLASH_CODE) {
         return true;
       }
       if (second !== DOT_CODE) {
         return false;
       }
-      return path7.length === 2 || path7.charCodeAt(2) === SLASH_CODE;
+      return path8.length === 2 || path8.charCodeAt(2) === SLASH_CODE;
     };
     checkPath.isNotRelative = isNotRelative;
     checkPath.convert = (p) => p;
@@ -7980,54 +7980,54 @@ var require_ignore = __commonJS({
       }
       // @returns {TestResult}
       _test(originalPath, cache, checkUnignored) {
-        const path7 = originalPath && checkPath.convert(originalPath);
+        const path8 = originalPath && checkPath.convert(originalPath);
         checkPath(
-          path7,
+          path8,
           originalPath,
           this._strictPathCheck ? throwError : RETURN_FALSE
         );
-        return this._t(path7, cache, checkUnignored);
+        return this._t(path8, cache, checkUnignored);
       }
-      checkIgnore(path7) {
-        if (path7.charCodeAt(path7.length - 1) !== SLASH_CODE) {
-          return this.test(path7);
+      checkIgnore(path8) {
+        if (path8.charCodeAt(path8.length - 1) !== SLASH_CODE) {
+          return this.test(path8);
         }
-        const dir = this._t(path7, this._testCache, true);
+        const dir = this._t(path8, this._testCache, true);
         if (dir.ignored) {
           return dir;
         }
-        const literal2 = this._rules.testLiteral(path7);
+        const literal2 = this._rules.testLiteral(path8);
         return literal2.ignored || literal2.unignored ? literal2 : dir;
       }
-      _t(path7, cache, checkUnignored) {
-        if (path7 in cache) {
-          return cache[path7];
+      _t(path8, cache, checkUnignored) {
+        if (path8 in cache) {
+          return cache[path8];
         }
-        const parentPath = parentOf(path7);
+        const parentPath = parentOf(path8);
         const parent = parentPath ? this._t(parentPath, cache, checkUnignored) : UNDEFINED;
-        return cache[path7] = parent && parent.ignored ? parent : this._rules.test(path7, checkUnignored, MODE_IGNORE);
+        return cache[path8] = parent && parent.ignored ? parent : this._rules.test(path8, checkUnignored, MODE_IGNORE);
       }
-      ignores(path7) {
-        return this._test(path7, this._ignoreCache, false).ignored;
+      ignores(path8) {
+        return this._test(path8, this._ignoreCache, false).ignored;
       }
       createFilter() {
-        return (path7) => !this.ignores(path7);
+        return (path8) => !this.ignores(path8);
       }
       filter(paths) {
         return makeArray(paths).filter(this.createFilter());
       }
       // @returns {TestResult}
-      test(path7) {
-        return this._test(path7, this._testCache, true);
+      test(path8) {
+        return this._test(path8, this._testCache, true);
       }
     };
     var factory = (options) => new Ignore2(options);
-    var isPathValid = (path7) => checkPath(path7 && checkPath.convert(path7), path7, RETURN_FALSE);
+    var isPathValid = (path8) => checkPath(path8 && checkPath.convert(path8), path8, RETURN_FALSE);
     var setupWindows = () => {
       const makePosix = (str) => /^\\\\\?\\/.test(str) || /["<>|\u0000-\u001F]+/u.test(str) ? str : str.replace(/\\/g, "/");
       checkPath.convert = makePosix;
       const REGEX_TEST_WINDOWS_PATH_ABSOLUTE = /^[a-z]:\//i;
-      checkPath.isNotRelative = (path7) => REGEX_TEST_WINDOWS_PATH_ABSOLUTE.test(path7) || isNotRelative(path7);
+      checkPath.isNotRelative = (path8) => REGEX_TEST_WINDOWS_PATH_ABSOLUTE.test(path8) || isNotRelative(path8);
     };
     if (
       // Detect `process` so that it can run in browsers.
@@ -8278,10 +8278,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path7) {
-  if (!path7)
+function getElementAtPath(obj, path8) {
+  if (!path8)
     return obj;
-  return path7.reduce((acc, key) => acc?.[key], obj);
+  return path8.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -8621,11 +8621,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path7, issues) {
+function prefixIssues(path8, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path7);
+    iss.path.unshift(path8);
     return iss;
   });
 }
@@ -9071,16 +9071,16 @@ function flattenError(error2, mapper = (issue2) => issue2.message) {
 }
 function formatError(error2, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error3, path7 = []) => {
+  const processError = (error3, path8 = []) => {
     for (const issue2 of error3.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path7, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path8, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path7, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path8, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path7, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path8, ...issue2.path]);
       } else {
-        const fullpath = [...path7, ...issue2.path];
+        const fullpath = [...path8, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -18135,6 +18135,14 @@ function prunableSnapshots(sourceDir) {
   const baseline = all.filter((s) => s.trigger === "session").at(-1);
   return all.filter((s) => !s.name && s !== baseline);
 }
+function deleteSnapshot(sourceDir, ref) {
+  if (!ref || ref === "latest") throw new Error('[Agent-Undo] Name the snapshot to delete (id or name); "latest" is not accepted.');
+  return withLock(sourceDir, () => {
+    const snap = resolveSnapshot(sourceDir, ref);
+    discard(snapshotBase(sourceDir), [snap.id]);
+    return snap;
+  });
+}
 function walk(root, ig, rel = "", out = /* @__PURE__ */ new Map()) {
   for (const e of import_fs4.default.readdirSync(import_path4.default.join(root, rel), { withFileTypes: true })) {
     const r = import_path4.default.join(rel, e.name);
@@ -18195,8 +18203,16 @@ function diffTrees(beforeRoot, afterRoot, ig) {
 function diffSnapshot(sourceDir, ref) {
   return diffTrees(snapshotDir(sourceDir, ref), sourceDir, loadIgnore(sourceDir));
 }
+function diffSnapshots(sourceDir, from, to) {
+  const after = to === void 0 ? sourceDir : snapshotDir(sourceDir, to);
+  return diffTrees(snapshotDir(sourceDir, from), after, loadIgnore(sourceDir));
+}
 function snapshotDir(sourceDir, ref) {
   return dataDir(snapshotBase(sourceDir), resolveSnapshot(sourceDir, ref).id);
+}
+function fork(sourceDir, reason) {
+  const meta2 = takeSnapshot(sourceDir, { reason, trigger: "fork" });
+  return { meta: meta2, dir: dataDir(snapshotBase(sourceDir), meta2.id) };
 }
 function snapshotFilePath(sourceDir, rel, ref) {
   const snapshot = resolveSnapshot(sourceDir, ref);
@@ -18404,13 +18420,132 @@ function revertSnapshot(sourceDir, ref, opts = {}) {
   });
 }
 
+// src/try.ts
+var import_fs5 = __toESM(require("fs"));
+var import_path5 = __toESM(require("path"));
+var import_child_process3 = require("child_process");
+var PATH_FIX_MAX_BYTES = 1024 * 1024;
+var MAX_OUTPUT = 64 * 1024 * 1024;
+var realDir2 = (dir) => {
+  try {
+    return import_fs5.default.realpathSync(dir);
+  } catch {
+    return import_path5.default.resolve(dir);
+  }
+};
+var short = (cmd) => cmd.replace(/\s+/g, " ").trim().slice(0, 60);
+var isEmpty = (d) => !d.added.length && !d.modified.length && !d.deleted.length;
+function runIn(dir, command, opts = {}) {
+  const argv = process.platform === "win32" ? ["cmd", "/d", "/s", "/c", command] : ["sh", "-c", command];
+  const r = (0, import_child_process3.spawnSync)(argv[0], argv.slice(1), {
+    cwd: dir,
+    env: opts.env ?? process.env,
+    stdio: opts.stdio ?? "inherit",
+    timeout: opts.timeoutMs,
+    killSignal: "SIGTERM",
+    encoding: "utf8",
+    maxBuffer: MAX_OUTPUT
+  });
+  const timedOut = r.error?.code === "ETIMEDOUT";
+  if (r.error && !timedOut) throw r.error;
+  return { status: r.status, signal: r.signal, timedOut, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
+}
+function fixForkPaths(projectDir, forkDir, files) {
+  const from = [.../* @__PURE__ */ new Set([forkDir, realDir2(forkDir)])];
+  const to = realDir2(projectDir);
+  let fixed = 0;
+  for (const rel of files) {
+    const p = import_path5.default.join(projectDir, rel);
+    let st;
+    try {
+      st = import_fs5.default.lstatSync(p);
+    } catch {
+      continue;
+    }
+    if (!st.isFile() || st.size > PATH_FIX_MAX_BYTES) continue;
+    const buf = import_fs5.default.readFileSync(p);
+    if (buf.subarray(0, 8192).includes(0)) continue;
+    const text2 = buf.toString("utf8");
+    const next = from.reduce((t, f) => t.split(f).join(to), text2);
+    if (next !== text2) {
+      import_fs5.default.writeFileSync(p, next, { mode: st.mode });
+      fixed++;
+    }
+  }
+  return fixed;
+}
+var discardQuiet = (sourceDir, id) => {
+  try {
+    deleteSnapshot(sourceDir, id);
+  } catch {
+  }
+};
+function tryInFork(sourceDir, command, opts = {}) {
+  const label = short(command);
+  const base = takeSnapshot(sourceDir, { reason: `try base: ${label}`, trigger: "fork" });
+  const f = fork(sourceDir, `try: ${label}`);
+  const env = { ...opts.env ?? process.env, AGENT_UNDO_FORK: f.dir, AGENT_UNDO_PROJECT: realDir2(sourceDir) };
+  const run = (cmd2) => runIn(f.dir, cmd2, { ...opts, env });
+  const input = { command, check: opts.check };
+  const fail = (stage, r) => {
+    discardQuiet(sourceDir, base.id);
+    recordStats((st) => {
+      st.tries++;
+    });
+    return { ok: false, stage, input, fork: f.meta, ...r };
+  };
+  const cmd = run(command);
+  if (cmd.status !== 0) return fail("command", { command: cmd });
+  const check = opts.check ? run(opts.check) : void 0;
+  if (check && check.status !== 0) return fail("check", { command: cmd, check });
+  const drift = diffSnapshot(sourceDir, base.id);
+  if (!isEmpty(drift)) return fail("drift", { command: cmd, check, drift });
+  const changed = diffSnapshots(sourceDir, base.id, f.meta.id);
+  const { backup } = revertSnapshot(sourceDir, f.meta.id);
+  const fixedPaths = fixForkPaths(sourceDir, f.dir, [...changed.added, ...changed.modified]);
+  discardQuiet(sourceDir, f.meta.id);
+  discardQuiet(sourceDir, base.id);
+  recordStats((st) => {
+    st.tries++;
+    st.triesApplied++;
+  });
+  return { ok: true, stage: "applied", input, command: cmd, check, fork: f.meta, applied: { backup, changed, fixedPaths } };
+}
+function describeTry(r, voice = "cli") {
+  const id = r.fork.id;
+  const keep = voice === "cli" ? `The fork is kept as ${id}: \`agent-undo path ${id}\` to inspect it, \`agent-undo delete ${id}\` to drop it.` : `The fork is kept as snapshot ${id}: read_snapshot_file(path, snapshot: "${id}") shows a file as the command left it; revert_environment with snapshot "${id}" would apply it anyway.`;
+  const undo = (snap) => voice === "cli" ? `agent-undo revert ${snap} --yes` : `revert_environment with snapshot "${snap}"`;
+  switch (r.stage) {
+    case "applied": {
+      const { changed, backup, fixedPaths } = r.applied;
+      const n = changed.added.length + changed.modified.length + changed.deleted.length;
+      return [
+        `Try passed: applied ${n} change(s) (${changed.added.length} added, ${changed.modified.length} modified, ${changed.deleted.length} deleted).`,
+        ...fixedPaths ? [`Rewrote the fork path to the project path in ${fixedPaths} file(s).`] : [],
+        `Undo with: ${undo(backup.id)}`
+      ].join("\n");
+    }
+    case "command":
+      return `Command exited with ${r.command.timedOut ? "timeout" : r.command.status ?? r.command.signal}. Project unchanged.
+${keep}`;
+    case "check":
+      return `Check "${r.input.check}" failed (exit ${r.check.timedOut ? "timeout" : r.check.status ?? r.check.signal}) in the fork. Project unchanged.
+${keep}`;
+    case "drift": {
+      const files = [...r.drift.added, ...r.drift.modified, ...r.drift.deleted];
+      return `The project changed while the try ran (${files.length} file(s): ${files.slice(0, 5).join(", ")}${files.length > 5 ? ", ..." : ""}). Nothing applied.
+The fork is kept as ${id}; to apply it anyway: ${undo(id)}`;
+    }
+  }
+}
+
 // src/version.ts
 var VERSION = "1.3.2";
 
 // src/status.ts
-var import_fs5 = __toESM(require("fs"));
+var import_fs6 = __toESM(require("fs"));
 var import_os3 = __toESM(require("os"));
-var import_path5 = __toESM(require("path"));
+var import_path6 = __toESM(require("path"));
 function doctor(projectDir) {
   const checks = [];
   const major = Number(process.versions.node.split(".")[0]);
@@ -18424,8 +18559,8 @@ function doctor(projectDir) {
     checks.push({ ok: "warn", label: "clone engine", detail: "full copy (no CoW support on this platform)" });
   }
   try {
-    import_fs5.default.mkdirSync(storeHome(), { recursive: true });
-    const same = import_fs5.default.statSync(storeHome()).dev === import_fs5.default.statSync(projectDir).dev;
+    import_fs6.default.mkdirSync(storeHome(), { recursive: true });
+    const same = import_fs6.default.statSync(storeHome()).dev === import_fs6.default.statSync(projectDir).dev;
     checks.push({ ok: same || "warn", label: "same volume", detail: same ? `store ${storeHome()}` : `store ${storeHome()} is on another volume: snapshots will be full copies. Set AGENT_UNDO_HOME to a dir on the project's volume.` });
   } catch (e) {
     checks.push({ ok: false, label: "store", detail: e.message });
@@ -18436,7 +18571,7 @@ function doctor(projectDir) {
   if (cut) checks.push({ ok: false, label: "interrupted", detail: `a revert to ${cut.snapshot} stopped at "${cut.phase}" (${cut.at}): the project may be empty or half restored. Run \`agent-undo doctor --repair\`` });
   checks.push({ ok: true, label: "level", detail: readLevel() });
   const hookError = lastHookError();
-  checks.push({ ok: hookError ? "warn" : true, label: "hooks", detail: hookError ? `last failure: ${hookError} (see ${import_path5.default.join(storeHome(), "hooks.log")})` : "no failures logged" });
+  checks.push({ ok: hookError ? "warn" : true, label: "hooks", detail: hookError ? `last failure: ${hookError} (see ${import_path6.default.join(storeHome(), "hooks.log")})` : "no failures logged" });
   return checks;
 }
 function status(projectDir) {
@@ -18453,13 +18588,13 @@ function status(projectDir) {
 }
 
 // src/mcp-server.ts
-var import_fs6 = __toESM(require("fs"));
-var import_path6 = __toESM(require("path"));
+var import_fs7 = __toESM(require("fs"));
+var import_path7 = __toESM(require("path"));
 var realPath = (p) => {
   try {
-    return import_fs6.default.realpathSync(p);
+    return import_fs7.default.realpathSync(p);
   } catch {
-    return import_path6.default.resolve(p);
+    return import_path7.default.resolve(p);
   }
 };
 var server = new Server(
@@ -18504,6 +18639,20 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       inputSchema: { type: "object", properties: { path: { type: "string", description: "Project-relative path of the file." }, snapshot: snapshotProp, project_dir: projectProp }, required: ["path"] }
     },
     {
+      name: "try_in_fork",
+      description: "Run a shell command in a copy-on-write fork of the project and swap the result in ONLY if it exits 0 and `check` passes. Nothing in the project changes otherwise, so there is nothing to undo. Prefer this over snapshot-then-run for installs, upgrades, codegen and migrations that have a check (the tests, the build). The fork has no .git and lacks paths excluded by .agentundoignore; commands that reach outside the project (network, global installs, databases) still happen.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          command: { type: "string", description: 'Shell command to run inside the fork, e.g. "npm install react@19".' },
+          check: { type: "string", description: `Command that must exit 0 inside the fork before the result is applied, e.g. "npm test". Without it, the command's own exit code decides.` },
+          timeout_s: { type: "number", description: "Kill the command or the check after this many seconds (default 600)." },
+          project_dir: projectProp
+        },
+        required: ["command"]
+      }
+    },
+    {
       name: "undo_status",
       description: "agent-undo level, snapshot count, lifetime stats, and environment checks (clone engine, store volume).",
       inputSchema: { type: "object", properties: { project_dir: projectProp } }
@@ -18512,6 +18661,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 }));
 var text = (t, isError = false) => ({ content: [{ type: "text", text: t }], ...isError && { isError } });
 var PREVIEW_CAP = 50;
+var OUTPUT_TAIL = 4e3;
+var tail = (s) => s.length > OUTPUT_TAIL ? `[... ${s.length - OUTPUT_TAIL} earlier characters omitted]
+` + s.slice(-OUTPUT_TAIL) : s;
+function outputBlock(label, r) {
+  const status2 = r.timedOut ? "timed out" : `exit ${r.status ?? r.signal}`;
+  const body = [r.stdout.trimEnd(), r.stderr.trimEnd()].filter(Boolean).map(tail).join("\n");
+  return [`--- ${label} (${status2}) ---`, body || "(no output)"];
+}
 var READ_CAP = 2e5;
 function parsePaths(raw) {
   if (raw === void 0 || raw === null) return void 0;
@@ -18541,7 +18698,7 @@ function previewText(p, staleToken) {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const args = request.params.arguments ?? {};
   const cwd = args.project_dir || process.env.CLAUDE_PROJECT_DIR || process.cwd();
-  if (!args.project_dir && !process.env.CLAUDE_PROJECT_DIR && realPath(cwd) === realPath(import_path6.default.join(__dirname, ".."))) {
+  if (!args.project_dir && !process.env.CLAUDE_PROJECT_DIR && realPath(cwd) === realPath(import_path7.default.join(__dirname, ".."))) {
     return text(`agent-undo: the MCP server is running in its own install directory (${cwd}), not your project. Call the tool again with project_dir set to the project's absolute path.`, true);
   }
   try {
@@ -18576,20 +18733,28 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (typeof args.path !== "string" || !args.path.trim()) return text("Error: `path` must be a project-relative path string.", true);
         const { snapshot, path: p } = snapshotFilePath(cwd, args.path, args.snapshot);
         if (!p) return text(`"${args.path}" is not in snapshot ${snapshot.id} (it was added after the snapshot, or is excluded by .agentundoignore).`, true);
-        const size = import_fs6.default.statSync(p).size;
+        const size = import_fs7.default.statSync(p).size;
         const head = Buffer.alloc(Math.min(size, 8192));
-        const fd = import_fs6.default.openSync(p, "r");
+        const fd = import_fs7.default.openSync(p, "r");
         try {
-          import_fs6.default.readSync(fd, head, 0, head.length, 0);
+          import_fs7.default.readSync(fd, head, 0, head.length, 0);
         } finally {
-          import_fs6.default.closeSync(fd);
+          import_fs7.default.closeSync(fd);
         }
         if (head.includes(0)) return text(`"${args.path}" in ${snapshot.id} is binary (${size} bytes); not shown. Revert that path to restore it.`);
-        const body = import_fs6.default.readFileSync(p, "utf8");
+        const body = import_fs7.default.readFileSync(p, "utf8");
         const clipped = body.length > READ_CAP ? body.slice(0, READ_CAP) + `
 ... [truncated, ${body.length - READ_CAP} more characters; revert the path to restore it in full]` : body;
         return text(`${args.path} as of ${snapshot.id}:
 ${clipped}`);
+      }
+      case "try_in_fork": {
+        if (typeof args.command !== "string" || !args.command.trim()) return text("Error: `command` must be a non-empty shell command string.", true);
+        const timeoutMs = (typeof args.timeout_s === "number" && args.timeout_s > 0 ? args.timeout_s : 600) * 1e3;
+        const check = typeof args.check === "string" && args.check.trim() ? args.check : void 0;
+        const r = tryInFork(cwd, args.command, { check, timeoutMs, stdio: "pipe" });
+        const lines = [describeTry(r, "mcp"), ...outputBlock("command output", r.command), ...r.check ? outputBlock("check output", r.check) : []];
+        return text(lines.join("\n"), !r.ok);
       }
       case "undo_status": {
         const checks = doctor(cwd).map((c) => `${c.ok === true ? "ok" : c.ok === false ? "FAIL" : "warn"}  ${c.label}: ${c.detail}`);

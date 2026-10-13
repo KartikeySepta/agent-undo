@@ -1234,6 +1234,7 @@ function prunableSnapshots(sourceDir) {
 // src/instructions.ts
 var CORE_RULES = [
   "Snapshot before danger: before dependency installs/removals, migrations, bulk deletes, codegen or large refactors, call `take_snapshot` with a descriptive `name`.",
+  "Try it over there first: when a risky command has a check that proves it worked (an install or upgrade followed by the tests, codegen followed by the build, a migration followed by a smoke test), prefer `try_in_fork(command, check)`. It runs the command in a copy-on-write fork of the project and swaps the result in only if the check passes; a failure leaves the project untouched, so there is nothing to undo.",
   "Revert in two steps: a revert discards everything changed since the snapshot, including legitimate work and edits the user made meanwhile. `revert_environment` without `confirm` reverts nothing: it lists every path it would undo and returns a `confirm_token`. Read that list, then call again with the same arguments plus `confirm`.",
   "Prefer a partial revert: if only some files are broken, pass `paths` to `revert_environment` and keep the rest.",
   `Ask before reverting changes that are not yours: if the preview lists files you did not change, or that the user's request does not account for, do not confirm. Name those files and ask the user. "Roll it back" is not consent to discard work nobody mentioned.`,
@@ -1250,7 +1251,7 @@ var LEVEL_NOTES = {
 function getInstructions(level) {
   if (level === "off") return "AGENT-UNDO OFF. Do not take snapshots or revert unless the user explicitly asks.";
   return [
-    `AGENT-UNDO ACTIVE (${level}). You can snapshot and roll back this project, including untracked files and node_modules, with the agent-undo MCP tools: take_snapshot, list_snapshots, diff_snapshot, read_snapshot_file, revert_environment, undo_status.`,
+    `AGENT-UNDO ACTIVE (${level}). You can snapshot and roll back this project, including untracked files and node_modules, with the agent-undo MCP tools: take_snapshot, list_snapshots, diff_snapshot, read_snapshot_file, try_in_fork, revert_environment, undo_status.`,
     LEVEL_NOTES[level],
     ...CORE_RULES.map((r, i) => `${i + 1}. ${r}`),
     "The top-level .git and paths in .agentundoignore are never snapshotted or touched. Switch level: /agent-undo lite|full|paranoid|off."
@@ -1261,7 +1262,7 @@ var STATIC_BODY = [
   "",
   "You can snapshot and roll back this project with agent-undo: copy-on-write clones of the whole directory, including untracked files, `node_modules`, build output and local databases. Snapshots take milliseconds and cost almost no disk, so take them freely.",
   "",
-  "Use the agent-undo MCP tools: `take_snapshot(name?)`, `list_snapshots`, `diff_snapshot(snapshot?)`, `read_snapshot_file(path, snapshot?)`, `revert_environment(snapshot?, paths?, confirm?)`, `undo_status`. Every tool takes an optional `project_dir`; pass the project's absolute path. Without the MCP server, the same operations are a CLI: `agent-undo snapshot <name>`, `agent-undo list`, `agent-undo diff [snap] [--file <path>]`, `agent-undo show <path> [snap]`, `agent-undo revert [snap] --yes [--only <paths...>]`.",
+  'Use the agent-undo MCP tools: `take_snapshot(name?)`, `list_snapshots`, `diff_snapshot(snapshot?)`, `read_snapshot_file(path, snapshot?)`, `try_in_fork(command, check?)`, `revert_environment(snapshot?, paths?, confirm?)`, `undo_status`. Every tool takes an optional `project_dir`; pass the project\'s absolute path. Without the MCP server, the same operations are a CLI: `agent-undo snapshot <name>`, `agent-undo list`, `agent-undo diff [snap] [--file <path>]`, `agent-undo show <path> [snap]`, `agent-undo try "<command>" --check "<command>"`, `agent-undo revert [snap] --yes [--only <paths...>]`.',
   "",
   "## Rules",
   "",

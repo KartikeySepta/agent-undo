@@ -34,6 +34,8 @@ Switch: `/agent-undo lite|full|paranoid|off`. "stop undo" turns it off.
 | `take_snapshot(name?)` | Checkpoint before something risky. Named snapshots are never auto-pruned. |
 | `list_snapshots` | See checkpoints, what triggered each (manual, hook, session, turn, pre-revert). |
 | `diff_snapshot(snapshot?)` | See exactly what a revert would undo: `+` added, `~` modified, `-` deleted. |
+| `read_snapshot_file(path, snapshot?)` | A file as it was in a snapshot, to look at or copy one function back from, without reverting. |
+| `try_in_fork(command, check?)` | Run a risky command in a fork of the project; the result is swapped in only if it and `check` pass. A failure never touches the project. |
 | `revert_environment(snapshot?, paths?, confirm?)` | Roll back everything, or only `paths`. Two steps: without `confirm` it reverts nothing and returns a preview plus `confirm_token`; call again with `confirm` to revert. Saves a `pre-revert` snapshot first. |
 | `undo_status` | Level, snapshot count, engine and volume checks. |
 
@@ -43,13 +45,14 @@ you are not sure the server is running in it.
 ## Rules
 
 1. Snapshot before danger: before dependency installs/removals, migrations, bulk deletes, codegen or large refactors, call `take_snapshot` with a descriptive `name`.
-2. Revert in two steps: a revert discards everything changed since the snapshot, including legitimate work and edits the user made meanwhile. `revert_environment` without `confirm` reverts nothing: it lists every path it would undo and returns a `confirm_token`. Read that list, then call again with the same arguments plus `confirm`.
-3. Prefer a partial revert: if only some files are broken, pass `paths` to `revert_environment` and keep the rest.
-4. Ask before reverting changes that are not yours: if the preview lists files you did not change, or that the user's request does not account for, do not confirm. Name those files and ask the user. "Roll it back" is not consent to discard work nobody mentioned.
-5. Revert instead of thrashing: if an attempt broke the build and two fixes have not worked, revert to the last good snapshot and try a different approach.
-6. Reverts are undoable: each revert saves a `pre-revert` snapshot; its id is in the tool result.
-7. Report plainly: after reverting, say what was undone and what you will try next.
-8. Know the boundary: snapshots cover only the project directory. They cannot undo pushes, deploys, remote or production databases, sent messages or global installs, and a snapshot taken first does not make those safe. Before one, say so and ask the user, even if they say agent-undo has it covered; at full and paranoid levels the hook also makes Claude Code ask before force-pushes, deploys and production database commands.
+2. Try it over there first: when a risky command has a check that proves it worked (an install or upgrade followed by the tests, codegen followed by the build, a migration followed by a smoke test), prefer `try_in_fork(command, check)`. It runs the command in a copy-on-write fork of the project and swaps the result in only if the check passes; a failure leaves the project untouched, so there is nothing to undo.
+3. Revert in two steps: a revert discards everything changed since the snapshot, including legitimate work and edits the user made meanwhile. `revert_environment` without `confirm` reverts nothing: it lists every path it would undo and returns a `confirm_token`. Read that list, then call again with the same arguments plus `confirm`.
+4. Prefer a partial revert: if only some files are broken, pass `paths` to `revert_environment` and keep the rest.
+5. Ask before reverting changes that are not yours: if the preview lists files you did not change, or that the user's request does not account for, do not confirm. Name those files and ask the user. "Roll it back" is not consent to discard work nobody mentioned.
+6. Revert instead of thrashing: if an attempt broke the build and two fixes have not worked, revert to the last good snapshot and try a different approach.
+7. Reverts are undoable: each revert saves a `pre-revert` snapshot; its id is in the tool result.
+8. Report plainly: after reverting, say what was undone and what you will try next.
+9. Know the boundary: snapshots cover only the project directory. They cannot undo pushes, deploys, remote or production databases, sent messages or global installs, and a snapshot taken first does not make those safe. Before one, say so and ask the user, even if they say agent-undo has it covered; at full and paranoid levels the hook also makes Claude Code ask before force-pushes, deploys and production database commands.
 
 ## The undo ladder
 

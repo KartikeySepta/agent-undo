@@ -4,6 +4,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { takeSnapshot, revertSnapshot, listSnapshots, diffSnapshot, previewRevert, snapshotFilePath, RevertPreview } from "./snapshot";
 import { readLevel } from "./config";
+import { tryInFork, describeTry, RunResult } from "./try";
 import { VERSION } from "./version";
 import { status, doctor } from "./status";
 import fs from "fs";
@@ -55,6 +56,20 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       inputSchema: { type: "object", properties: { path: { type: "string", description: "Project-relative path of the file." }, snapshot: snapshotProp, project_dir: projectProp }, required: ["path"] },
     },
     {
+      name: "try_in_fork",
+      description: "Run a shell command in a copy-on-write fork of the project and swap the result in ONLY if it exits 0 and `check` passes. Nothing in the project changes otherwise, so there is nothing to undo. Prefer this over snapshot-then-run for installs, upgrades, codegen and migrations that have a check (the tests, the build). The fork has no .git and lacks paths excluded by .agentundoignore; commands that reach outside the project (network, global installs, databases) still happen.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          command: { type: "string", description: "Shell command to run inside the fork, e.g. \"npm install react@19\"." },
+          check: { type: "string", description: "Command that must exit 0 inside the fork before the result is applied, e.g. \"npm test\". Without it, the command's own exit code decides." },
+          timeout_s: { type: "number", description: "Kill the command or the check after this many seconds (default 600)." },
+          project_dir: projectProp,
+        },
+        required: ["command"],
+      },
+    },
+    {
       name: "undo_status",
       description: "agent-undo level, snapshot count, lifetime stats, and environment checks (clone engine, store volume).",
       inputSchema: { type: "object", properties: { project_dir: projectProp } },
@@ -65,6 +80,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 const text = (t: string, isError = false) => ({ content: [{ type: "text", text: t }], ...(isError && { isError }) });
 
 const PREVIEW_CAP = 50;
+const OUTPUT_TAIL = 4000;
+
+const tail = (s: string) => (s.length > OUTPUT_TAIL ? `[... ${s.length - OUTPUT_TAIL} earlier characters omitted]\n` + s.slice(-OUTPUT_TAIL) : s);
+function outputBlock(label: string, r: RunResult): string[] {
+  const status = r.timedOut ? "timed out" : `exit ${r.status ?? r.signal}`;
+  const body = [r.stdout.trimEnd(), r.stderr.trimEnd()].filter(Boolean).map(tail).join("\n");
+  return [`--- ${label} (${status}) ---`, body || "(no output)"];
+}
 const READ_CAP = 200_000;
 
 /** Models sometimes send one path as a bare string. Accept that; reject anything else that isn't a list of non-empty strings. */
@@ -99,7 +122,7 @@ function previewText(p: RevertPreview, staleToken?: string): string {
 }
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const args = (request.params.arguments ?? {}) as { name?: string; snapshot?: string; paths?: unknown; project_dir?: string; confirm?: string; path?: unknown };
+  const args = (request.params.arguments ?? {}) as { name?: string; snapshot?: string; paths?: unknown; project_dir?: string; confirm?: string; path?: unknown; command?: unknown; check?: unknown; timeout_s?: unknown };
   const cwd = args.project_dir || process.env.CLAUDE_PROJECT_DIR || process.cwd();
   // Some hosts (Codex plugins, Gemini extensions) start the server inside the plugin's own
   // directory. Never silently snapshot or revert agent-undo itself: ask for project_dir instead.
@@ -144,6 +167,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const body = fs.readFileSync(p, "utf8");
         const clipped = body.length > READ_CAP ? body.slice(0, READ_CAP) + `\n... [truncated, ${body.length - READ_CAP} more characters; revert the path to restore it in full]` : body;
         return text(`${args.path} as of ${snapshot.id}:\n${clipped}`);
+      }
+      case "try_in_fork": {
+        if (typeof args.command !== "string" || !args.command.trim()) return text("Error: `command` must be a non-empty shell command string.", true);
+        const timeoutMs = (typeof args.timeout_s === "number" && args.timeout_s > 0 ? args.timeout_s : 600) * 1000;
+        const check = typeof args.check === "string" && args.check.trim() ? args.check : undefined;
+        const r = tryInFork(cwd, args.command, { check, timeoutMs, stdio: "pipe" });
+        const lines = [describeTry(r, "mcp"), ...outputBlock("command output", r.command), ...(r.check ? outputBlock("check output", r.check) : [])];
+        return text(lines.join("\n"), !r.ok);
       }
       case "undo_status": {
         const checks = doctor(cwd).map((c) => `${c.ok === true ? "ok" : c.ok === false ? "FAIL" : "warn"}  ${c.label}: ${c.detail}`);

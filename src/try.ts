@@ -116,9 +116,13 @@ export function tryInFork(sourceDir: string, command: string, opts: TryOptions =
     return { ok: true, stage: 'applied', input, command: cmd, check, fork: f.meta, applied: { backup, changed, fixedPaths } };
 }
 
-/** Human-readable outcome, shared by the CLI and the MCP tool. */
-export function describeTry(r: TryResult): string {
-    const keep = `The fork is kept as ${r.fork.id}: \`agent-undo path ${r.fork.id}\` to inspect it, \`agent-undo delete ${r.fork.id}\` to drop it.`;
+/** Human-readable outcome, in the CLI's vocabulary or the MCP tools'. */
+export function describeTry(r: TryResult, voice: 'cli' | 'mcp' = 'cli'): string {
+    const id = r.fork.id;
+    const keep = voice === 'cli'
+        ? `The fork is kept as ${id}: \`agent-undo path ${id}\` to inspect it, \`agent-undo delete ${id}\` to drop it.`
+        : `The fork is kept as snapshot ${id}: read_snapshot_file(path, snapshot: "${id}") shows a file as the command left it; revert_environment with snapshot "${id}" would apply it anyway.`;
+    const undo = (snap: string) => voice === 'cli' ? `agent-undo revert ${snap} --yes` : `revert_environment with snapshot "${snap}"`;
     switch (r.stage) {
         case 'applied': {
             const { changed, backup, fixedPaths } = r.applied!;
@@ -126,7 +130,7 @@ export function describeTry(r: TryResult): string {
             return [
                 `Try passed: applied ${n} change(s) (${changed.added.length} added, ${changed.modified.length} modified, ${changed.deleted.length} deleted).`,
                 ...(fixedPaths ? [`Rewrote the fork path to the project path in ${fixedPaths} file(s).`] : []),
-                `Undo with: agent-undo revert ${backup.id} --yes`,
+                `Undo with: ${undo(backup.id)}`,
             ].join('\n');
         }
         case 'command':
@@ -136,7 +140,7 @@ export function describeTry(r: TryResult): string {
         case 'drift': {
             const files = [...r.drift!.added, ...r.drift!.modified, ...r.drift!.deleted];
             return `The project changed while the try ran (${files.length} file(s): ${files.slice(0, 5).join(', ')}${files.length > 5 ? ', ...' : ''}). Nothing applied.\n` +
-                `The fork is kept as ${r.fork.id}; to apply it anyway: agent-undo revert ${r.fork.id} --yes`;
+                `The fork is kept as ${id}; to apply it anyway: ${undo(id)}`;
         }
     }
 }

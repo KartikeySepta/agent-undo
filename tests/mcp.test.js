@@ -18,14 +18,14 @@ async function connect(s) {
   return { client, call, revert };
 }
 
-test('MCP server exposes the six tools and they work end to end', async (t) => {
+test('MCP server exposes the seven tools and they work end to end', async (t) => {
   const s = sandbox(); t.after(s.cleanup);
   s.write('a.txt', 'one'); s.write('b.txt', 'one');
   const { client, call, revert } = await connect(s);
   t.after(() => client.close());
 
   const { tools } = await client.listTools();
-  assert.deepStrictEqual(tools.map((x) => x.name).sort(), ['diff_snapshot', 'list_snapshots', 'read_snapshot_file', 'revert_environment', 'take_snapshot', 'undo_status']);
+  assert.deepStrictEqual(tools.map((x) => x.name).sort(), ['diff_snapshot', 'list_snapshots', 'read_snapshot_file', 'revert_environment', 'take_snapshot', 'try_in_fork', 'undo_status']);
 
   assert.match(await call('take_snapshot', { name: 'base' }), /Snapshot .*-base taken/);
   s.write('a.txt', 'two'); s.write('b.txt', 'two');
@@ -153,4 +153,27 @@ test('revert_environment accepts a single path string and rejects a malformed pa
   assert.match(await revert({ paths: 'a.txt' }), /\(only a\.txt\)/, 'a bare string is treated as one path');
   assert.strictEqual(s.read('a.txt'), 'one');
   assert.strictEqual(s.read('b.txt'), 'two');
+});
+
+test('try_in_fork applies a passing command and reports failures with the output, project unchanged', async (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  s.write('a.txt', 'one');
+  const { client, call } = await connect(s);
+  t.after(() => client.close());
+
+  const ok = await call('try_in_fork', { command: 'printf two > a.txt && echo installed', check: 'test -f a.txt' });
+  assert.match(ok, /Try passed: applied 1 change/);
+  assert.match(ok, /revert_environment with snapshot ".*pre-revert"/, 'tells the agent how to undo in its own vocabulary');
+  assert.match(ok, /installed/, 'command output is included');
+  assert.strictEqual(s.read('a.txt'), 'two');
+
+  const bad = await client.callTool({ name: 'try_in_fork', arguments: { command: 'printf three > a.txt; echo boom >&2; exit 7' } });
+  assert.strictEqual(bad.isError, true);
+  assert.match(bad.content[0].text, /Command exited with 7[\s\S]*Project unchanged[\s\S]*boom/);
+  assert.match(bad.content[0].text, /read_snapshot_file/, 'points at how to inspect the kept fork');
+  assert.strictEqual(s.read('a.txt'), 'two');
+
+  const missing = await client.callTool({ name: 'try_in_fork', arguments: {} });
+  assert.strictEqual(missing.isError, true);
+  assert.match(missing.content[0].text, /command/);
 });
