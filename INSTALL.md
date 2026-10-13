@@ -183,7 +183,7 @@ to an unrelated project; the commands are still `agent-undo` and `agent-undo-mcp
 can also run the server with `npx -y -p @atpes/agent-undo agent-undo-mcp`. To hack on it, clone
 the repository and `npm install -g .` instead. Commands:
 `snapshot [name] [--if-changed]`, `list [--json]`, `diff [snap] [--file <path>] [--json]`, `show <path> [snap]`,
-`path [snap]`, `try <command> [--check <cmd>]`, `check [command] [--set <cmd> [--auto]]`, `bisect [--check <cmd>]`, `replay [--last <n>] [--file <path>]`,
+`path [snap]`, `try <command> [--check <cmd> | --no-check] [--git]`, `check [command] [--set <cmd>] [--auto | --no-auto]`, `bisect [--check <cmd>]`, `replay [--last <n>] [--file <path>]`,
 `revert [snap] [--yes] [--only <paths...>]`, `delete <snap>`, `prune [--keep <n>] [--older-than <age>]`,
 `mode [level]`, `stats [--json]`, `doctor [--repair]`.
 

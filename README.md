@@ -45,7 +45,7 @@ agent  ▸ try_in_fork("npm install react@19", check: "npm test")
 agent  ▸ React 19 breaks 3 tests (listed). Nothing to undo. Next: react-dom first.
 ```
 
-A **fork** is a snapshot you run commands in. It is a copy-on-write clone, so it costs what a snapshot costs and holds the whole project, `node_modules` included. The command and its check run there, and the project changes only if both pass; that swap is an ordinary revert with a pre-revert backup, so even a passed try is undoable. From a terminal: `agent-undo try "npm install react@19" --check "npm test"`.
+A **fork** is a snapshot you run commands in. It is a copy-on-write clone, so it costs what a snapshot costs and holds the whole project, `node_modules` included. The command and its check run there, and the project changes only if both pass; that swap is an ordinary revert with a pre-revert backup, so even a passed try is undoable. From a terminal: `agent-undo try "npm install react@19" --check "npm test"`. `--check` defaults to the project's saved check, and `--git` links the fork to the repository for the run when the command needs one (husky, `git describe`).
 
 Three more questions a fork answers:
 
@@ -196,7 +196,8 @@ agent-undo diff --file src/db.ts        # unified diff of one file, snapshot vs 
 agent-undo show src/db.ts [snapshot]    # print a file as it was, no revert
 agent-undo path [snapshot]              # the snapshot's directory: cd into the past
 agent-undo try "npm i react@19" --check "npm test"   # in a fork; applied only if both pass
-agent-undo check --set "npm test"       # save the project's check (--auto: every turn at paranoid)
+agent-undo try --git "npm install"      # fork linked to the repo (husky, git describe); --no-check skips the saved check
+agent-undo check --set "npm test"       # save the project's check; --auto / --no-auto: run it every turn at paranoid
 agent-undo check                        # run it; mark the current state green or red
 agent-undo bisect                       # which snapshot broke the check, and what changed
 agent-undo replay [--file src/db.ts]    # the session as a flipbook

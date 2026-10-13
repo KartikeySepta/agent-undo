@@ -35,7 +35,7 @@ Switch: `/agent-undo lite|full|paranoid|off`. "stop undo" turns it off.
 | `list_snapshots` | See checkpoints, what triggered each (manual, hook, session, turn, pre-revert). |
 | `diff_snapshot(snapshot?)` | See exactly what a revert would undo: `+` added, `~` modified, `-` deleted. |
 | `read_snapshot_file(path, snapshot?)` | A file as it was in a snapshot, to look at or copy one function back from, without reverting. |
-| `try_in_fork(command, check?)` | Run a risky command in a fork of the project; the result is swapped in only if it and `check` pass. A failure never touches the project. |
+| `try_in_fork(command, check?, git?)` | Run a risky command in a fork of the project; the result is swapped in only if it and `check` (default: the project's saved check) pass. A failure never touches the project. `git: true` when the command needs the repository (husky, git describe). |
 | `bisect(check?)` | Which snapshot broke the check: last green, first red, the files between them, the revert back. |
 | `revert_environment(snapshot?, paths?, confirm?)` | Roll back everything, or only `paths`. Two steps: without `confirm` it reverts nothing and returns a preview plus `confirm_token`; call again with `confirm` to revert. Saves a `pre-revert` snapshot first. |
 | `undo_status` | Level, snapshot count, engine and volume checks. |

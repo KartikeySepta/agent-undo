@@ -36,8 +36,8 @@ Display this card. One-shot: do not change the level or take snapshots.
 agent-undo snapshot [name]     agent-undo revert [snap] [--yes] [--only <paths...>]
 agent-undo list                agent-undo diff [snap] [--file <path>]
 agent-undo show <path> [snap]  agent-undo delete <snap>
-agent-undo try "<cmd>" --check "<cmd>"   (fork; applied only if both pass)
-agent-undo check [--set <cmd> [--auto]]     agent-undo revert last-green --yes
+agent-undo try "<cmd>" [--check "<cmd>" | --no-check] [--git]   (fork; applied only if both pass)
+agent-undo check [--set <cmd>] [--auto | --no-auto]   agent-undo revert last-green --yes
 agent-undo bisect [--check <cmd>]           agent-undo replay [--file <path>]
 agent-undo path [snap]         agent-undo mode [level]
 agent-undo doctor              agent-undo stats

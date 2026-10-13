@@ -8,9 +8,14 @@
 - **Green snapshots.** `agent-undo check --set "npm test"` saves the project's check; `agent-undo check` runs it and marks the matching snapshot green or red, taking one first if the tree moved. **`last-green`** names the newest green snapshot in every command and tool (`agent-undo revert last-green --yes`). `take_snapshot` accepts `green: true`. With `--auto` at level paranoid, a Claude Code Stop hook runs the check at the end of every turn.
 - **`agent-undo bisect`** and the **`bisect`** MCP tool binary-search the snapshot timeline (and the working tree) with the check, running it in a scratch copy of each candidate, and report the last green and first red snapshot, the files that changed between them and the revert that goes back. Results are stored as marks and reused.
 - **`agent-undo replay [--last n] [--file <path>]`** plays the session back: every snapshot, what changed since the one before, and the working tree. `--file` shows one file's diff at each step.
+- `try` defaults to the project's saved check (`--no-check` / `no_check` to skip it), prints fork/run/check/apply progress on stderr, and with `--git` / `git: true` links the fork to the repository through a gitfile for the run only, so husky, `git describe` and version scripts work. Every fork and bisect scratch clone runs with `GIT_CEILING_DIRECTORIES` set, so git inside it can never climb out and act on a repository that holds the snapshot store.
+- `check --auto` / `--no-auto` toggle the turn-end check without retyping the command. `doctor` and `undo_status` show the saved check and the last green snapshot.
 - `stats` counts tries and how many were applied.
 
 ### Fixes
+- Prune keeps the newest green snapshot (so `last-green` survives a busy session) and any fork younger than an hour (a slow try could lose its fork from under the running command).
+- A full revert never clones a `.git` entry out of snapshot data over the repository, whatever is in the data.
+- Bisect sweeps scratch clones left behind by a killed earlier run.
 - Two snapshots taken in the same millisecond listed out of order when one was named; a later snapshot now takes the next millisecond.
 
 ### Inspect before you revert
