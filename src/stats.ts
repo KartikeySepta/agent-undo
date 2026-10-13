@@ -9,11 +9,13 @@ export interface Stats {
     reverts: number;
     partialReverts: number;
     pathsRestored: number;
+    tries: number;
+    triesApplied: number;
     since: string;
 }
 
 const file = () => path.join(storeHome(), 'stats.json');
-const empty = (): Stats => ({ snapshots: 0, byTrigger: {}, snapshotMsTotal: 0, reverts: 0, partialReverts: 0, pathsRestored: 0, since: new Date().toISOString() });
+const empty = (): Stats => ({ snapshots: 0, byTrigger: {}, snapshotMsTotal: 0, reverts: 0, partialReverts: 0, pathsRestored: 0, tries: 0, triesApplied: 0, since: new Date().toISOString() });
 
 export function readStats(): Stats {
     try { return { ...empty(), ...JSON.parse(fs.readFileSync(file(), 'utf8')) }; }

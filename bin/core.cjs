@@ -527,26 +527,26 @@ var require_ignore = __commonJS({
       const index = body.indexOf(SLASH);
       return index < 0 || index === body.length - 1;
     };
-    var basenameOf = (path5) => {
-      const end = path5.length - 1;
-      const index = path5.lastIndexOf(
+    var basenameOf = (path6) => {
+      const end = path6.length - 1;
+      const index = path6.lastIndexOf(
         SLASH,
-        path5[end] === SLASH ? end - 1 : end
+        path6[end] === SLASH ? end - 1 : end
       );
-      return index < 0 ? path5 : path5.slice(index + 1);
+      return index < 0 ? path6 : path6.slice(index + 1);
     };
-    var parentOf = (path5) => {
-      if (path5.charCodeAt(0) === SLASH_CODE || path5.indexOf(DOUBLE_SLASH) >= 0) {
-        const slices = path5.split(SLASH).filter(Boolean);
+    var parentOf = (path6) => {
+      if (path6.charCodeAt(0) === SLASH_CODE || path6.indexOf(DOUBLE_SLASH) >= 0) {
+        const slices = path6.split(SLASH).filter(Boolean);
         slices.pop();
         return slices.length ? slices.join(SLASH) + SLASH : EMPTY;
       }
-      const end = path5.length - 1;
-      const cut = path5.lastIndexOf(
+      const end = path6.length - 1;
+      const cut = path6.lastIndexOf(
         SLASH,
-        path5.charCodeAt(end) === SLASH_CODE ? end - 1 : end
+        path6.charCodeAt(end) === SLASH_CODE ? end - 1 : end
       );
-      return cut < 0 ? EMPTY : path5.slice(0, cut + 1);
+      return cut < 0 ? EMPTY : path6.slice(0, cut + 1);
     };
     var isString = (subject) => typeof subject === "string";
     var checkPattern = (pattern) => pattern && isString(pattern) && !REGEX_INVALID_TRAILING_BACKSLASH.test(pattern);
@@ -681,7 +681,7 @@ var require_ignore = __commonJS({
       // Match the literal 'abc/' for `checkIgnore`, last rule wins. Only a rule
       //   ending in a wildcard can match it (see `checkSourceOf`), so the rest
       //   are left out once, rather than tested or compiled for every path.
-      testLiteral(path5) {
+      testLiteral(path6) {
         const rules = this._literalRules || (this._literalRules = this._rules.filter(
           ({ body }) => body[body.length - (body[body.length - 1] === SLASH ? 2 : 1)] === "*"
         ));
@@ -690,7 +690,7 @@ var require_ignore = __commonJS({
         let matchedRule;
         for (let index = rules.length - 1; index >= 0; index--) {
           const rule = rules[index];
-          if (rule.checkRegex.test(path5)) {
+          if (rule.checkRegex.test(path6)) {
             ignored = !rule.negative;
             unignored = rule.negative;
             matchedRule = rule.negative ? UNDEFINED : rule;
@@ -713,20 +713,20 @@ var require_ignore = __commonJS({
       //   path matching.
       // - check `string` either `MODE_IGNORE` or `MODE_CHECK_IGNORE`
       // @returns {TestResult} true if a file is ignored
-      test(path5, checkUnignored, mode) {
+      test(path6, checkUnignored, mode) {
         let ignored = false;
         let unignored = false;
         let matchedRule;
         const rules = this._rules;
         const { length } = rules;
         const shortcut = this._basenameCount * 2 >= length;
-        const basename = shortcut ? basenameOf(path5) : path5;
+        const basename = shortcut ? basenameOf(path6) : path6;
         for (let index = 0; index < length; index++) {
           const rule = rules[index];
           const { negative } = rule;
           const skip = unignored === negative && ignored !== unignored || negative && !ignored && !unignored && !checkUnignored;
           if (!skip && rule[mode].test(
-            shortcut && rule._basenameOnly ? basename : path5
+            shortcut && rule._basenameOnly ? basename : path6
           )) {
             ignored = !negative;
             unignored = negative;
@@ -746,17 +746,17 @@ var require_ignore = __commonJS({
     var throwError = (message, Ctor) => {
       throw new Ctor(message);
     };
-    var checkPath = (path5, originalPath, doThrow) => {
-      if (!isString(path5)) {
+    var checkPath = (path6, originalPath, doThrow) => {
+      if (!isString(path6)) {
         return doThrow(
           `path must be a string, but got \`${originalPath}\``,
           TypeError
         );
       }
-      if (!path5) {
+      if (!path6) {
         return doThrow(`path must not be empty`, TypeError);
       }
-      if (checkPath.isNotRelative(path5)) {
+      if (checkPath.isNotRelative(path6)) {
         const r = "`path.relative()`d";
         return doThrow(
           `path should be a ${r} string, but got "${originalPath}"`,
@@ -765,25 +765,25 @@ var require_ignore = __commonJS({
       }
       return true;
     };
-    var isNotRelative = (path5) => {
-      const first = path5.charCodeAt(0);
+    var isNotRelative = (path6) => {
+      const first = path6.charCodeAt(0);
       if (first === SLASH_CODE) {
         return true;
       }
       if (first !== DOT_CODE) {
         return false;
       }
-      if (path5.length === 1) {
+      if (path6.length === 1) {
         return true;
       }
-      const second = path5.charCodeAt(1);
+      const second = path6.charCodeAt(1);
       if (second === SLASH_CODE) {
         return true;
       }
       if (second !== DOT_CODE) {
         return false;
       }
-      return path5.length === 2 || path5.charCodeAt(2) === SLASH_CODE;
+      return path6.length === 2 || path6.charCodeAt(2) === SLASH_CODE;
     };
     checkPath.isNotRelative = isNotRelative;
     checkPath.convert = (p) => p;
@@ -814,54 +814,54 @@ var require_ignore = __commonJS({
       }
       // @returns {TestResult}
       _test(originalPath, cache, checkUnignored) {
-        const path5 = originalPath && checkPath.convert(originalPath);
+        const path6 = originalPath && checkPath.convert(originalPath);
         checkPath(
-          path5,
+          path6,
           originalPath,
           this._strictPathCheck ? throwError : RETURN_FALSE
         );
-        return this._t(path5, cache, checkUnignored);
+        return this._t(path6, cache, checkUnignored);
       }
-      checkIgnore(path5) {
-        if (path5.charCodeAt(path5.length - 1) !== SLASH_CODE) {
-          return this.test(path5);
+      checkIgnore(path6) {
+        if (path6.charCodeAt(path6.length - 1) !== SLASH_CODE) {
+          return this.test(path6);
         }
-        const dir = this._t(path5, this._testCache, true);
+        const dir = this._t(path6, this._testCache, true);
         if (dir.ignored) {
           return dir;
         }
-        const literal = this._rules.testLiteral(path5);
+        const literal = this._rules.testLiteral(path6);
         return literal.ignored || literal.unignored ? literal : dir;
       }
-      _t(path5, cache, checkUnignored) {
-        if (path5 in cache) {
-          return cache[path5];
+      _t(path6, cache, checkUnignored) {
+        if (path6 in cache) {
+          return cache[path6];
         }
-        const parentPath = parentOf(path5);
+        const parentPath = parentOf(path6);
         const parent = parentPath ? this._t(parentPath, cache, checkUnignored) : UNDEFINED;
-        return cache[path5] = parent && parent.ignored ? parent : this._rules.test(path5, checkUnignored, MODE_IGNORE);
+        return cache[path6] = parent && parent.ignored ? parent : this._rules.test(path6, checkUnignored, MODE_IGNORE);
       }
-      ignores(path5) {
-        return this._test(path5, this._ignoreCache, false).ignored;
+      ignores(path6) {
+        return this._test(path6, this._ignoreCache, false).ignored;
       }
       createFilter() {
-        return (path5) => !this.ignores(path5);
+        return (path6) => !this.ignores(path6);
       }
       filter(paths) {
         return makeArray(paths).filter(this.createFilter());
       }
       // @returns {TestResult}
-      test(path5) {
-        return this._test(path5, this._testCache, true);
+      test(path6) {
+        return this._test(path6, this._testCache, true);
       }
     };
     var factory = (options) => new Ignore2(options);
-    var isPathValid = (path5) => checkPath(path5 && checkPath.convert(path5), path5, RETURN_FALSE);
+    var isPathValid = (path6) => checkPath(path6 && checkPath.convert(path6), path6, RETURN_FALSE);
     var setupWindows = () => {
       const makePosix = (str) => /^\\\\\?\\/.test(str) || /["<>|\u0000-\u001F]+/u.test(str) ? str : str.replace(/\\/g, "/");
       checkPath.convert = makePosix;
       const REGEX_TEST_WINDOWS_PATH_ABSOLUTE = /^[a-z]:\//i;
-      checkPath.isNotRelative = (path5) => REGEX_TEST_WINDOWS_PATH_ABSOLUTE.test(path5) || isNotRelative(path5);
+      checkPath.isNotRelative = (path6) => REGEX_TEST_WINDOWS_PATH_ABSOLUTE.test(path6) || isNotRelative(path6);
     };
     if (
       // Detect `process` so that it can run in browsers.
@@ -876,13 +876,14 @@ var require_ignore = __commonJS({
   }
 });
 
-// src/snapshot.ts
-var snapshot_exports = {};
-__export(snapshot_exports, {
+// src/core.ts
+var core_exports = {};
+__export(core_exports, {
   BusyError: () => BusyError,
   IGNORE_FILE: () => IGNORE_FILE,
   assertSafeTarget: () => assertSafeTarget,
   deleteSnapshot: () => deleteSnapshot,
+  describeTry: () => describeTry,
   diffSnapshot: () => diffSnapshot,
   diffSnapshots: () => diffSnapshots,
   fork: () => fork,
@@ -894,12 +895,16 @@ __export(snapshot_exports, {
   repairInterruptedRevert: () => repairInterruptedRevert,
   resolveSnapshot: () => resolveSnapshot,
   revertSnapshot: () => revertSnapshot,
+  runIn: () => runIn,
   snapshotBase: () => snapshotBase,
   snapshotDir: () => snapshotDir,
   snapshotFilePath: () => snapshotFilePath,
-  takeSnapshot: () => takeSnapshot
+  takeSnapshot: () => takeSnapshot,
+  tryInFork: () => tryInFork
 });
-module.exports = __toCommonJS(snapshot_exports);
+module.exports = __toCommonJS(core_exports);
+
+// src/snapshot.ts
 var import_fs3 = __toESM(require("fs"));
 var import_path4 = __toESM(require("path"));
 var import_os2 = __toESM(require("os"));
@@ -1011,7 +1016,7 @@ var HOOKS_LOG_MAX = 64 * 1024;
 var import_fs2 = __toESM(require("fs"));
 var import_path3 = __toESM(require("path"));
 var file = () => import_path3.default.join(storeHome(), "stats.json");
-var empty = () => ({ snapshots: 0, byTrigger: {}, snapshotMsTotal: 0, reverts: 0, partialReverts: 0, pathsRestored: 0, since: (/* @__PURE__ */ new Date()).toISOString() });
+var empty = () => ({ snapshots: 0, byTrigger: {}, snapshotMsTotal: 0, reverts: 0, partialReverts: 0, pathsRestored: 0, tries: 0, triesApplied: 0, since: (/* @__PURE__ */ new Date()).toISOString() });
 function readStats() {
   try {
     return { ...empty(), ...JSON.parse(import_fs2.default.readFileSync(file(), "utf8")) };
@@ -1534,12 +1539,130 @@ function revertSnapshot(sourceDir, ref, opts = {}) {
     return { restored: snap, backup };
   });
 }
+
+// src/try.ts
+var import_fs4 = __toESM(require("fs"));
+var import_path5 = __toESM(require("path"));
+var import_child_process3 = require("child_process");
+var PATH_FIX_MAX_BYTES = 1024 * 1024;
+var MAX_OUTPUT = 64 * 1024 * 1024;
+var realDir2 = (dir) => {
+  try {
+    return import_fs4.default.realpathSync(dir);
+  } catch {
+    return import_path5.default.resolve(dir);
+  }
+};
+var short = (cmd) => cmd.replace(/\s+/g, " ").trim().slice(0, 60);
+var isEmpty = (d) => !d.added.length && !d.modified.length && !d.deleted.length;
+function runIn(dir, command, opts = {}) {
+  const argv = process.platform === "win32" ? ["cmd", "/d", "/s", "/c", command] : ["sh", "-c", command];
+  const r = (0, import_child_process3.spawnSync)(argv[0], argv.slice(1), {
+    cwd: dir,
+    env: opts.env ?? process.env,
+    stdio: opts.stdio ?? "inherit",
+    timeout: opts.timeoutMs,
+    killSignal: "SIGTERM",
+    encoding: "utf8",
+    maxBuffer: MAX_OUTPUT
+  });
+  const timedOut = r.error?.code === "ETIMEDOUT";
+  if (r.error && !timedOut) throw r.error;
+  return { status: r.status, signal: r.signal, timedOut, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
+}
+function fixForkPaths(projectDir, forkDir, files) {
+  const from = [.../* @__PURE__ */ new Set([forkDir, realDir2(forkDir)])];
+  const to = realDir2(projectDir);
+  let fixed = 0;
+  for (const rel of files) {
+    const p = import_path5.default.join(projectDir, rel);
+    let st;
+    try {
+      st = import_fs4.default.lstatSync(p);
+    } catch {
+      continue;
+    }
+    if (!st.isFile() || st.size > PATH_FIX_MAX_BYTES) continue;
+    const buf = import_fs4.default.readFileSync(p);
+    if (buf.subarray(0, 8192).includes(0)) continue;
+    const text = buf.toString("utf8");
+    const next = from.reduce((t, f) => t.split(f).join(to), text);
+    if (next !== text) {
+      import_fs4.default.writeFileSync(p, next, { mode: st.mode });
+      fixed++;
+    }
+  }
+  return fixed;
+}
+var discardQuiet = (sourceDir, id) => {
+  try {
+    deleteSnapshot(sourceDir, id);
+  } catch {
+  }
+};
+function tryInFork(sourceDir, command, opts = {}) {
+  const label = short(command);
+  const base = takeSnapshot(sourceDir, { reason: `try base: ${label}`, trigger: "fork" });
+  const f = fork(sourceDir, `try: ${label}`);
+  const env = { ...opts.env ?? process.env, AGENT_UNDO_FORK: f.dir, AGENT_UNDO_PROJECT: realDir2(sourceDir) };
+  const run = (cmd2) => runIn(f.dir, cmd2, { ...opts, env });
+  const input = { command, check: opts.check };
+  const fail = (stage, r) => {
+    discardQuiet(sourceDir, base.id);
+    recordStats((st) => {
+      st.tries++;
+    });
+    return { ok: false, stage, input, fork: f.meta, ...r };
+  };
+  const cmd = run(command);
+  if (cmd.status !== 0) return fail("command", { command: cmd });
+  const check = opts.check ? run(opts.check) : void 0;
+  if (check && check.status !== 0) return fail("check", { command: cmd, check });
+  const drift = diffSnapshot(sourceDir, base.id);
+  if (!isEmpty(drift)) return fail("drift", { command: cmd, check, drift });
+  const changed = diffSnapshots(sourceDir, base.id, f.meta.id);
+  const { backup } = revertSnapshot(sourceDir, f.meta.id);
+  const fixedPaths = fixForkPaths(sourceDir, f.dir, [...changed.added, ...changed.modified]);
+  discardQuiet(sourceDir, f.meta.id);
+  discardQuiet(sourceDir, base.id);
+  recordStats((st) => {
+    st.tries++;
+    st.triesApplied++;
+  });
+  return { ok: true, stage: "applied", input, command: cmd, check, fork: f.meta, applied: { backup, changed, fixedPaths } };
+}
+function describeTry(r) {
+  const keep = `The fork is kept as ${r.fork.id}: \`agent-undo path ${r.fork.id}\` to inspect it, \`agent-undo delete ${r.fork.id}\` to drop it.`;
+  switch (r.stage) {
+    case "applied": {
+      const { changed, backup, fixedPaths } = r.applied;
+      const n = changed.added.length + changed.modified.length + changed.deleted.length;
+      return [
+        `Try passed: applied ${n} change(s) (${changed.added.length} added, ${changed.modified.length} modified, ${changed.deleted.length} deleted).`,
+        ...fixedPaths ? [`Rewrote the fork path to the project path in ${fixedPaths} file(s).`] : [],
+        `Undo with: agent-undo revert ${backup.id} --yes`
+      ].join("\n");
+    }
+    case "command":
+      return `Command exited with ${r.command.timedOut ? "timeout" : r.command.status ?? r.command.signal}. Project unchanged.
+${keep}`;
+    case "check":
+      return `Check "${r.input.check}" failed (exit ${r.check.timedOut ? "timeout" : r.check.status ?? r.check.signal}) in the fork. Project unchanged.
+${keep}`;
+    case "drift": {
+      const files = [...r.drift.added, ...r.drift.modified, ...r.drift.deleted];
+      return `The project changed while the try ran (${files.length} file(s): ${files.slice(0, 5).join(", ")}${files.length > 5 ? ", ..." : ""}). Nothing applied.
+The fork is kept as ${r.fork.id}; to apply it anyway: agent-undo revert ${r.fork.id} --yes`;
+    }
+  }
+}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   BusyError,
   IGNORE_FILE,
   assertSafeTarget,
   deleteSnapshot,
+  describeTry,
   diffSnapshot,
   diffSnapshots,
   fork,
@@ -1551,8 +1674,10 @@ function revertSnapshot(sourceDir, ref, opts = {}) {
   repairInterruptedRevert,
   resolveSnapshot,
   revertSnapshot,
+  runIn,
   snapshotBase,
   snapshotDir,
   snapshotFilePath,
-  takeSnapshot
+  takeSnapshot,
+  tryInFork
 });

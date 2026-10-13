@@ -1018,7 +1018,7 @@ function logHookError(event, err) {
 var import_fs3 = __toESM(require("fs"));
 var import_path3 = __toESM(require("path"));
 var file = () => import_path3.default.join(storeHome(), "stats.json");
-var empty = () => ({ snapshots: 0, byTrigger: {}, snapshotMsTotal: 0, reverts: 0, partialReverts: 0, pathsRestored: 0, since: (/* @__PURE__ */ new Date()).toISOString() });
+var empty = () => ({ snapshots: 0, byTrigger: {}, snapshotMsTotal: 0, reverts: 0, partialReverts: 0, pathsRestored: 0, tries: 0, triesApplied: 0, since: (/* @__PURE__ */ new Date()).toISOString() });
 function readStats() {
   try {
     return { ...empty(), ...JSON.parse(import_fs3.default.readFileSync(file(), "utf8")) };

@@ -6,6 +6,7 @@ import {
 import { VERSION } from './version';
 import { LEVELS, isLevel, readLevel, writeLevel } from './config';
 import { doctor, status, protectedBytes } from './status';
+import { tryInFork, describeTry } from './try';
 import fs from 'fs';
 import path from 'path';
 import { spawnSync } from 'child_process';
@@ -98,6 +99,19 @@ program
   });
 
 program
+  .command('try <command>')
+  .description('Run a command in a copy-on-write fork of the project; swap the result in only if it (and --check) succeed')
+  .option('-c, --check <cmd>', 'must pass inside the fork before the result is applied, e.g. "npm test"')
+  .option('-t, --timeout <seconds>', 'kill the command or the check after this long')
+  .action((command: string, o: { check?: string; timeout?: string }) => {
+    try {
+      const r = tryInFork(cwd, command, { check: o.check, timeoutMs: o.timeout ? Number(o.timeout) * 1000 : undefined });
+      if (!r.ok) fail(new Error(describeTry(r)));
+      console.log(`✅ ${describeTry(r)}`);
+    } catch (e) { fail(e); }
+  });
+
+program
   .command('path [snapshot]')
   .description('Print the directory holding a snapshot\'s copy of the project (default: latest), to cd into the past')
   .action((ref?: string) => {
@@ -174,6 +188,7 @@ program
     console.log(`⏪ agent-undo ${st.version}  level ${st.level}`);
     console.log(`snapshots taken   ${s.snapshots}  (${triggers}), avg ${avg}ms`);
     console.log(`reverts           ${s.reverts}  (${s.partialReverts} partial, ${s.pathsRestored} paths restored)`);
+    console.log(`tries             ${s.tries}  (${s.triesApplied} applied, ${s.tries - s.triesApplied} kept the project unchanged)`);
     console.log(`this project      ${st.snapshots} snapshot(s), ${(bytes / 1e6).toFixed(1)} MB protected`);
     console.log(`since             ${s.since.slice(0, 10)}`);
   });

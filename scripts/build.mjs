@@ -12,7 +12,7 @@ const entries = {
   'hook-prompt': 'src/hooks/prompt.ts',
   'hook-subagent-start': 'src/hooks/subagent-start.ts',
   statusline: 'src/statusline.ts',
-  core: 'src/snapshot.ts',
+  core: 'src/core.ts',
   'core-rules': 'src/instructions.ts',
 };
 

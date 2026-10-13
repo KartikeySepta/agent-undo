@@ -49,3 +49,90 @@ test('fork gives a working copy whose changes never touch the project', (t) => {
   // The fork shows up as an ordinary snapshot, so list/path/delete all work on it.
   assert.strictEqual(core.listSnapshots(s.project).at(-1).id, meta.id);
 });
+
+// ---------- try ----------
+
+test('tryInFork applies the fork when the command and check pass, and the swap is undoable', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  s.write('a.txt', 'one');
+  core.takeSnapshot(s.project, { name: 'before' });
+  const r = core.tryInFork(s.project, 'printf two > a.txt && printf made > made.txt', { check: 'test -f made.txt', stdio: 'pipe' });
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.stage, 'applied');
+  assert.strictEqual(s.read('a.txt'), 'two');
+  assert.strictEqual(s.read('made.txt'), 'made');
+  assert.deepStrictEqual(r.applied.changed, { added: ['made.txt'], modified: ['a.txt'], deleted: [] });
+  assert.strictEqual(r.applied.backup.name, 'pre-revert');
+  // Only the named snapshot and the undo handle remain: base and fork are cleaned up.
+  assert.deepStrictEqual(core.listSnapshots(s.project).map((m) => m.name), ['before', 'pre-revert']);
+  core.revertSnapshot(s.project, r.applied.backup.id);
+  assert.strictEqual(s.read('a.txt'), 'one');
+  assert.ok(!s.exists('made.txt'));
+});
+
+test('tryInFork: a failing command leaves the project untouched and keeps the fork for inspection', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  s.write('a.txt', 'one');
+  const r = core.tryInFork(s.project, 'printf bad > a.txt; echo oops >&2; exit 3', { stdio: 'pipe' });
+  assert.strictEqual(r.ok, false);
+  assert.strictEqual(r.stage, 'command');
+  assert.strictEqual(r.command.status, 3);
+  assert.match(r.command.stderr, /oops/);
+  assert.strictEqual(s.read('a.txt'), 'one');
+  const kept = core.listSnapshots(s.project);
+  assert.strictEqual(kept.length, 1, 'base is discarded, fork is kept');
+  assert.strictEqual(kept[0].trigger, 'fork');
+  assert.strictEqual(fs.readFileSync(path.join(core.snapshotDir(s.project, kept[0].id), 'a.txt'), 'utf8'), 'bad');
+});
+
+test('tryInFork: a failing check leaves the project untouched', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  s.write('a.txt', 'one');
+  const r = core.tryInFork(s.project, 'printf two > a.txt', { check: 'exit 1', stdio: 'pipe' });
+  assert.strictEqual(r.ok, false);
+  assert.strictEqual(r.stage, 'check');
+  assert.strictEqual(r.check.status, 1);
+  assert.strictEqual(s.read('a.txt'), 'one');
+});
+
+test('tryInFork refuses to apply when the project changed while the command ran', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  s.write('a.txt', 'one');
+  // The command runs in the fork; AGENT_UNDO_PROJECT names the real project, which someone edits meanwhile.
+  const r = core.tryInFork(s.project, 'printf two > a.txt && printf drift > "$AGENT_UNDO_PROJECT/z.txt"', { stdio: 'pipe' });
+  assert.strictEqual(r.ok, false);
+  assert.strictEqual(r.stage, 'drift');
+  assert.deepStrictEqual(r.drift, { added: ['z.txt'], modified: [], deleted: [] });
+  assert.strictEqual(s.read('a.txt'), 'one', 'fork result not applied');
+  assert.strictEqual(core.listSnapshots(s.project).at(-1).trigger, 'fork', 'fork kept so it can be applied by hand');
+});
+
+test('tryInFork rewrites the fork path to the project path in files the command wrote', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  s.write('a.txt', 'one');
+  const r = core.tryInFork(s.project, 'printf "#!%s/bin/python\\n" "$PWD" > script; printf "\\0$PWD" > blob', { stdio: 'pipe' });
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(s.read('script'), `#!${s.project}/bin/python\n`);
+  assert.strictEqual(r.applied.fixedPaths, 1, 'the binary file is left alone');
+  assert.ok(fs.readFileSync(s.p('blob')).includes(Buffer.from(r.fork.id)), 'binary blob still names the fork');
+});
+
+test('tryInFork kills a command that exceeds the timeout', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  s.write('a.txt', 'one');
+  const r = core.tryInFork(s.project, 'sleep 5', { timeoutMs: 300, stdio: 'pipe' });
+  assert.strictEqual(r.ok, false);
+  assert.strictEqual(r.stage, 'command');
+  assert.strictEqual(r.command.timedOut, true);
+});
+
+test('cli: try applies on success and reports the undo handle; fails loudly otherwise', (t) => {
+  const s = sandbox(); t.after(s.cleanup);
+  s.write('a.txt', 'one');
+  const out = cli(s, 'try', 'printf two > a.txt', '--check', 'test -f a.txt');
+  assert.match(out, /✅ Try passed.*1 change/);
+  assert.match(out, /agent-undo revert .*pre-revert.* --yes/);
+  assert.strictEqual(s.read('a.txt'), 'two');
+  const err = fails(s, 'try', 'exit 2');
+  assert.match(err, /❌ Command exited with 2[\s\S]*Project unchanged[\s\S]*agent-undo path /);
+});

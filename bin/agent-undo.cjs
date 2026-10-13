@@ -963,8 +963,8 @@ var require_command = __commonJS({
   "node_modules/commander/lib/command.js"(exports2) {
     var EventEmitter = require("node:events").EventEmitter;
     var childProcess = require("node:child_process");
-    var path7 = require("node:path");
-    var fs7 = require("node:fs");
+    var path8 = require("node:path");
+    var fs8 = require("node:fs");
     var process2 = require("node:process");
     var { Argument: Argument2, humanReadableArgName } = require_argument();
     var { CommanderError: CommanderError2 } = require_error();
@@ -1896,11 +1896,11 @@ Expecting one of '${allowedValues.join("', '")}'`);
         let launchWithNode = false;
         const sourceExt = [".js", ".ts", ".tsx", ".mjs", ".cjs"];
         function findFile(baseDir, baseName) {
-          const localBin = path7.resolve(baseDir, baseName);
-          if (fs7.existsSync(localBin)) return localBin;
-          if (sourceExt.includes(path7.extname(baseName))) return void 0;
+          const localBin = path8.resolve(baseDir, baseName);
+          if (fs8.existsSync(localBin)) return localBin;
+          if (sourceExt.includes(path8.extname(baseName))) return void 0;
           const foundExt = sourceExt.find(
-            (ext) => fs7.existsSync(`${localBin}${ext}`)
+            (ext) => fs8.existsSync(`${localBin}${ext}`)
           );
           if (foundExt) return `${localBin}${foundExt}`;
           return void 0;
@@ -1912,21 +1912,21 @@ Expecting one of '${allowedValues.join("', '")}'`);
         if (this._scriptPath) {
           let resolvedScriptPath;
           try {
-            resolvedScriptPath = fs7.realpathSync(this._scriptPath);
+            resolvedScriptPath = fs8.realpathSync(this._scriptPath);
           } catch (err) {
             resolvedScriptPath = this._scriptPath;
           }
-          executableDir = path7.resolve(
-            path7.dirname(resolvedScriptPath),
+          executableDir = path8.resolve(
+            path8.dirname(resolvedScriptPath),
             executableDir
           );
         }
         if (executableDir) {
           let localFile = findFile(executableDir, executableFile);
           if (!localFile && !subcommand._executableFile && this._scriptPath) {
-            const legacyName = path7.basename(
+            const legacyName = path8.basename(
               this._scriptPath,
-              path7.extname(this._scriptPath)
+              path8.extname(this._scriptPath)
             );
             if (legacyName !== this._name) {
               localFile = findFile(
@@ -1937,7 +1937,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
           }
           executableFile = localFile || executableFile;
         }
-        launchWithNode = sourceExt.includes(path7.extname(executableFile));
+        launchWithNode = sourceExt.includes(path8.extname(executableFile));
         let proc;
         if (process2.platform !== "win32") {
           if (launchWithNode) {
@@ -2777,7 +2777,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @return {Command}
        */
       nameFromFilename(filename) {
-        this._name = path7.basename(filename, path7.extname(filename));
+        this._name = path8.basename(filename, path8.extname(filename));
         return this;
       }
       /**
@@ -2791,9 +2791,9 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {string} [path]
        * @return {(string|null|Command)}
        */
-      executableDir(path8) {
-        if (path8 === void 0) return this._executableDir;
-        this._executableDir = path8;
+      executableDir(path9) {
+        if (path9 === void 0) return this._executableDir;
+        this._executableDir = path9;
         return this;
       }
       /**
@@ -3516,26 +3516,26 @@ var require_ignore = __commonJS({
       const index = body.indexOf(SLASH);
       return index < 0 || index === body.length - 1;
     };
-    var basenameOf = (path7) => {
-      const end = path7.length - 1;
-      const index = path7.lastIndexOf(
+    var basenameOf = (path8) => {
+      const end = path8.length - 1;
+      const index = path8.lastIndexOf(
         SLASH,
-        path7[end] === SLASH ? end - 1 : end
+        path8[end] === SLASH ? end - 1 : end
       );
-      return index < 0 ? path7 : path7.slice(index + 1);
+      return index < 0 ? path8 : path8.slice(index + 1);
     };
-    var parentOf = (path7) => {
-      if (path7.charCodeAt(0) === SLASH_CODE || path7.indexOf(DOUBLE_SLASH) >= 0) {
-        const slices = path7.split(SLASH).filter(Boolean);
+    var parentOf = (path8) => {
+      if (path8.charCodeAt(0) === SLASH_CODE || path8.indexOf(DOUBLE_SLASH) >= 0) {
+        const slices = path8.split(SLASH).filter(Boolean);
         slices.pop();
         return slices.length ? slices.join(SLASH) + SLASH : EMPTY;
       }
-      const end = path7.length - 1;
-      const cut = path7.lastIndexOf(
+      const end = path8.length - 1;
+      const cut = path8.lastIndexOf(
         SLASH,
-        path7.charCodeAt(end) === SLASH_CODE ? end - 1 : end
+        path8.charCodeAt(end) === SLASH_CODE ? end - 1 : end
       );
-      return cut < 0 ? EMPTY : path7.slice(0, cut + 1);
+      return cut < 0 ? EMPTY : path8.slice(0, cut + 1);
     };
     var isString = (subject) => typeof subject === "string";
     var checkPattern = (pattern) => pattern && isString(pattern) && !REGEX_INVALID_TRAILING_BACKSLASH.test(pattern);
@@ -3670,7 +3670,7 @@ var require_ignore = __commonJS({
       // Match the literal 'abc/' for `checkIgnore`, last rule wins. Only a rule
       //   ending in a wildcard can match it (see `checkSourceOf`), so the rest
       //   are left out once, rather than tested or compiled for every path.
-      testLiteral(path7) {
+      testLiteral(path8) {
         const rules = this._literalRules || (this._literalRules = this._rules.filter(
           ({ body }) => body[body.length - (body[body.length - 1] === SLASH ? 2 : 1)] === "*"
         ));
@@ -3679,7 +3679,7 @@ var require_ignore = __commonJS({
         let matchedRule;
         for (let index = rules.length - 1; index >= 0; index--) {
           const rule = rules[index];
-          if (rule.checkRegex.test(path7)) {
+          if (rule.checkRegex.test(path8)) {
             ignored = !rule.negative;
             unignored = rule.negative;
             matchedRule = rule.negative ? UNDEFINED : rule;
@@ -3702,20 +3702,20 @@ var require_ignore = __commonJS({
       //   path matching.
       // - check `string` either `MODE_IGNORE` or `MODE_CHECK_IGNORE`
       // @returns {TestResult} true if a file is ignored
-      test(path7, checkUnignored, mode) {
+      test(path8, checkUnignored, mode) {
         let ignored = false;
         let unignored = false;
         let matchedRule;
         const rules = this._rules;
         const { length } = rules;
         const shortcut = this._basenameCount * 2 >= length;
-        const basename = shortcut ? basenameOf(path7) : path7;
+        const basename = shortcut ? basenameOf(path8) : path8;
         for (let index = 0; index < length; index++) {
           const rule = rules[index];
           const { negative } = rule;
           const skip = unignored === negative && ignored !== unignored || negative && !ignored && !unignored && !checkUnignored;
           if (!skip && rule[mode].test(
-            shortcut && rule._basenameOnly ? basename : path7
+            shortcut && rule._basenameOnly ? basename : path8
           )) {
             ignored = !negative;
             unignored = negative;
@@ -3735,17 +3735,17 @@ var require_ignore = __commonJS({
     var throwError = (message, Ctor) => {
       throw new Ctor(message);
     };
-    var checkPath = (path7, originalPath, doThrow) => {
-      if (!isString(path7)) {
+    var checkPath = (path8, originalPath, doThrow) => {
+      if (!isString(path8)) {
         return doThrow(
           `path must be a string, but got \`${originalPath}\``,
           TypeError
         );
       }
-      if (!path7) {
+      if (!path8) {
         return doThrow(`path must not be empty`, TypeError);
       }
-      if (checkPath.isNotRelative(path7)) {
+      if (checkPath.isNotRelative(path8)) {
         const r = "`path.relative()`d";
         return doThrow(
           `path should be a ${r} string, but got "${originalPath}"`,
@@ -3754,25 +3754,25 @@ var require_ignore = __commonJS({
       }
       return true;
     };
-    var isNotRelative = (path7) => {
-      const first = path7.charCodeAt(0);
+    var isNotRelative = (path8) => {
+      const first = path8.charCodeAt(0);
       if (first === SLASH_CODE) {
         return true;
       }
       if (first !== DOT_CODE) {
         return false;
       }
-      if (path7.length === 1) {
+      if (path8.length === 1) {
         return true;
       }
-      const second = path7.charCodeAt(1);
+      const second = path8.charCodeAt(1);
       if (second === SLASH_CODE) {
         return true;
       }
       if (second !== DOT_CODE) {
         return false;
       }
-      return path7.length === 2 || path7.charCodeAt(2) === SLASH_CODE;
+      return path8.length === 2 || path8.charCodeAt(2) === SLASH_CODE;
     };
     checkPath.isNotRelative = isNotRelative;
     checkPath.convert = (p) => p;
@@ -3803,54 +3803,54 @@ var require_ignore = __commonJS({
       }
       // @returns {TestResult}
       _test(originalPath, cache, checkUnignored) {
-        const path7 = originalPath && checkPath.convert(originalPath);
+        const path8 = originalPath && checkPath.convert(originalPath);
         checkPath(
-          path7,
+          path8,
           originalPath,
           this._strictPathCheck ? throwError : RETURN_FALSE
         );
-        return this._t(path7, cache, checkUnignored);
+        return this._t(path8, cache, checkUnignored);
       }
-      checkIgnore(path7) {
-        if (path7.charCodeAt(path7.length - 1) !== SLASH_CODE) {
-          return this.test(path7);
+      checkIgnore(path8) {
+        if (path8.charCodeAt(path8.length - 1) !== SLASH_CODE) {
+          return this.test(path8);
         }
-        const dir = this._t(path7, this._testCache, true);
+        const dir = this._t(path8, this._testCache, true);
         if (dir.ignored) {
           return dir;
         }
-        const literal = this._rules.testLiteral(path7);
+        const literal = this._rules.testLiteral(path8);
         return literal.ignored || literal.unignored ? literal : dir;
       }
-      _t(path7, cache, checkUnignored) {
-        if (path7 in cache) {
-          return cache[path7];
+      _t(path8, cache, checkUnignored) {
+        if (path8 in cache) {
+          return cache[path8];
         }
-        const parentPath = parentOf(path7);
+        const parentPath = parentOf(path8);
         const parent = parentPath ? this._t(parentPath, cache, checkUnignored) : UNDEFINED;
-        return cache[path7] = parent && parent.ignored ? parent : this._rules.test(path7, checkUnignored, MODE_IGNORE);
+        return cache[path8] = parent && parent.ignored ? parent : this._rules.test(path8, checkUnignored, MODE_IGNORE);
       }
-      ignores(path7) {
-        return this._test(path7, this._ignoreCache, false).ignored;
+      ignores(path8) {
+        return this._test(path8, this._ignoreCache, false).ignored;
       }
       createFilter() {
-        return (path7) => !this.ignores(path7);
+        return (path8) => !this.ignores(path8);
       }
       filter(paths) {
         return makeArray(paths).filter(this.createFilter());
       }
       // @returns {TestResult}
-      test(path7) {
-        return this._test(path7, this._testCache, true);
+      test(path8) {
+        return this._test(path8, this._testCache, true);
       }
     };
     var factory = (options) => new Ignore2(options);
-    var isPathValid = (path7) => checkPath(path7 && checkPath.convert(path7), path7, RETURN_FALSE);
+    var isPathValid = (path8) => checkPath(path8 && checkPath.convert(path8), path8, RETURN_FALSE);
     var setupWindows = () => {
       const makePosix = (str) => /^\\\\\?\\/.test(str) || /["<>|\u0000-\u001F]+/u.test(str) ? str : str.replace(/\\/g, "/");
       checkPath.convert = makePosix;
       const REGEX_TEST_WINDOWS_PATH_ABSOLUTE = /^[a-z]:\//i;
-      checkPath.isNotRelative = (path7) => REGEX_TEST_WINDOWS_PATH_ABSOLUTE.test(path7) || isNotRelative(path7);
+      checkPath.isNotRelative = (path8) => REGEX_TEST_WINDOWS_PATH_ABSOLUTE.test(path8) || isNotRelative(path8);
     };
     if (
       // Detect `process` so that it can run in browsers.
@@ -4024,7 +4024,7 @@ function lastHookError() {
 var import_fs3 = __toESM(require("fs"));
 var import_path3 = __toESM(require("path"));
 var file = () => import_path3.default.join(storeHome(), "stats.json");
-var empty = () => ({ snapshots: 0, byTrigger: {}, snapshotMsTotal: 0, reverts: 0, partialReverts: 0, pathsRestored: 0, since: (/* @__PURE__ */ new Date()).toISOString() });
+var empty = () => ({ snapshots: 0, byTrigger: {}, snapshotMsTotal: 0, reverts: 0, partialReverts: 0, pathsRestored: 0, tries: 0, triesApplied: 0, since: (/* @__PURE__ */ new Date()).toISOString() });
 function readStats() {
   try {
     return { ...empty(), ...JSON.parse(import_fs3.default.readFileSync(file(), "utf8")) };
@@ -4307,8 +4307,16 @@ function diffTrees(beforeRoot, afterRoot, ig) {
 function diffSnapshot(sourceDir, ref) {
   return diffTrees(snapshotDir(sourceDir, ref), sourceDir, loadIgnore(sourceDir));
 }
+function diffSnapshots(sourceDir, from, to) {
+  const after = to === void 0 ? sourceDir : snapshotDir(sourceDir, to);
+  return diffTrees(snapshotDir(sourceDir, from), after, loadIgnore(sourceDir));
+}
 function snapshotDir(sourceDir, ref) {
   return dataDir(snapshotBase(sourceDir), resolveSnapshot(sourceDir, ref).id);
+}
+function fork(sourceDir, reason) {
+  const meta = takeSnapshot(sourceDir, { reason, trigger: "fork" });
+  return { meta, dir: dataDir(snapshotBase(sourceDir), meta.id) };
 }
 function snapshotFilePath(sourceDir, rel, ref) {
   const snapshot = resolveSnapshot(sourceDir, ref);
@@ -4575,10 +4583,127 @@ function protectedBytes(projectDir) {
   }, 0);
 }
 
-// src/cli.ts
+// src/try.ts
 var import_fs6 = __toESM(require("fs"));
 var import_path6 = __toESM(require("path"));
 var import_child_process3 = require("child_process");
+var PATH_FIX_MAX_BYTES = 1024 * 1024;
+var MAX_OUTPUT = 64 * 1024 * 1024;
+var realDir2 = (dir) => {
+  try {
+    return import_fs6.default.realpathSync(dir);
+  } catch {
+    return import_path6.default.resolve(dir);
+  }
+};
+var short = (cmd) => cmd.replace(/\s+/g, " ").trim().slice(0, 60);
+var isEmpty = (d) => !d.added.length && !d.modified.length && !d.deleted.length;
+function runIn(dir, command, opts = {}) {
+  const argv = process.platform === "win32" ? ["cmd", "/d", "/s", "/c", command] : ["sh", "-c", command];
+  const r = (0, import_child_process3.spawnSync)(argv[0], argv.slice(1), {
+    cwd: dir,
+    env: opts.env ?? process.env,
+    stdio: opts.stdio ?? "inherit",
+    timeout: opts.timeoutMs,
+    killSignal: "SIGTERM",
+    encoding: "utf8",
+    maxBuffer: MAX_OUTPUT
+  });
+  const timedOut = r.error?.code === "ETIMEDOUT";
+  if (r.error && !timedOut) throw r.error;
+  return { status: r.status, signal: r.signal, timedOut, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
+}
+function fixForkPaths(projectDir, forkDir, files) {
+  const from = [.../* @__PURE__ */ new Set([forkDir, realDir2(forkDir)])];
+  const to = realDir2(projectDir);
+  let fixed = 0;
+  for (const rel of files) {
+    const p = import_path6.default.join(projectDir, rel);
+    let st;
+    try {
+      st = import_fs6.default.lstatSync(p);
+    } catch {
+      continue;
+    }
+    if (!st.isFile() || st.size > PATH_FIX_MAX_BYTES) continue;
+    const buf = import_fs6.default.readFileSync(p);
+    if (buf.subarray(0, 8192).includes(0)) continue;
+    const text = buf.toString("utf8");
+    const next = from.reduce((t, f) => t.split(f).join(to), text);
+    if (next !== text) {
+      import_fs6.default.writeFileSync(p, next, { mode: st.mode });
+      fixed++;
+    }
+  }
+  return fixed;
+}
+var discardQuiet = (sourceDir, id) => {
+  try {
+    deleteSnapshot(sourceDir, id);
+  } catch {
+  }
+};
+function tryInFork(sourceDir, command, opts = {}) {
+  const label = short(command);
+  const base = takeSnapshot(sourceDir, { reason: `try base: ${label}`, trigger: "fork" });
+  const f = fork(sourceDir, `try: ${label}`);
+  const env = { ...opts.env ?? process.env, AGENT_UNDO_FORK: f.dir, AGENT_UNDO_PROJECT: realDir2(sourceDir) };
+  const run = (cmd2) => runIn(f.dir, cmd2, { ...opts, env });
+  const input = { command, check: opts.check };
+  const fail2 = (stage, r) => {
+    discardQuiet(sourceDir, base.id);
+    recordStats((st) => {
+      st.tries++;
+    });
+    return { ok: false, stage, input, fork: f.meta, ...r };
+  };
+  const cmd = run(command);
+  if (cmd.status !== 0) return fail2("command", { command: cmd });
+  const check = opts.check ? run(opts.check) : void 0;
+  if (check && check.status !== 0) return fail2("check", { command: cmd, check });
+  const drift = diffSnapshot(sourceDir, base.id);
+  if (!isEmpty(drift)) return fail2("drift", { command: cmd, check, drift });
+  const changed = diffSnapshots(sourceDir, base.id, f.meta.id);
+  const { backup } = revertSnapshot(sourceDir, f.meta.id);
+  const fixedPaths = fixForkPaths(sourceDir, f.dir, [...changed.added, ...changed.modified]);
+  discardQuiet(sourceDir, f.meta.id);
+  discardQuiet(sourceDir, base.id);
+  recordStats((st) => {
+    st.tries++;
+    st.triesApplied++;
+  });
+  return { ok: true, stage: "applied", input, command: cmd, check, fork: f.meta, applied: { backup, changed, fixedPaths } };
+}
+function describeTry(r) {
+  const keep = `The fork is kept as ${r.fork.id}: \`agent-undo path ${r.fork.id}\` to inspect it, \`agent-undo delete ${r.fork.id}\` to drop it.`;
+  switch (r.stage) {
+    case "applied": {
+      const { changed, backup, fixedPaths } = r.applied;
+      const n = changed.added.length + changed.modified.length + changed.deleted.length;
+      return [
+        `Try passed: applied ${n} change(s) (${changed.added.length} added, ${changed.modified.length} modified, ${changed.deleted.length} deleted).`,
+        ...fixedPaths ? [`Rewrote the fork path to the project path in ${fixedPaths} file(s).`] : [],
+        `Undo with: agent-undo revert ${backup.id} --yes`
+      ].join("\n");
+    }
+    case "command":
+      return `Command exited with ${r.command.timedOut ? "timeout" : r.command.status ?? r.command.signal}. Project unchanged.
+${keep}`;
+    case "check":
+      return `Check "${r.input.check}" failed (exit ${r.check.timedOut ? "timeout" : r.check.status ?? r.check.signal}) in the fork. Project unchanged.
+${keep}`;
+    case "drift": {
+      const files = [...r.drift.added, ...r.drift.modified, ...r.drift.deleted];
+      return `The project changed while the try ran (${files.length} file(s): ${files.slice(0, 5).join(", ")}${files.length > 5 ? ", ..." : ""}). Nothing applied.
+The fork is kept as ${r.fork.id}; to apply it anyway: agent-undo revert ${r.fork.id} --yes`;
+    }
+  }
+}
+
+// src/cli.ts
+var import_fs7 = __toESM(require("fs"));
+var import_path7 = __toESM(require("path"));
+var import_child_process4 = require("child_process");
 var cwd = process.cwd();
 var MODE_LABEL = { clonefile: "clonefile", cow: "copy-on-write", copy: "full copy: no CoW on this filesystem", moved: "moved" };
 var fail = (e) => {
@@ -4615,10 +4740,10 @@ program.command("list").description("List snapshots for this directory").option(
 });
 function fileDiff(file2, ref) {
   const { snapshot, path: before } = snapshotFilePath(cwd, file2, ref);
-  const live = import_path6.default.join(cwd, file2);
-  const now = import_fs6.default.existsSync(live) && import_fs6.default.statSync(live).isFile() ? live : null;
+  const live = import_path7.default.join(cwd, file2);
+  const now = import_fs7.default.existsSync(live) && import_fs7.default.statSync(live).isFile() ? live : null;
   if (!before && !now) fail(new Error(`"${file2}" is neither in snapshot ${snapshot.id} nor in the project.`));
-  const r = (0, import_child_process3.spawnSync)("diff", ["-u", "--label", `${file2} (${snapshot.id})`, "--label", `${file2} (now)`, before ?? "/dev/null", now ?? "/dev/null"], { encoding: "utf8" });
+  const r = (0, import_child_process4.spawnSync)("diff", ["-u", "--label", `${file2} (${snapshot.id})`, "--label", `${file2} (now)`, before ?? "/dev/null", now ?? "/dev/null"], { encoding: "utf8" });
   if (r.error) fail(new Error(`could not run \`diff\`: ${r.error.message}. Use \`agent-undo show ${file2}\` to print the snapshot copy.`));
   if (r.status === 0) return console.log(`${file2}: unchanged since ${snapshot.id}`);
   if (r.status !== 1) fail(new Error(r.stderr.trim() || `diff exited with ${r.status}`));
@@ -4642,7 +4767,16 @@ program.command("show <path> [snapshot]").description("Print a file as it was in
   try {
     const { snapshot, path: p } = snapshotFilePath(cwd, file2, ref);
     if (!p) fail(new Error(`"${file2}" is not in snapshot ${snapshot.id}.`));
-    process.stdout.write(import_fs6.default.readFileSync(p));
+    process.stdout.write(import_fs7.default.readFileSync(p));
+  } catch (e) {
+    fail(e);
+  }
+});
+program.command("try <command>").description("Run a command in a copy-on-write fork of the project; swap the result in only if it (and --check) succeed").option("-c, --check <cmd>", 'must pass inside the fork before the result is applied, e.g. "npm test"').option("-t, --timeout <seconds>", "kill the command or the check after this long").action((command, o) => {
+  try {
+    const r = tryInFork(cwd, command, { check: o.check, timeoutMs: o.timeout ? Number(o.timeout) * 1e3 : void 0 });
+    if (!r.ok) fail(new Error(describeTry(r)));
+    console.log(`\u2705 ${describeTry(r)}`);
   } catch (e) {
     fail(e);
   }
@@ -4706,6 +4840,7 @@ program.command("stats").description("Snapshots taken, reverts, and data protect
   console.log(`\u23EA agent-undo ${st.version}  level ${st.level}`);
   console.log(`snapshots taken   ${s.snapshots}  (${triggers}), avg ${avg}ms`);
   console.log(`reverts           ${s.reverts}  (${s.partialReverts} partial, ${s.pathsRestored} paths restored)`);
+  console.log(`tries             ${s.tries}  (${s.triesApplied} applied, ${s.tries - s.triesApplied} kept the project unchanged)`);
   console.log(`this project      ${st.snapshots} snapshot(s), ${(bytes / 1e6).toFixed(1)} MB protected`);
   console.log(`since             ${s.since.slice(0, 10)}`);
 });
