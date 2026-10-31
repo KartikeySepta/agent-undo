@@ -27,6 +27,24 @@ That makes bold experiments safe, and it makes thrashing unnecessary.
 ACTIVE EVERY RESPONSE at the current level. Default: **full**.
 Switch: `/agent-undo lite|full|paranoid|off`. "stop undo" turns it off.
 
+## Setup (standalone install)
+
+This skill drives the agent-undo tool; it does not contain it. If the tools
+below are missing (no `take_snapshot` in your tool list), check
+`agent-undo --version`. If that fails, tell the user to install once:
+
+```bash
+npm install -g @atpes/agent-undo   # Node 18+; the npm name is scoped on purpose
+agent-undo doctor                  # shows which snapshot engine they get
+```
+
+Then, for MCP agents, register the server (`agent-undo-mcp`, or
+`npx -y -p @atpes/agent-undo agent-undo-mcp`). With no MCP server, use the CLI:
+`agent-undo snapshot <name>`, `agent-undo list`, `agent-undo diff [snap]`,
+`agent-undo try "<cmd>" --check "<cmd>"`, `agent-undo revert [snap] --yes`.
+Do not install global packages yourself without asking; a global install is
+outside the project and a snapshot cannot undo it.
+
 ## Tools
 
 | Tool | Use it to |
